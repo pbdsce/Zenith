@@ -89,6 +89,11 @@ const config: Config = {
       },
     },
   },
-  plugins: [require('tailwindcss-animate')],
+  plugins: [
+    require('tailwindcss-animate'),
+    // You can add a plugin for scrollbar hiding, but we're using custom CSS instead
+  ],
+  // Add scrollbar-hide to the safelist to ensure it's not purged
+  safelist: ['scrollbar-hide'],
 };
 export default config;
