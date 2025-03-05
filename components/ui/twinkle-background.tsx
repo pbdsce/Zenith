@@ -116,9 +116,9 @@ export function TwinkleBackground({
         ))}
       </div>
       {fadeTop && (
-        <div className={`absolute inset-0 bg-gradient-to-b from-black via-transparent to-transparent z-[1]`} />
+        <div className={`absolute inset-0 bg-gradient-to-b from-black via-transparent to-transparent z-4`} />
       )}
-      <div className="relative z-10">
+      <div className="relative z-5">
         {children}
       </div>
     </div>

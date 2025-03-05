@@ -3,10 +3,10 @@ import React, { useState, useEffect, memo } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import EventBox from './ui/EventBox';
 import { Event } from './types';
-import ctf from '@/public/images/ctf.png'
-import dsa from '@/public/images/dsa.png'
-import kaggle from '@/public/images/kaggle.png'
-import hackathon from '@/public/images/hackathon.png'
+import ctf from '@/public/images/ctf.jpg'
+import dsa from '@/public/images/dsa.jpg'
+import kaggle from '@/public/images/kaggle.jpg'
+import hackathon from '@/public/images/hackathon.jpg'
 import { TwinkleBackground } from './ui/twinkle-background';
 
 const events: Event[] = [
@@ -119,9 +119,9 @@ function Events() {
     }, 50);
   };
 
-  // Prevent scrolling when a box is expanded on mobile
+  // Prevent body scrolling when a box is expanded
   useEffect(() => {
-    if (expandedId !== null && window.innerWidth < 768) {
+    if (expandedId !== null) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = 'auto';
