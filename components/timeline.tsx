@@ -20,7 +20,7 @@ const mon = Monoton({
 const timelineEvents = [
   {
     date: "Day 1 - 8:00 AM",
-    title: "Call Time (Check-in & Setup)",
+    title: "Participant Check-in",
     description: "Participants check in and set up for the event.",
   },
   {
