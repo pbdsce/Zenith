@@ -62,7 +62,7 @@ export function Brief() {
       questions: [
         {
           question: "What are the different contests in Zenith?",
-          answer: "Zenith features a diverse range of competitions designed to challenge and inspire participants across multiple tech domains. The Capture The Flag (CTF) contest is tailored for cybersecurity enthusiasts, where participants solve real-world security challenges and vulnerabilities. The Hackathon encourages developers to innovate and build groundbreaking solutions in software, AI, and machine learning. Competitive Programming is all about speed and logical problem-solving, where participants tackle algorithmic challenges under time constraints. Lastly, the Kaggle Competition is a data science and machine learning challenge that enables participants to analyze datasets, develop AI-driven models, and derive meaningful insights."
+          answer: "Zenith features CTF for cybersecurity challenges, a Hackathon for software and AI innovation, Competitive Programming for algorithmic problem-solving, and a Kaggle Competition for AI/ML-based challenges."
         },
         {
           question: "How do I register?",
@@ -70,7 +70,7 @@ export function Brief() {
         },
         {
           question: "Can I participate individually or in teams?",
-          answer: "Participation rules vary depending on the competition. The Capture The Flag (CTF) and Hackathon events require team participation, with a maximum of four members per team. Competitive Programming, on the other hand, is an individual event where participants compete to solve algorithmic problems independently. The Kaggle Competition allows both individual and team participation, depending on the specific challenge. Participants should check the detailed event guidelines to ensure they meet the eligibility requirements for their preferred competition."
+          answer: "CTF and Hackathon require teams (max 4 members), Competitive Programming is solo, and Kaggle allows both individual and team participation based on the challenge."
         }
       ]
     },
