@@ -5,7 +5,6 @@ import { Monoton } from "next/font/google";
 import EventTimer from "@/components/ui/eventtimer";
 import { Oxanium } from "next/font/google";
 import { motion } from "framer-motion";
-import { TwinkleBackground } from "@/components/ui/twinkle-background";
 import Loading from "@/app/loading";
 
 const oxan = Oxanium ({
@@ -13,11 +12,6 @@ const oxan = Oxanium ({
     subsets: ['latin']
 })
 
-const mon = Monoton({
-  weight:'400',
-  subsets:['latin']
-
-})
 
 export function Hero(){
   const [isLoading, setIsLoading] = useState(true);
@@ -52,13 +46,13 @@ export function Hero(){
     <div className="container mx-auto h-full pt-60 flex flex-col justify-center items-center relative z-10">
       <div className="text-center">
         <div className="glow-wrapper">
-          <motion.h1 
-            className={`${mon.className} text-5xl md:text-[12rem] text-heading relative z-10 select-none`}
+            <motion.h1 
+            className={`font-dystopian text-[6rem] md:text-[16rem] text-white relative z-10 select-none`}
             animate={{
               textShadow: [
-                "0 0 25px rgba(0, 246, 255, 0.5), 0 0 50px rgba(0, 246, 255, 0.4), 0 0 75px rgba(0, 246, 255, 0.3)",
-                "0 0 40px rgba(0, 246, 255, 0.7), 0 0 70px rgba(0, 246, 255, 0.5), 0 0 90px rgba(0, 246, 255, 0.4)",
-                "0 0 25px rgba(0, 246, 255, 0.5), 0 0 50px rgba(0, 246, 255, 0.4), 0 0 75px rgba(0, 246, 255, 0.3)",
+              "0 0 25px rgba(255, 255, 255, 0.5), 0 0 50px rgba(255, 255, 255, 0.4), 0 0 75px rgba(255, 255, 255, 0.3)",
+              "0 0 40px rgba(255, 255, 255, 0.7), 0 0 70px rgba(255, 255, 255, 0.5), 0 0 90px rgba(255, 255, 255, 0.4)",
+              "0 0 25px rgba(255, 255, 255, 0.5), 0 0 50px rgba(255, 255, 255, 0.4), 0 0 75px rgba(255, 255, 255, 0.3)",
               ]
             }}
             transition={{
@@ -66,11 +60,11 @@ export function Hero(){
               repeat: Infinity,
               ease: "easeInOut"
             }}
-          >
+            >
             ZENITH
-          </motion.h1>
+            </motion.h1>
         </div>
-        <p className={`${oxan.className} text-sm md:text-xl text-muted-foreground mt-6 max-w-xl sm:max-w-3xl mx-auto`}>
+        <p className={`${oxan.className} text-xs md:text-xl text-muted-foreground -mt-7 md:-mt-24 max-w-xs sm:max-w-3xl mx-auto`}>
               A 36-hour Point Blank contest featuring CTF, a Kaggle competition, 
               Hackathon, and CP, where the top scorer will be crowned 
               Programmer of the Year!

@@ -5,7 +5,7 @@ import { ArrowLeft, ArrowRight, ArrowUpIcon as SendArrow, Linkedin, createLucide
 import { Input } from "@/components/ui/input"
 import Image from "next/image"
 import { useState } from "react";
-import pblogo from "@/public/images/pblogo-nobg.png"
+import pblogo from "@/public/images/pblogo-nobg.webp"
 import pbfull from "@/public/images/pbfulllogo.svg"
 
 const XIcon = createLucideIcon("X", [
@@ -26,8 +26,10 @@ export function SpaceFooter() {
     <footer className="relative flex items-end w-full h-[80vh] sm:h-[50vh] text-white overflow-hidden pb-10">
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute flex w-full  top-0 rounded-[100%] blur-3xl transform translate-y-[-50%]"></div>
+        {/* Add black gradient fade from top */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black via-black to-transparent h-32 z-10"></div>
         <div className="absolute inset-0"></div>
-        <div className="absolute inset-0 bg-[url('/images/footerbg2.png')] bg-cover bg-center opacity-40"></div>
+        <div className="absolute inset-0 bg-[url('/images/footerbg2.webp')] bg-cover bg-center opacity-40"></div>
         <div className="absolute inset-0"></div>
       </div>
 

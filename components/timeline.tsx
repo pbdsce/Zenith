@@ -3,8 +3,8 @@
 import { motion, useReducedMotion } from "framer-motion";
 import { Monoton } from "next/font/google";
 import { Oxanium } from "next/font/google";
-import { TwinkleBackground } from "@/components/ui/twinkle-background";
 import { useState, useEffect, memo } from "react";
+
 
 const oxan = Oxanium ({
     weight: "400",
@@ -240,14 +240,14 @@ export function Timeline() {
   }, []);
 
   return (
-    <TwinkleBackground backgroundColor="black" fadeTop={true}>
+    // <TwinkleBackground backgroundColor="black" fadeTop={true}>
       <section className="py-20 pt-40 sm:pt-80" id="about">
         <div className="max-w-6xl mx-auto">
           <GlitchTitle glitchEffect={glitchEffect} />
           {isMobile ? <MobileTimeline /> : <DesktopTimeline />}
         </div>
       </section>
-    </TwinkleBackground>
+    // </TwinkleBackground>
   );
 }
 
