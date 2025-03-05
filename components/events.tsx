@@ -3,10 +3,10 @@ import React, { useState, useEffect, memo } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import EventBox from './ui/EventBox';
 import { Event } from './types';
-import ctf from '@/public/images/ctf.jpg'
-import dsa from '@/public/images/dsa.jpg'
-import kaggle from '@/public/images/kaggle.jpg'
-import hackathon from '@/public/images/hackathon.jpg'
+import ctf from '@/public/images/ctf.webp'
+import dsa from '@/public/images/dsa.webp'
+import kaggle from '@/public/images/kaggle.webp'
+import hackathon from '@/public/images/hackathon.webp'
 import { TwinkleBackground } from './ui/twinkle-background';
 
 const events: Event[] = [
