@@ -4,7 +4,6 @@ import Image from 'next/image';
 import QRsolve from "@/public/images/qrcode.webp"
 import CTF from "@/public/images/ctf.webp"
 import Help from "@/public/images/tusharctflol.webp"
-import { TwinkleBackground } from './ui/twinkle-background';
 
 
 interface EventCard {

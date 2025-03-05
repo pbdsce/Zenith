@@ -3,7 +3,6 @@
 import { motion, useReducedMotion } from "framer-motion";
 import { Monoton } from "next/font/google";
 import { Oxanium } from "next/font/google";
-// import { TwinkleBackground } from "@/components/ui/twinkle-background";
 import { useState, useEffect, memo } from "react";
 
 

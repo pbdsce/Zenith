@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { ChevronDown, Target, Crosshair, Briefcase, Flag } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-// import { TwinkleBackground } from './ui/twinkle-background';
+
 
 interface FAQItem {
   question: string;
@@ -125,7 +125,6 @@ export function Brief() {
   };
 
   return (
-    // <TwinkleBackground gradient="linear-gradient(to bottom, #000000, #030308)">
       <div className="min-h-screen text-white py-20 md:py-40 lg:py-60">
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
@@ -312,7 +311,7 @@ export function Brief() {
 
         </motion.div>
       </div>
-    // </TwinkleBackground>
+    // </ground>
   );
 }
 

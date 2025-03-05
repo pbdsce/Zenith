@@ -5,7 +5,6 @@ import { Monoton } from "next/font/google";
 import EventTimer from "@/components/ui/eventtimer";
 import { Oxanium } from "next/font/google";
 import { motion } from "framer-motion";
-// import { TwinkleBackground } from "@/components/ui/twinkle-background";
 import Loading from "@/app/loading";
 
 const oxan = Oxanium ({
