@@ -44,7 +44,7 @@ export function Hero(){
         muted 
         playsInline
       >
-        <source src="/videos/bg1.mp4" type="video/mp4" />
+        <source src="/videos/bg2.mp4" type="video/mp4" />
         Your browser does not support the video tag.
       </video>
       <div className="absolute bottom-0 left-0 w-full h-1/3 bg-gradient-to-b from-transparent to-black"></div>
@@ -53,7 +53,7 @@ export function Hero(){
       <div className="text-center">
         <div className="glow-wrapper">
           <motion.h1 
-            className={`${mon.className} text-5xl md:text-[12rem] text-heading relative z-10`}
+            className={`${mon.className} text-5xl md:text-[12rem] text-heading relative z-10 select-none`}
             animate={{
               textShadow: [
                 "0 0 25px rgba(0, 246, 255, 0.5), 0 0 50px rgba(0, 246, 255, 0.4), 0 0 75px rgba(0, 246, 255, 0.3)",

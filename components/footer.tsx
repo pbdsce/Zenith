@@ -23,7 +23,7 @@ export function SpaceFooter() {
   const [message, setMessage] = useState('');
 
   return (
-    <footer className="relative flex items-end w-full h-[50vh] text-white overflow-hidden pb-10">
+    <footer className="relative flex items-end w-full h-[80vh] sm:h-[50vh] text-white overflow-hidden pb-10">
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute flex w-full  top-0 rounded-[100%] blur-3xl transform translate-y-[-50%]"></div>
         <div className="absolute inset-0"></div>
