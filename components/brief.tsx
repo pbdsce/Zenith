@@ -29,39 +29,64 @@ export function Brief() {
       questions: [
         {
           question: "What is Zenith?",
-          answer: "Zenith is a technical fest organized by [Your Organization] that brings together technology enthusiasts for competitions, workshops, and learning opportunities."
+          answer: "Zenith is a flagship 36-hour tech contest organized by Point Blank. It brings together 200+ top programmers for CTF, hackathons, competitive programming, and a Kaggle competition."
         },
         {
-          question: "When and where is it happening?",
-          answer: "The event will take place on [Date] at [Venue]. Mark your calendars!"
+          question: "When and where is Zenith happening?",
+          answer: "The event is scheduled for April 27-28, 2025, with the venue to be announced soon. Please note that the dates are tentative."
         },
         {
-          question: "How can I register?",
-          answer: "Registration can be done through our website or on-spot at the venue. Early bird registrations get special discounts!"
+          question: "Who can Participate?",
+          answer: "Zenith is open to college students, professionals, and tech enthusiasts from across India. Some competitions may have specific eligibility criteria."
+        },
+        {
+          question: "Is there any participation fee?",
+          answer: "No, participation in Zenith is completely free."
+        },
+        {
+          question: "What kind of prizes can participants expect?",
+          answer: "Prizes include cash rewards, goodies, certificates, and special surprises for the winners."
+        },
+        {
+          question: "What expenses does Zenith cover for participants?",
+          answer: "Zenith covers the registration fees for all participants, ensuring a seamless experience for attendees."
+        },
+        {
+          question: "Are travel-related expenses reimbursable for participants?",
+          answer: "We will not cover travel expenses for participants."
         }
+        
       ]
     },
     events: {
       questions: [
         {
-          question: "What events can I participate in?",
-          answer: "We offer various events including CTF, Hackathon, DSA competitions, and Kaggle challenges."
+          question: "What are the different contests in Zenith?",
+          answer: "Zenith features a diverse range of competitions designed to challenge and inspire participants across multiple tech domains. The Capture The Flag (CTF) contest is tailored for cybersecurity enthusiasts, where participants solve real-world security challenges and vulnerabilities. The Hackathon encourages developers to innovate and build groundbreaking solutions in software, AI, and machine learning. Competitive Programming is all about speed and logical problem-solving, where participants tackle algorithmic challenges under time constraints. Lastly, the Kaggle Competition is a data science and machine learning challenge that enables participants to analyze datasets, develop AI-driven models, and derive meaningful insights."
         },
         {
-          question: "Are there any prerequisites?",
-          answer: "Each event has different requirements. Check individual event pages for specific details."
+          question: "How do I register?",
+          answer: "Registration details will be announced soon on our official website and social media."
+        },
+        {
+          question: "Can I participate individually or in teams?",
+          answer: "Participation rules vary depending on the competition. The Capture The Flag (CTF) and Hackathon events require team participation, with a maximum of four members per team. Competitive Programming, on the other hand, is an individual event where participants compete to solve algorithmic problems independently. The Kaggle Competition allows both individual and team participation, depending on the specific challenge. Participants should check the detailed event guidelines to ensure they meet the eligibility requirements for their preferred competition."
         }
       ]
     },
-    prizes: {
+    accomodation: {
       questions: [
         {
-          question: "What are the prizes?",
-          answer: "We have exciting prizes including cash rewards, internship opportunities, and sponsored goodies."
+          question: "Will food and accommodation be provided?",
+          answer: "Yes, participants will have access to food and rest areas during the 36-hour contest."
         },
         {
-          question: "How will winners be selected?",
-          answer: "Winners will be chosen based on performance metrics specific to each event. Judging criteria are available on event pages."
+          question: "What should I bring to the event?",
+          answer: "Bring your laptop, chargers, ID card, and any necessary accessories for coding. Internet access and power outlets will be provided."
+        },
+        {
+          question: "Will there be mentorship or guidance available?",
+          answer: "Yes, industry professionals and mentors will be present to guide participants during the event."
         }
       ]
     },
@@ -69,7 +94,7 @@ export function Brief() {
       questions: [
         {
           question: "How can I contact the organizers?",
-          answer: "Reach out to us at [email] or through our social media channels."
+          answer: "Reach out to us at zenith@pointblank.club or through our social media channels."
         },
         {
           question: "What if I have technical issues during the event?",
@@ -82,7 +107,7 @@ export function Brief() {
   const menuItems: MenuItem[] = [
     { id: 'general', label: 'GENERAL', icon: Flag },
     { id: 'events', label: 'EVENTS', icon: Target },
-    { id: 'prizes', label: 'PRIZES', icon: Crosshair },
+    { id: 'accomodation', label: 'ACCOMODATION', icon: Crosshair },
     { id: 'contact', label: 'CONTACT', icon: Briefcase }
   ];
 

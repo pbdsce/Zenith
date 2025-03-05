@@ -83,7 +83,7 @@ const EventTimer: React.FC<EventTimerProps> = ({ targetDate }) => {
               </div>
               <div className={oxan.className}>
                 <span className="text-sm md:text-base mt-1 uppercase">
-                  {unit === "minutes" ? "Mints" : unit}
+                  {unit === "minutes" ? "Mins" : unit}
                 </span>
               </div>
             </div>
