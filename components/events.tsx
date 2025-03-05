@@ -7,7 +7,7 @@ import ctf from '@/public/images/ctf.webp'
 import dsa from '@/public/images/dsa.webp'
 import kaggle from '@/public/images/kaggle.webp'
 import hackathon from '@/public/images/hackathon.webp'
-import { TwinkleBackground } from './ui/twinkle-background';
+// import { TwinkleBackground } from './ui/twinkle-background';
 
 const events: Event[] = [
     {
@@ -143,7 +143,7 @@ function Events() {
   }, []);
 
   return (
-    <TwinkleBackground>
+    // <TwinkleBackground>
       <div className="min-h-screen text-white p-4 sm:p-8 flex flex-col items-center justify-center">
         <GlitchTitle glitchEffect={glitchEffect} />
         
@@ -197,7 +197,7 @@ function Events() {
           )}
         </AnimatePresence>
       </div>
-    </TwinkleBackground>
+    // </TwinkleBackground>
   );
 }
 

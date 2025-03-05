@@ -15,7 +15,7 @@ export default function Loading() {
     <div className="fixed inset-0 bg-black flex items-center justify-center z-50">
       <div className="text-center">
         <motion.h1 
-          className={`${mon.className} text-4xl md:text-6xl text-heading`}
+          className={`font-dystopian text-4xl md:text-7xl text-white`}
           initial={{ opacity: 0.3 }}
           animate={{
             opacity: [0.3, 1, 0.3],
@@ -35,7 +35,7 @@ export default function Loading() {
         </motion.h1>
         <div className="mt-8">
           <BarLoader
-            color="#06b6d4"
+            color="white"
             width={280}
             height={4}
           />
