@@ -42,7 +42,7 @@ const events: Event[] = [
       title: "HACKATHON",
       category: "Tech",
       description: "A 48-hour coding marathon where innovators build groundbreaking applications.",
-      fullDescription: "GLOBAL HACKATHON is the ultimate test of creativity and endurance for developers, engineers, and designers. Over 48 hours, participants collaborate in teams to develop innovative applications, tackle real-world problems, and present their solutions to a panel of judges. With categories spanning web development, AI, blockchain, and IoT, this event is a breeding ground for the next big tech breakthrough.",
+      fullDescription: "HACKATHON is the ultimate test of creativity and endurance for developers, engineers, and designers. Over 48 hours, participants collaborate in teams to develop innovative applications, tackle real-world problems, and present their solutions to a panel of judges. With categories spanning web development, AI, blockchain, and IoT, this event is a breeding ground for the next big tech breakthrough.",
       time: "Starts at 11PM",
       image: hackathon.src,
     }
