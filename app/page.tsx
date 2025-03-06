@@ -1,12 +1,13 @@
 import { Hero } from "@/components/hero";
 import { Brief } from "@/components/brief";
-import { Timeline } from "@/components/timeline"
+import { Timeline } from "@/components/timeline";
 import { SpaceFooter } from "@/components/footer";
 import Events from "@/components/events";
 import { StarsBackground } from "@/components/ui/stars-background";
+import LoadingWrapper from "@/components/loading-wrapper";
 
 export default function Home() {
-  return (
+  const content = (
     <main className="relative overflow-hidden">
       <div className="inset-0 z-0">
         <StarsBackground />
@@ -29,5 +30,11 @@ export default function Home() {
         </section>
       </div>
     </main>
+  );
+
+  return (
+    <LoadingWrapper loadingTime={3000}>
+      {content}
+    </LoadingWrapper>
   );
 }
