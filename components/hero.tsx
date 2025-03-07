@@ -65,9 +65,8 @@ export function Hero(){
             </motion.h1>
         </div>
         <p className={`${oxan.className} text-xs md:text-xl text-muted-foreground -mt-7 md:-mt-24 max-w-xs sm:max-w-3xl mx-auto`}>
-              A 36-hour Point Blank contest featuring CTF, a Kaggle competition, 
-              Hackathon, and CP, where the top scorer will be crowned 
-              Programmer of the Year!
+              A 36-hour Point Blank contest featuring CTF, a Kaggle competition,
+              Hackathon, and DS —where teams compete in a relentless test of skill, strategy, and endurance!
             </p>
         <div className="pt-96">
           <EventTimer targetDate={new Date("2025-04-27T00:00:00").toISOString()} />
