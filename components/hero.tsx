@@ -38,7 +38,7 @@ export function Hero(){
         muted 
         playsInline
       >
-        <source src="/videos/bg2.mp4" type="video/mp4" />
+        <source src="/videos/bg2.webm" type="video/webm" />
         Your browser does not support the video tag.
       </video>
       <div className="absolute bottom-0 left-0 w-full h-1/3 bg-gradient-to-b from-transparent to-black"></div>
