@@ -38,7 +38,7 @@ export function Hero(){
         muted 
         playsInline
       >
-        <source src="/videos/bg2.webm" type="video/webm" />
+        <source src="/videos/bg2.mp4" type="video/mp4" />
         Your browser does not support the video tag.
       </video>
       <div className="absolute bottom-0 left-0 w-full h-1/3 bg-gradient-to-b from-transparent to-black"></div>
@@ -66,7 +66,7 @@ export function Hero(){
         </div>
         <p className={`${oxan.className} text-xs md:text-xl text-muted-foreground -mt-7 md:-mt-24 max-w-xs sm:max-w-3xl mx-auto`}>
               A 36-hour Point Blank contest featuring CTF, a Kaggle competition,
-              Hackathon, and DS —where teams compete in a relentless test of skill, strategy, and endurance!
+              Hackathon, and DSA —where teams compete in a relentless test of skill, strategy, and endurance!
             </p>
         <div className="pt-96">
           <EventTimer targetDate={new Date("2025-04-27T00:00:00").toISOString()} />

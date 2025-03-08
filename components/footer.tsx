@@ -109,7 +109,7 @@ export function SpaceFooter() {
             </Link>
           </div>
           <div className="text-center md:text-left mb-6 md:mb-0">
-            <p className="text-gray-400 flex items-center">A <Image className="mx-3 mb-[0.2rem]" src={pbfull.src} alt="pblogo" width={150} height={100}/> EVENT</p>
+            <p className="text-gray-400 flex items-center">A <Image className="mx-3" src={pbfull.src} alt="pblogo" width={150} height={100}/> EVENT</p>
           </div>
         </div>
       </div>
