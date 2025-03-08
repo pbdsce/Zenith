@@ -41,7 +41,7 @@ export function Hero(){
         <source src="/videos/bg2.mp4" type="video/mp4" />
         Your browser does not support the video tag.
       </video>
-      <div className="absolute bottom-0 left-0 w-full h-1/3 bg-gradient-to-b from-transparent to-black"></div>
+    <div className="absolute bottom-0 left-0 w-full h-1/3 bg-gradient-to-b from-transparent to-black"></div>
   
     <div className="container mx-auto h-full pt-60 flex flex-col justify-center items-center relative z-10">
       <div className="text-center">

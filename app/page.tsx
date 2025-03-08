@@ -9,13 +9,13 @@ import LoadingWrapper from "@/components/loading-wrapper";
 export default function Home() {
   const content = (
     <main className="relative overflow-hidden">
-      <div className="inset-0 z-0">
-        <StarsBackground />
-      </div>
       <div className="relative z-10">
         <section className="relative">
           <Hero />
         </section>
+      <div className="inset-0 z-0">
+        <StarsBackground />
+      </div>
         <section className="relative">
           <Timeline />
         </section>
