@@ -10,7 +10,7 @@ interface LoadingWrapperProps {
 
 export default function LoadingWrapper({ 
   children, 
-  loadingTime = 5000 
+  loadingTime = 2000 
 }: LoadingWrapperProps) {
   const [isLoading, setIsLoading] = useState(true);
 

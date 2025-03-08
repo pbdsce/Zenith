@@ -527,3 +527,16 @@
     transform: skew(0deg);
   }
 }
+
+/* Add this to the end of your global CSS file */
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .no-scrollbar {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+}

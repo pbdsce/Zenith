@@ -1,7 +1,7 @@
 'use client'
 
 import Link from "next/link"
-import { ArrowLeft, ArrowRight, ArrowUpIcon as SendArrow, Linkedin, createLucideIcon, Instagram } from "lucide-react"
+import { ArrowLeft, ArrowRight, ArrowUpIcon as SendArrow, Linkedin, createLucideIcon, Instagram, Mail } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import Image from "next/image"
 import { useState } from "react";
@@ -35,12 +35,15 @@ export function SpaceFooter() {
 
       <div className="container mx-auto px-4 relative z-10">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
-          <div className="space-y-6">
+          <div >
             <div className="flex items-center space-x-4">
             </div>
-            <div className="space-y-2">
-              <Image src={pblogo.src} alt="pblogo" width={65} height={65}/>
-              <p className="text-gray-400 text-lg">zenith@pointblank.club</p>
+            <div className="space-y-2 -mt-3">
+              <Image src={pblogo.src} alt="pblogo" className="-ml-2" width={65} height={65}/>
+              <div className="inline-flex gap-2 items-center">
+              <Mail size={"20"} /> 
+              <a href="mailto:zenith@pointblank.club" className="text-gray-400 text-lg">zenith@pointblank.club</a>
+              </div>
             </div>
           </div>
 
@@ -49,29 +52,28 @@ export function SpaceFooter() {
             <div className="space-y-6">
               <h3 className="text-lg font-medium">Quick Links</h3>
               <div className="space-y-4">
-                <Link href="https://www.pointblank.club/leads" className="block text-gray-400 hover:text-white transition-colors">
+                <Link href="https://www.pointblank.club/leads" target="_blank" className="block text-gray-400 hover:text-white transition-colors">
                   Leads
                 </Link>
-                <Link href="https://www.pointblank.club/events" className="block text-gray-400 hover:text-white transition-colors">
+                <Link href="https://www.pointblank.club/events" target="_blank" className="block text-gray-400 hover:text-white transition-colors">
                   Events
                 </Link>
               </div>
             </div>
             <div className="space-y-6 pt-12">
               <div className="space-y-4">
-                <Link href="https://www.pointblank.club/members" className="block text-gray-400 hover:text-white transition-colors">
+                <Link href="https://www.pointblank.club/members" target="_blank" className="block text-gray-400 hover:text-white transition-colors">
                   Members
                 </Link>
-                <Link href="https://www.pointblank.club/achievements" className="block text-gray-400 hover:text-white transition-colors">
+                <Link href="https://www.pointblank.club/achievements" target="_blank" className="block text-gray-400 hover:text-white transition-colors">
                   Achievements
                 </Link>
               </div>
             </div>
           </div>
 
-          {/* Right column - Subscribe */}
-          <div className="space-y-6">
-          <h3 className="text-lg font-medium">Reach us out on WhatsApp</h3>
+          <div className="space-y-6 mb-5">
+          <h3 className="text-lg font-medium ml-[0.1rem]">Reach out to us on WhatsApp</h3>
             <div className="space-y-3">
               <Input
               type="text"
@@ -98,18 +100,21 @@ export function SpaceFooter() {
         {/* Footer bottom */}
         <div className="flex flex-col md:flex-row justify-between items-center">
           <div className="flex space-x-4 mb-6 md:mb-0">
-            <Link href="https://www.linkedin.com/company/point-blank-d/" className="bg-gray-900 p-2 rounded-full hover:bg-gray-800 transition-colors">
+            <Link href="https://www.linkedin.com/company/point-blank-d/" target="_blank" className="bg-gray-900 p-2 rounded-full hover:bg-gray-800 transition-colors">
               <Linkedin className="h-5 w-5" />
             </Link>
-            <Link href="https://x.com/pointblank_dsce" className="bg-gray-900 p-2 rounded-full hover:bg-gray-800 transition-colors">
+            <Link href="https://x.com/pointblank_dsce" target="_blank" className="bg-gray-900 p-2 rounded-full hover:bg-gray-800 transition-colors">
               <XIcon className="h-5 w-5" />
             </Link>
-            <Link href="https://www.instagram.com/pointblank_dsce/" className="bg-gray-900 p-2 rounded-full hover:bg-gray-800 transition-colors">
+            <Link href="https://www.instagram.com/pointblank_dsce/" target="_blank" className="bg-gray-900 p-2 rounded-full hover:bg-gray-800 transition-colors">
               <Instagram className="h-5 w-5" />
             </Link>
           </div>
+          <div className="text-center md:text-right">
+            <p className="text-gray-400">© 2025 Point Blank. All rights reserved</p>
+          </div>
           <div className="text-center md:text-left mb-6 md:mb-0">
-            <p className="text-gray-400 flex items-center">A <Image className="mx-3 mb-[0.2rem]" src={pbfull.src} alt="pblogo" width={150} height={100}/> EVENT</p>
+            <p className="text-gray-400 flex items-center">A <Image className="mx-3" src={pbfull.src} alt="pblogo" width={150} height={100}/> EVENT</p>
           </div>
         </div>
       </div>
