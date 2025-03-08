@@ -1,7 +1,7 @@
 'use client'
 
 import Link from "next/link"
-import { ArrowLeft, ArrowRight, ArrowUpIcon as SendArrow, Linkedin, createLucideIcon, Instagram } from "lucide-react"
+import { ArrowLeft, ArrowRight, ArrowUpIcon as SendArrow, Linkedin, createLucideIcon, Instagram, Mail } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import Image from "next/image"
 import { useState } from "react";
@@ -39,8 +39,11 @@ export function SpaceFooter() {
             <div className="flex items-center space-x-4">
             </div>
             <div className="space-y-2 -mt-3">
-              <Image src={pblogo.src} alt="pblogo" width={65} height={65}/>
+              <Image src={pblogo.src} alt="pblogo" className="-ml-2" width={65} height={65}/>
+              <div className="inline-flex gap-2 items-center">
+              <Mail size={"20"} /> 
               <a href="mailto:zenith@pointblank.club" className="text-gray-400 text-lg">zenith@pointblank.club</a>
+              </div>
             </div>
           </div>
 
