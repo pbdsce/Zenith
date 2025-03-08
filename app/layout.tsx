@@ -14,7 +14,10 @@ export const metadata: Metadata = {
   },
   description: 'A 36-hour programming contest featuring CTF, Kaggle, Hackathon, and CP',
   viewport: 'width=device-width, initial-scale=1',
-  themeColor: '#000000'
+  themeColor: '#000000',
+  icons: {
+    icon: '/favicon.ico', 
+  }
 };
 
 export default function RootLayout({
