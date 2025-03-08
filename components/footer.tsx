@@ -35,17 +35,17 @@ export function SpaceFooter() {
 
       <div className="container mx-auto px-4 relative z-10">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
-          <div className="space-y-6">
+          <div >
             <div className="flex items-center space-x-4">
             </div>
-            <div className="space-y-2">
+            <div className="space-y-2 -mt-3">
               <Image src={pblogo.src} alt="pblogo" width={65} height={65}/>
               <a href="mailto:zenith@pointblank.club" className="text-gray-400 text-lg">zenith@pointblank.club</a>
             </div>
           </div>
 
           {/* Middle column - Quick Links */}
-          <div className="grid grid-cols-2 gap-8 pt-5">
+          <div className="grid grid-cols-2 gap-8">
             <div className="space-y-6">
               <h3 className="text-lg font-medium">Quick Links</h3>
               <div className="space-y-4">
