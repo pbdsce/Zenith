@@ -3,7 +3,6 @@ import React, { useState } from 'react';
 import { ChevronDown, Target, Crosshair, Briefcase, Flag } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-
 interface FAQItem {
   question: string;
   answer: string;
@@ -112,16 +111,16 @@ export function Brief() {
   ];
 
   const [selectedSection, setSelectedSection] = useState<keyof FAQData>('general');
-  const [openQuestions, setOpenQuestions] = useState<Set<string>>(new Set());
+  const [openQuestion, setOpenQuestion] = useState<string | null>(null);
 
   const toggleQuestion = (questionId: string) => {
-    const newOpenQuestions = new Set(openQuestions);
-    if (newOpenQuestions.has(questionId)) {
-      newOpenQuestions.delete(questionId);
+    if (openQuestion === questionId) {
+      // If clicking the same question, close it
+      setOpenQuestion(null);
     } else {
-      newOpenQuestions.add(questionId);
+      // Otherwise open the new question (and automatically close the previous one)
+      setOpenQuestion(questionId);
     }
-    setOpenQuestions(newOpenQuestions);
   };
 
   return (
@@ -132,21 +131,32 @@ export function Brief() {
           transition={{ duration: 0.6 }}
           className="max-w-7xl mx-auto"
         >
-          <div className="px-4 sm:px-6 lg:px-8">
+            <div className="px-4 sm:px-6 lg:px-8">
             <motion.h1 
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
-              className="text-6xl sm:text-7xl xl:text-8xl font-bold mb-8 tracking-wider font-dystopian text-[#2AD7DB]"
+              className="text-[6rem] sm:text-7xl xl:text-8xl text-center sm:text-left font-bold mb-8 tracking-wider font-dystopian text-[#2AD7DB]"
               style={{
-                textShadow: "0 0 20px rgba(42,215,219,0.3), 0 0 40px rgba(42,215,219,0.2), 0 0 60px rgba(42,215,219,0.1)"
+              textShadow: "0 0 20px rgba(42,215,219,0.3), 0 0 40px rgba(42,215,219,0.2), 0 0 60px rgba(42,215,219,0.1)"
               }}
             >
               FAQ
             </motion.h1>
-          </div>
+            </div>
 
           <div className="lg:hidden relative mb-8">
-            <div className="flex overflow-x-auto scrollbar-hide px-4 sm:px-6 space-x-4 pb-4">
+            <div 
+              className="flex overflow-x-auto px-4 sm:px-6 space-x-4 pb-4"
+              style={{
+                msOverflowStyle: 'none',
+                scrollbarWidth: 'none',
+              }}
+            >
+              <style jsx>{`
+                div::-webkit-scrollbar {
+                  display: none;
+                }
+              `}</style>
               {menuItems.map((item, index) => (
                 <motion.button
                   initial={{ opacity: 0, x: -20 }}
@@ -209,7 +219,7 @@ export function Brief() {
                       key={index}
                       className="border-b border-gray-700/50 rounded-lg bg-black/20 backdrop-blur-sm transition-all duration-300 hover:border-[#2AD7DB]/30 group"
                       style={{
-                        boxShadow: openQuestions.has(`${selectedSection}-${index}`) 
+                        boxShadow: openQuestion === `${selectedSection}-${index}` 
                           ? '0 0 20px rgba(42,215,219,0.1)' 
                           : 'none'
                       }}
@@ -220,10 +230,10 @@ export function Brief() {
                       >
                         <span className="text-xl font-medium pr-8">{item.question}</span>
                         <motion.div
-                          animate={{ rotate: openQuestions.has(`${selectedSection}-${index}`) ? 180 : 0 }}
+                          animate={{ rotate: openQuestion === `${selectedSection}-${index}` ? 180 : 0 }}
                           transition={{ duration: 0.2 }}
                           className={`transition-colors duration-300 ${
-                            openQuestions.has(`${selectedSection}-${index}`) 
+                            openQuestion === `${selectedSection}-${index}` 
                               ? 'text-[#2AD7DB]' 
                               : 'group-hover:text-[#2AD7DB]'
                           }`}
@@ -232,7 +242,7 @@ export function Brief() {
                         </motion.div>
                       </button>
                       <AnimatePresence>
-                        {openQuestions.has(`${selectedSection}-${index}`) && (
+                        {openQuestion === `${selectedSection}-${index}` && (
                           <motion.div
                             initial={{ height: 0, opacity: 0 }}
                             animate={{ height: "auto", opacity: 1 }}
@@ -277,10 +287,10 @@ export function Brief() {
                     >
                       <span className="text-xl font-medium pr-8">{item.question}</span>
                       <motion.div
-                        animate={{ rotate: openQuestions.has(`${selectedSection}-${index}`) ? 180 : 0 }}
+                        animate={{ rotate: openQuestion === `${selectedSection}-${index}` ? 180 : 0 }}
                         transition={{ duration: 0.2 }}
                         className={`transition-colors duration-300 ${
-                          openQuestions.has(`${selectedSection}-${index}`) 
+                          openQuestion === `${selectedSection}-${index}` 
                             ? 'text-[#2AD7DB]' 
                             : 'group-hover:text-[#2AD7DB]'
                         }`}
@@ -289,7 +299,7 @@ export function Brief() {
                       </motion.div>
                     </button>
                     <AnimatePresence>
-                      {openQuestions.has(`${selectedSection}-${index}`) && (
+                      {openQuestion === `${selectedSection}-${index}` && (
                         <motion.div
                           initial={{ height: 0, opacity: 0 }}
                           animate={{ height: "auto", opacity: 1 }}

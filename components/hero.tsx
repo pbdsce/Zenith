@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Monoton } from "next/font/google";
 import EventTimer from "@/components/ui/eventtimer";
 import { Oxanium } from "next/font/google";
@@ -15,14 +15,27 @@ const oxan = Oxanium ({
 
 export function Hero(){
   const [isLoading, setIsLoading] = useState(true);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
+    const video = videoRef.current;
+    
+    // If video is already loaded
+    if (video && video.readyState >= 3) {
       setIsLoading(false);
-    }, 3000); // Adjust the timeout duration as needed
+    }
 
-    return () => clearTimeout(timer);
+    // Fallback timeout after 5 seconds
+    const timeoutId = setTimeout(() => {
+      setIsLoading(false);
+    }, 5000);
+
+    return () => clearTimeout(timeoutId);
   }, []);
+
+  const handleVideoLoad = () => {
+    setIsLoading(false);
+  };
 
   if (isLoading) {
     return <Loading />;
@@ -32,16 +45,18 @@ export function Hero(){
     <div className="relative h-[63rem] bg-black before:absolute before:bottom-0 before:left-0 before:w-full before:h-1/3 before:bg-gradient-to-b before:from-transparent before:to-black">
     {/* Video Background */}
       <video 
+        ref={videoRef}
         className="absolute top-0 left-0 w-full h-full object-cover" 
         autoPlay 
         loop 
         muted 
         playsInline
+        onLoadedData={handleVideoLoad}
       >
         <source src="/videos/bg2.mp4" type="video/mp4" />
         Your browser does not support the video tag.
       </video>
-      <div className="absolute bottom-0 left-0 w-full h-1/3 bg-gradient-to-b from-transparent to-black"></div>
+    <div className="absolute bottom-0 left-0 w-full h-1/3 bg-gradient-to-b from-transparent to-black"></div>
   
     <div className="container mx-auto h-full pt-60 flex flex-col justify-center items-center relative z-10">
       <div className="text-center">
@@ -65,9 +80,8 @@ export function Hero(){
             </motion.h1>
         </div>
         <p className={`${oxan.className} text-xs md:text-xl text-muted-foreground -mt-7 md:-mt-24 max-w-xs sm:max-w-3xl mx-auto`}>
-              A 36-hour Point Blank contest featuring CTF, a Kaggle competition, 
-              Hackathon, and CP, where the top scorer will be crowned 
-              Programmer of the Year!
+              A 36-hour Point Blank contest featuring CTF, a Kaggle competition,
+              Hackathon, and DSA —where teams compete in a relentless test of skill, strategy, and endurance!
             </p>
         <div className="pt-96">
           <EventTimer targetDate={new Date("2025-04-27T00:00:00").toISOString()} />
