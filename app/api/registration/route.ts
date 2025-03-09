@@ -406,7 +406,8 @@ export async function POST(request: Request) {
         college_name: data.college_name || null,
         referral_code: data.referral_code || null,
         registration_time: new Date().toISOString(),
-        status: "PENDING" // You can use this for tracking status
+        status: "PENDING", // You can use this for tracking status
+        isAdmin: true
       };
       
       // Create a new registration document
