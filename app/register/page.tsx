@@ -1,5 +1,6 @@
 "use client";
 
+//trigger-rebuild
 // import { auth, db } from '@/lib/firebase/config';
 // import { createUserWithEmailAndPassword } from 'firebase/auth';
 // import { doc, setDoc } from 'firebase/firestore';
@@ -53,7 +54,6 @@ export default function Signup() {
     { value: "+33", label: "+33 (France)" },
     { value: "+81", label: "+81 (Japan)" },
   ];
-  
   // Add validation states
   const [nameError, setNameError] = useState(false);
   const [emailError, setEmailError] = useState(false);
