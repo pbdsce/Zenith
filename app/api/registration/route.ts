@@ -31,18 +31,51 @@ export const config = {
   },
 };
 
+// Configure Cloudinary
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
+});
+
 // Function to upload file to Cloudinary
-const uploadToCloudinary = async (filePath: string, folder: string): Promise<string> => {
+const uploadToCloudinary = async (filePath: string, folder: string, mimeType: string): Promise<string> => {
+  // Choose the appropriate resource type based on mimetype
+  const resourceType = mimeType.includes('pdf') ? 'raw' : 'auto';
+  
+  // Prepare upload options
+  const uploadOptions: any = {
+    folder: folder,
+    resource_type: resourceType,
+  };
+  
+  // For PDFs, add specific options to ensure proper rendering in browser
+  if (mimeType.includes('pdf')) {
+    uploadOptions.format = 'pdf';
+    // Add the attachment flag to ensure proper download behavior
+    uploadOptions.flags = 'attachment';
+  }
+
   return new Promise((resolve, reject) => {
     cloudinary.uploader.upload(
       filePath,
-      {
-        folder: folder,
-        resource_type: 'auto', // Automatically detect file type
-      },
+      uploadOptions,
       (error, result) => {
         if (error) reject(error);
-        else resolve(result?.secure_url || '');
+        else {
+          let url = result?.secure_url || '';
+          
+          // For PDFs, ensure URL format is correct
+          if (mimeType.includes('pdf')) {
+            // Check if URL needs correction
+            if (url.includes('/image/upload/')) {
+              // Replace image with raw for PDFs if needed
+              url = url.replace('/image/upload/', '/raw/upload/');
+            }
+          }
+          
+          resolve(url);
+        }
         
         // Clean up temp file
         try {
@@ -122,6 +155,17 @@ export async function POST(request: Request) {
       );
     }
 
+    // Check file size limit (1MB = 1,048,576 bytes)
+    if (resumeFile.size > 1 * 1024 * 1024) {
+      return NextResponse.json(
+        {
+          message: "Resume file size must be under 1MB.",
+          error: "File size limit exceeded",
+        },
+        { status: 413 }
+      );
+    }
+
     // Validate profile picture if provided (must be an image)
     let profilePictureUrl = null;
     if (files.profile_picture) {
@@ -135,12 +179,24 @@ export async function POST(request: Request) {
           { status: 400 }
         );
       }
+
+      // Check file size limit (1MB = 1,048,576 bytes)
+      if (profileFile.size > 1 * 1024 * 1024) {
+        return NextResponse.json(
+          {
+            message: "Profile picture size must be under 1MB.",
+            error: "File size limit exceeded",
+          },
+          { status: 413 }
+        );
+      }
       
       // Upload profile picture to Cloudinary
       try {
         profilePictureUrl = await uploadToCloudinary(
           profileFile.filepath,
-          'profile_pictures'
+          'profile_pictures',
+          profileFile.mimetype
         );
       } catch (error) {
         console.error("Failed to upload profile picture:", error);
@@ -159,7 +215,8 @@ export async function POST(request: Request) {
     try {
       resumeUrl = await uploadToCloudinary(
         resumeFile.filepath,
-        'resumes'
+        'resumes',
+        resumeFile.mimetype
       );
     } catch (error) {
       console.error("Failed to upload resume:", error);
@@ -355,26 +412,26 @@ export async function POST(request: Request) {
     }
 
     // Validate reCAPTCHA if token provided
-    // if (recaptcha_token) {
-    //   const recaptchaSecretKey = process.env.RECAPTCHA_SECRET_KEY;
+    if (recaptcha_token) {
+      const recaptchaSecretKey = process.env.RECAPTCHA_SECRET_KEY;
 
-    //   // Verify reCAPTCHA token
-    //   const recaptchaResponse = await fetch(
-    //     `https://www.google.com/recaptcha/api/siteverify?secret=${recaptchaSecretKey}&response=${recaptcha_token}`,
-    //     { method: "POST" }
-    //   );
-    //   const recaptchaResult = await recaptchaResponse.json();
+      // Verify reCAPTCHA token
+      const recaptchaResponse = await fetch(
+        `https://www.google.com/recaptcha/api/siteverify?secret=${recaptchaSecretKey}&response=${recaptcha_token}`,
+        { method: "POST" }
+      );
+      const recaptchaResult = await recaptchaResponse.json();
 
-    //   if (!recaptchaResult.success) {
-    //     return NextResponse.json(
-    //       {
-    //         message: "reCAPTCHA validation failed",
-    //         error: recaptchaResult["error-codes"],
-    //       },
-    //       { status: 400 }
-    //     );
-    //   }
-    // }
+      if (!recaptchaResult.success) {
+        return NextResponse.json(
+          {
+            message: "reCAPTCHA validation failed",
+            error: recaptchaResult["error-codes"],
+          },
+          { status: 400 }
+        );
+      }
+    }
 
     // Use transaction to ensure data consistency
     let registrationId = '';
