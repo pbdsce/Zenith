@@ -1,4 +1,5 @@
-import './globals.css';
+import './globals.css'
+import '@/styles/cybr-btn.css'
 import type { Metadata } from 'next';
 import { Space_Grotesk } from 'next/font/google';
 
