@@ -30,7 +30,7 @@ export async function POST(request: Request) {
     const uid = userCredential.user.uid;
 
     // **5️⃣ Store Admin in Firestore**
-    const userRef = doc(collection(db, "users"), uid);
+    const userRef = doc(collection(db, "registrations"), uid);
     await setDoc(userRef, {
       uid,
       email,
