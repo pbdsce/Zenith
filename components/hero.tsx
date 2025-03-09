@@ -47,11 +47,9 @@ export function Hero(){
       {/* Cyberpunk Button */}
       <div className="top-right-btn">
         <a href="/register">
-        <button className="cybr-btn">
-          Register
-          <span aria-hidden className="cybr-btn__glitch">Register</span>
-
-        </button>
+          <button className="cybr-btn">
+            Register
+          </button>
         </a>
       </div>
     

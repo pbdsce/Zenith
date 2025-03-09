@@ -181,9 +181,9 @@ export default function Signup() {
           transition={{ duration: 0.8 }}
         >
     <div className="min-h-screen flex items-center justify-center">
+        <StarsBackground starDensity={0.0002} allStarsTwinkle={true} />
       <div className="relative w-full max-w-xl p-8 space-y-6 rounded-lg shadow-lg border">
-        <StarsBackground/>
-        <div className="absolute -inset-4 bg-gradient-to-r from-[#2ad8db33] to-[#143B4B] blur-3xl rounded-lg"></div>
+        <div className="absolute -inset-4 bg-gradient-to-r from-[#2ad8db33] to-[#113341ad] blur-3xl rounded-lg"></div>
       <motion.div
         initial={{ opacity: 0, scale: .95 }}
         animate={{ opacity: 1, scale: 1 }}
