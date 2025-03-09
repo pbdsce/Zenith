@@ -1,17 +1,10 @@
 import { db } from "@/Firebase";
 import { addDoc, collection, getDocs, query, where, runTransaction, doc, setDoc } from "firebase/firestore";
 import { NextResponse } from "next/server";
-import { v2 as cloudinary } from 'cloudinary';
+import { cloudinary } from "@/Cloudinary";
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
-
-// Configure Cloudinary
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET
-});
 
 // Utility functions for format validation
 const validateEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -80,9 +73,11 @@ const parseForm = async (req: Request): Promise<{ fields: any, files: any }> => 
       // Save file to system temp directory with a unique name
       const tempFilePath = path.join(tempDir, `${Date.now()}_${safeFilename}`);
       
-      // Get file content as ArrayBuffer and write to disk
-      const buffer = Buffer.from(await value.arrayBuffer());
-      fs.writeFileSync(tempFilePath, buffer);
+      // Get file content as ArrayBuffer 
+      const arrayBuffer = await value.arrayBuffer();
+      
+      // Use fs.promises.writeFile which handles Buffer types better
+      await fs.promises.writeFile(tempFilePath, new Uint8Array(arrayBuffer));
       
       files[key] = {
         filepath: tempFilePath,
@@ -97,7 +92,6 @@ const parseForm = async (req: Request): Promise<{ fields: any, files: any }> => 
   
   return { fields, files };
 };
-
 export async function POST(request: Request) {
   try {
     // Parse form data with files
@@ -361,33 +355,38 @@ export async function POST(request: Request) {
     }
 
     // Validate reCAPTCHA if token provided
-    if (recaptcha_token) {
-      const recaptchaSecretKey = process.env.RECAPTCHA_SECRET_KEY;
+    // if (recaptcha_token) {
+    //   const recaptchaSecretKey = process.env.RECAPTCHA_SECRET_KEY;
 
-      // Verify reCAPTCHA token
-      const recaptchaResponse = await fetch(
-        `https://www.google.com/recaptcha/api/siteverify?secret=${recaptchaSecretKey}&response=${recaptcha_token}`,
-        { method: "POST" }
-      );
-      const recaptchaResult = await recaptchaResponse.json();
+    //   // Verify reCAPTCHA token
+    //   const recaptchaResponse = await fetch(
+    //     `https://www.google.com/recaptcha/api/siteverify?secret=${recaptchaSecretKey}&response=${recaptcha_token}`,
+    //     { method: "POST" }
+    //   );
+    //   const recaptchaResult = await recaptchaResponse.json();
 
-      if (!recaptchaResult.success) {
-        return NextResponse.json(
-          {
-            message: "reCAPTCHA validation failed",
-            error: recaptchaResult["error-codes"],
-          },
-          { status: 400 }
-        );
-      }
-    }
+    //   if (!recaptchaResult.success) {
+    //     return NextResponse.json(
+    //       {
+    //         message: "reCAPTCHA validation failed",
+    //         error: recaptchaResult["error-codes"],
+    //       },
+    //       { status: 400 }
+    //     );
+    //   }
+    // }
 
     // Use transaction to ensure data consistency
     let registrationId = '';
     
     await runTransaction(db, async (transaction) => {
-      // Prepare registration data
+      
+      // Create a new registration document
+      const registrationRef = doc(collection(db, "registrations"));
+      registrationId = registrationRef.id;
+
       const registrationData = {
+        uid:registrationId,
         name: data.name,
         email: data.email,
         phone: data.phone,
@@ -407,12 +406,8 @@ export async function POST(request: Request) {
         referral_code: data.referral_code || null,
         registration_time: new Date().toISOString(),
         status: "PENDING", // You can use this for tracking status
-        isAdmin: true
+        isAdmin: false
       };
-      
-      // Create a new registration document
-      const registrationRef = doc(collection(db, "registrations"));
-      registrationId = registrationRef.id;
       
       // Set the registration data in the transaction
       transaction.set(registrationRef, registrationData);
