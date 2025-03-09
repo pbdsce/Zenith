@@ -61,9 +61,9 @@ Register Users: curl -X POST \
 
 Get All Users : curl -X GET "http://localhost:3000/api/users"
 
-Get a Specific User : curl -X GET "http://localhost:3000/api/users/KviZ2B5vAgvvOnNqf1SL"
+Get a Specific User : curl -X GET "http://localhost:3000/api/users/QiS0ihtS9SNgYc1WxCjY"
 
-Update User Fields (except Name): curl -X PUT "http://localhost:3000/api/users/KviZ2B5vAgvvOnNqf1SL" \
+Update User Fields (except Name): curl -X PUT "http://localhost:3000/api/users/QiS0ihtS9SNgYc1WxCjY" \
      -H "Content-Type: application/json" \
      -d '{
            "email": "newemail@example.com",
@@ -71,24 +71,24 @@ Update User Fields (except Name): curl -X PUT "http://localhost:3000/api/users/K
            "resume": "https://resume.link/new.pdf"
           }'
 
-Update User status (admin only) : curl -X PUT "http://localhost:3000/api/users/KviZ2B5vAgvvOnNqf1SL/status" \
+Update User status (admin only) : curl -X PUT "http://localhost:3000/api/users/QiS0ihtS9SNgYc1WxCjY/status" \
      -H "Content-Type: application/json" \
      -d '{
-           "uid": "{admin_UID}",
+           "uid": "o2Dk10UMs7VJ478Zg0WErbnm3Bs1", 
            "status": "Accepted"
          }'
 
 
-Delete User (admin only): curl -X DELETE "http://localhost:3000/api/users/KviZ2B5vAgvvOnNqf1SL" \
+Delete User (admin only): curl -X DELETE "http://localhost:3000/api/users/QiS0ihtS9SNgYc1WxCjY" \
      -H "Content-Type: application/json" \
      -d '{
-           "uid": "{admin_UID}"
+           "uid": "o2Dk10UMs7VJ478Zg0WErbnm3Bs1"
          }'
 
-Register admin: curl -X POST "http://localhost:3000/api/admin/" \
+Register admin: curl -X POST "http://localhost:3000/api/admin" \
      -H "Content-Type: application/json" \
      -d '{
-           "email": "admin@pointblank.club",
+           "email": "admin1@pointblank.club",
            "password": "SecurePass123",
            "secret": "pbstruggles"
          }'
