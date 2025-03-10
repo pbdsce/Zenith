@@ -4,6 +4,7 @@ import { Timeline } from "@/components/timeline";
 import { SpaceFooter } from "@/components/footer";
 import Events from "@/components/events";
 import { StarsBackground } from "@/components/ui/stars-background";
+
 export default function Home() {
   return (
     <main className="relative overflow-hidden">
