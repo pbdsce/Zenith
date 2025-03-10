@@ -1,4 +1,13 @@
-export const achievementList = {
+type AchievementList = {
+  [key: string]: { name: string; achievements: string[] }[];
+  GSoC: { name: string; achievements: string[] }[];
+  SmartIndiaHackathon: { name: string; achievements: string[] }[];
+  Hackathons: { name: string; achievements: string[] }[];
+  CP: { name: string; achievements: string[] }[];
+  LFX: { name: string; achievements: string[] }[];
+};
+
+export const achievementList: AchievementList = {
     GSoC: [
         { name: "Ashutosh Pandey", achievements: ["GSoC '20 @Arduino", "GSoC '21 @LLVM"] },
         { name: "Akash Singh", achievements: ["GSoC '24 @Keploy"] },
