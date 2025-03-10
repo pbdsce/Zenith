@@ -1,5 +1,5 @@
 import { db } from "@/Firebase";
-import { doc, getDoc, updateDoc, deleteDoc } from "firebase/firestore";
+import { doc, getDoc, updateDoc, deleteDoc, collection, query, where, getDocs, setDoc } from "firebase/firestore";
 import { NextResponse } from "next/server";
 import { cloudinary } from "@/Cloudinary";
 import fs from 'fs';
@@ -171,6 +171,67 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   }
 }
 
+// Helper function to manage college changes
+const handleCollegeChange = async (oldCollege: string | null, newCollege: string): Promise<void> => {
+  if (!newCollege || (oldCollege && oldCollege.toLowerCase() === newCollege.toLowerCase())) {
+    // No change or no college provided
+    return;
+  }
+
+  const newCollegeTrimmed = newCollege.trim();
+  if (newCollegeTrimmed.length === 0) return;
+
+  // Check if the new college exists
+  const collegesRef = collection(db, "colleges");
+  const collegeQuery = query(
+    collegesRef, 
+    where("name_lower", "==", newCollegeTrimmed.toLowerCase())
+  );
+  
+  const querySnapshot = await getDocs(collegeQuery);
+  
+  if (!querySnapshot.empty) {
+    // College exists, increment count
+    const collegeDoc = querySnapshot.docs[0];
+    const currentCount = collegeDoc.data().count || 0;
+    
+    await updateDoc(doc(db, "colleges", collegeDoc.id), {
+      count: currentCount + 1
+    });
+  } else {
+    // College doesn't exist, add it
+    const newCollegeRef = doc(collection(db, "colleges"));
+    await setDoc(newCollegeRef, {
+      name: newCollegeTrimmed,
+      name_lower: newCollegeTrimmed.toLowerCase(),
+      count: 1,
+      created_at: new Date().toISOString()
+    });
+  }
+
+  // If there was an old college, decrement its count
+  if (oldCollege) {
+    const oldCollegeQuery = query(
+      collegesRef, 
+      where("name_lower", "==", oldCollege.toLowerCase())
+    );
+    
+    const oldCollegeSnapshot = await getDocs(oldCollegeQuery);
+    
+    if (!oldCollegeSnapshot.empty) {
+      const oldCollegeDoc = oldCollegeSnapshot.docs[0];
+      const currentCount = oldCollegeDoc.data().count || 0;
+      
+      // Only decrement if count is greater than 0
+      if (currentCount > 0) {
+        await updateDoc(doc(db, "colleges", oldCollegeDoc.id), {
+          count: currentCount - 1
+        });
+      }
+    }
+  }
+};
+
 export async function PUT(req: Request, { params }: { params: { id: string } }) {
   try {
     // Parse form data with files
@@ -191,6 +252,11 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     }
     
     const userData = userSnap.data();
+    
+    // Handle college name update if provided
+    if (updates.college_name && updates.college_name !== userData.college_name) {
+      await handleCollegeChange(userData.college_name, updates.college_name);
+    }
     
     // Handle resume update if provided
     if (files.resume) {

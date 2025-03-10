@@ -1,5 +1,5 @@
 import { db } from "@/Firebase";
-import { addDoc, collection, getDocs, query, where, runTransaction, doc, setDoc } from "firebase/firestore";
+import { addDoc, collection, getDocs, query, where, runTransaction, doc, setDoc, updateDoc } from "firebase/firestore";
 import { NextResponse } from "next/server";
 import { cloudinary } from "@/Cloudinary";
 import fs from 'fs';
@@ -125,6 +125,43 @@ const parseForm = async (req: Request): Promise<{ fields: any, files: any }> => 
   
   return { fields, files };
 };
+
+// Helper function to ensure college exists and increment counter
+const ensureCollegeExists = async (collegeName: string): Promise<void> => {
+  if (!collegeName) return;
+  
+  const collegeNameTrimmed = collegeName.trim();
+  if (collegeNameTrimmed.length === 0) return;
+  
+  // Check if college already exists
+  const collegesRef = collection(db, "colleges");
+  const collegeQuery = query(
+    collegesRef, 
+    where("name_lower", "==", collegeNameTrimmed.toLowerCase())
+  );
+  
+  const querySnapshot = await getDocs(collegeQuery);
+  
+  if (!querySnapshot.empty) {
+    // College exists, increment count
+    const collegeDoc = querySnapshot.docs[0];
+    const currentCount = collegeDoc.data().count || 0;
+    
+    await updateDoc(doc(db, "colleges", collegeDoc.id), {
+      count: currentCount + 1
+    });
+  } else {
+    // College doesn't exist, add it
+    const newCollegeRef = doc(collection(db, "colleges"));
+    await setDoc(newCollegeRef, {
+      name: collegeNameTrimmed,
+      name_lower: collegeNameTrimmed.toLowerCase(),
+      count: 1,
+      created_at: new Date().toISOString()
+    });
+  }
+};
+
 export async function POST(request: Request) {
   try {
     // Parse form data with files
@@ -431,6 +468,11 @@ export async function POST(request: Request) {
           { status: 400 }
         );
       }
+    }
+
+    // If college name is provided, ensure it exists in the colleges collection
+    if (data.college_name) {
+      await ensureCollegeExists(data.college_name);
     }
 
     // Use transaction to ensure data consistency
