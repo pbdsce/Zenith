@@ -211,7 +211,7 @@ export default function Signup() {
     formData.append('referral_code', referralCode);
   
     try {
-      const response = await fetch('/api/register', {
+      const response = await fetch('/api/registration', {
         method: 'POST',
         body: formData,
       });
@@ -243,7 +243,7 @@ export default function Signup() {
       }
     } catch (error) {
       console.error('Registration error:', error);
-      setError(error.message || 'An error occurred during registration');
+      setError(error instanceof Error ? error.message : 'An error occurred during registration');
     } finally {
       setIsSubmitting(false);
     }

@@ -119,6 +119,11 @@ export async function POST(request: Request) {
         errorMessage = "Invalid email format";
         statusCode = 400;
         break;
+      
+      case 'auth/invalid-credential':
+        errorMessage = "Invalid credentials";
+        statusCode = 400;
+        break;
         
       case 'auth/user-disabled':
         errorMessage = "This account has been disabled";
