@@ -69,7 +69,7 @@ export function Brief() {
         },
         {
           question: "Can I participate individually or in teams?",
-          answer: "CTF and Hackathon require teams (max 4 members), Competitive Programming is solo, and Kaggle allows both individual and team participation based on the challenge."
+          answer: "Registrations will be individual, and teams will be formed on the spot during the event. However, you can view other participants' profiles and connect with them beforehand if you wish to set up your team in advance."
         }
       ]
     },
