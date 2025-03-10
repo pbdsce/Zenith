@@ -11,6 +11,8 @@ import { motion } from "framer-motion";
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { StarsBackground } from "@/components/ui/stars-background";
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 // Add CSS for shake animation
 const shakeAnimation = {
@@ -22,6 +24,8 @@ export default function Signup() {
   const [step, setStep] = useState(0);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [stdCode, setStdCode] = useState("+91"); 
   const [phone, setPhone] = useState("");
   const [resume, setResume] = useState<File | null>(null);
@@ -57,6 +61,8 @@ export default function Signup() {
   // Add validation states
   const [nameError, setNameError] = useState(false);
   const [emailError, setEmailError] = useState(false);
+  const [passwordError, setPasswordError] = useState(false);
+  const [confirmPasswordError, setConfirmPasswordError] = useState(false);
   const [phoneError, setPhoneError] = useState(false);
   const [resumeError, setResumeError] = useState(false);
 
@@ -72,6 +78,8 @@ export default function Signup() {
     // Reset error states
     setNameError(false);
     setEmailError(false);
+    setPasswordError(false);
+    setConfirmPasswordError(false);
     
     if (!name.trim()) {
       setNameError(true);
@@ -79,6 +87,22 @@ export default function Signup() {
     }
     if (!email.trim() || !/\S+@\S+\.\S+/.test(email)) {
       setEmailError(true);
+      isValid = false;
+    }
+    if (!password) {
+      setPasswordError(true);
+      isValid = false;
+    } else if (password.length < 6) {
+      setPasswordError(true);
+      setError("Password must be at least 6 characters long");
+      isValid = false;
+    }
+    if (!confirmPassword) {
+      setConfirmPasswordError(true);
+      isValid = false;
+    } else if (password !== confirmPassword) {
+      setConfirmPasswordError(true);
+      setError("Passwords do not match");
       isValid = false;
     }
     
@@ -120,11 +144,11 @@ export default function Signup() {
         return;
       }
       
-      // Check file size (limit to 2MB)
-      const fileSizeInMB = file.size / (1024 * 1024);
-      if (fileSizeInMB > 2) {
+      // Check file size (limit to 500KB)
+      const fileSizeInKB = file.size / 1024;
+      if (fileSizeInKB > 500) {
         setResumeError(true);
-        setError("Resume file size must be less than 2MB");
+        setError("Resume file size must be less than 500KB");
         return;
       }
       
@@ -168,9 +192,27 @@ export default function Signup() {
 
     // Simulate API call
     setTimeout(() => {
-      alert(`Account created successfully!\nEmail: ${email}`);
+      toast.success(`Account created successfully for ${email}!`, {
+        position: "top-center",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+        theme: "dark",
+        style: {
+          background: "#1a1a2e",
+          borderLeft: "4px solid #2ad8db",
+          color: "#fff",
+        },
+      });
       setIsSubmitting(false);
-      router.push('/login');
+      
+      // Give time for the user to see the toast before redirecting
+      setTimeout(() => {
+        router.push('/');
+      }, 2000);
     }, 1500);
   };
 
@@ -182,6 +224,24 @@ export default function Signup() {
         >
     <div className="min-h-screen flex items-center justify-center">
         <StarsBackground starDensity={0.0002} allStarsTwinkle={true} />
+        {/* Add ToastContainer for notifications */}
+        <ToastContainer
+          position="top-center"
+          autoClose={3000}
+          hideProgressBar={false}
+          newestOnTop
+          closeOnClick
+          rtl={false}
+          pauseOnFocusLoss
+          draggable
+          pauseOnHover
+          theme="dark"
+          toastStyle={{
+            background: "#1a1a2e",
+            color: "#fff",
+            borderLeft: "4px solid #2ad8db",
+          }}
+        />
       <div className="relative w-full max-w-xl p-8 space-y-6 rounded-lg shadow-lg border">
         <div className="absolute -inset-4 bg-gradient-to-r from-[#2ad8db33] to-[#113341ad] blur-3xl rounded-lg"></div>
       <motion.div
@@ -197,7 +257,7 @@ export default function Signup() {
           </p>
           <br />
           <div className="w-full bg-gray-200 rounded-full h-1 mb-4">
-          <div className="bg-yellow-200 h-1 rounded-full" style={{ width: `${(step + 1) / 5 * 100}%` }}></div>
+          <div className="bg-green-600 h-1 rounded-full" style={{ width: `${(step + 1) / 5 * 100}%` }}></div>
         </div>
           <br/>
         </div>
@@ -252,6 +312,57 @@ export default function Signup() {
                       if (emailError) setEmailError(false);
                     }}
                     className={`bg-transparent border ${emailError ? 'border-red-500' : 'border-gray-300'}`}
+                    required
+                  />
+                </motion.div>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="password">Password <span className="text-red-500">*</span></Label>
+                <motion.div
+                  whileHover={{ scale: 1.05 }}
+                  className='relative'
+                  animate={passwordError ? shakeAnimation : undefined}
+                >
+                  <Input 
+                    id="password" 
+                    type="password" 
+                    placeholder="Enter Password"
+                    value={password}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      if (passwordError) {
+                        setPasswordError(false);
+                        setError("");
+                      }
+                    }}
+                    className={`bg-transparent border ${passwordError ? 'border-red-500' : 'border-gray-300'}`}
+                    required
+                  />
+                </motion.div>
+                <p className="text-xs text-muted-foreground">Password must be at least 6 characters long</p>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword">Confirm Password <span className="text-red-500">*</span></Label>
+                <motion.div
+                  whileHover={{ scale: 1.05 }}
+                  className='relative'
+                  animate={confirmPasswordError ? shakeAnimation : undefined}
+                >
+                  <Input 
+                    id="confirmPassword" 
+                    type="password" 
+                    placeholder="Confirm Password"
+                    value={confirmPassword}
+                    onChange={(e) => {
+                      setConfirmPassword(e.target.value);
+                      if (confirmPasswordError) {
+                        setConfirmPasswordError(false);
+                        setError("");
+                      }
+                    }}
+                    className={`bg-transparent border ${confirmPasswordError ? 'border-red-500' : 'border-gray-300'}`}
                     required
                   />
                 </motion.div>
@@ -359,7 +470,7 @@ export default function Signup() {
                         />
                       </svg>
                       <p className="text-sm text-gray-400">Click to upload your resume (PDF only)</p>
-                      <p className="text-xs text-gray-400 mt-1">Maximum size: 2MB</p>
+                      <p className="text-xs text-gray-400 mt-1">Maximum size: 500KB</p>
                     </div>
                   ) : (
                     <div className="flex items-center justify-center">
@@ -384,7 +495,7 @@ export default function Signup() {
                     </div>
                   )}
                 </motion.div>
-                {resumeError && !error && <p className="text-xs text-red-500 mt-1">Please upload your resume in PDF format (max 2MB)</p>}
+                {resumeError && !error && <p className="text-xs text-red-500 mt-1">Please upload your resume in PDF format (max 500KB)</p>}
               </div>
               
               <div className="flex justify-between">
@@ -553,7 +664,7 @@ export default function Signup() {
                 <h3 className="text-lg font-medium text-center">Personal Information</h3>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
+                    <div className="space-y-2">
                     <Label htmlFor="age">Age</Label>
                     <motion.div whileHover={{ scale: 1.05 }} className='relative'>
                       <Input 
@@ -561,11 +672,16 @@ export default function Signup() {
                         type="number"
                         placeholder="Your Age"
                         value={age}
-                        onChange={(e) => setAge(e.target.value)}
+                        onChange={(e) => {
+                          const input = e.target.value.replace(/\D/g, '').slice(0, 2);
+                          setAge(input);
+                        }}
+                        min="1"
+                        max="99"
                         className="bg-transparent border border-gray-300"
                       />
                     </motion.div>
-                  </div>
+                    </div>
                   
                   <div className="space-y-2">
                     <Label htmlFor="collegeName">College Name</Label>

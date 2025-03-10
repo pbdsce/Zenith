@@ -36,7 +36,7 @@
 
 /* Position the button in the top right corner */
 .top-right-btn {
-  position: absolute;
+  position: fixed;
   top: 20px;
   right: 20px;
   z-index: 50;
