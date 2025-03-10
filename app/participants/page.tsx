@@ -8,6 +8,8 @@ import ProfileModal from "../../components/ui/profile-modal"
 import SearchBar from "../../components/ui/search-bar"
 import { profiles as initialProfiles } from "@/lib/data"
 import type { Profile } from "@/lib/types"
+import CountdownTimer from "@/components/ui/countdown-timer"
+import Link from "next/link"
 
 export default function Participants() {
   const [searchTerm, setSearchTerm] = useState("")
@@ -75,9 +77,20 @@ export default function Participants() {
   }
 
   return (
-    <main className="min-h-screen bg-black text-white">
-      {/* Header */}
-      <div className="container mx-auto py-10">
+    <main className="min-h-screen bg-black text-white relative">
+      <div className="container mx-auto pt-6">
+        {/* Header with navigation and countdown */}
+        <div className="flex flex-col sm:flex-row justify-between items-center mb-6">
+          <Link href="/" className="text-gray-400 hover:text-white transition-colors flex items-center py-2 rounded-md hover:bg-gray-800/50">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M19 12H5M12 19l-7-7 7-7"/>
+            </svg>
+            Back to Home
+          </Link>
+          <CountdownTimer />
+        </div>
+        
+        {/* Header */}
         <motion.h1
           className="text-5xl font-bold text-center mb-2"
           initial={{ opacity: 0, y: -20 }}
