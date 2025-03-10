@@ -4,10 +4,10 @@ import { Timeline } from "@/components/timeline";
 import { SpaceFooter } from "@/components/footer";
 import Events from "@/components/events";
 import { StarsBackground } from "@/components/ui/stars-background";
-import LoadingWrapper from "@/components/loading-wrapper";
 
 export default function Home() {
-  const content = (
+
+  return (
     <main className="relative overflow-hidden">
       <div className="relative z-10">
         <section className="relative">
@@ -30,11 +30,5 @@ export default function Home() {
         </section>
       </div>
     </main>
-  );
-
-  return (
-    <LoadingWrapper loadingTime={3000}>
-      {content}
-    </LoadingWrapper>
   );
 }

@@ -7,24 +7,23 @@
 .cybr-btn {
   --white-glow: rgba(255, 255, 255, 0.8);
   --color: hsl(0, 0%, 100%);
-  --font-size: 16px;
+  --font-size: 15px;
   font-family: 'Cyber', sans-serif;
   color: var(--color);
   cursor: pointer;
-  background: rgba(0, 0, 0, 0.3);
   text-transform: uppercase;
   font-size: var(--font-size);
-  letter-spacing: 2px;
+  letter-spacing: 1px;
   position: relative;
   font-weight: 700;
   border: none;
-  min-width: 150px;
-  height: 45px;
-  line-height: 45px;
+  height: 40px;
+  line-height: 40px;
+  padding: 0 10px;
   transition: all 0.2s;
-  padding: 0 15px;
   border-radius: 20px;
   text-shadow: 0 0 5px var(--white-glow);
+  min-width: 80px;
 }
 
 .cybr-btn:hover {
@@ -45,9 +44,21 @@
 /* Make the button responsive */
 @media (max-width: 768px) {
   .cybr-btn {
-    --font-size: 14px;
-    min-width: 120px;
-    height: 40px;
-    line-height: 40px;
+    --font-size: 13px;
+    min-width: 70px;
+    height: 35px;
+    line-height: 35px;
+    letter-spacing: 0.5px;
+    padding: 0 8px;
+  }
+}
+
+@media (max-width: 360px) {
+  .cybr-btn {
+    --font-size: 12px;
+    min-width: 60px;
+    height: 32px;
+    line-height: 32px;
+    letter-spacing: 0px;
   }
 }

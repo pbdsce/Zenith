@@ -13,6 +13,7 @@ import { useRouter } from "next/navigation";
 import { StarsBackground } from "@/components/ui/stars-background";
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import Link from "next/link";
 
 // Add CSS for shake animation
 const shakeAnimation = {
@@ -222,7 +223,14 @@ export default function Signup() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8 }}
         >
-    <div className="min-h-screen flex items-center justify-center">
+    <div className="min-h-screen flex items-center justify-center relative p-4">
+        <Link href="/" className="absolute top-6 left-6 text-gray-400 hover:text-white transition-colors flex items-center gap-2 py-2 px-4 rounded-md hover:bg-gray-800/50 z-50">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M19 12H5M12 19l-7-7 7-7"/>
+          </svg>
+          Back to Home
+        </Link>
+        
         <StarsBackground starDensity={0.0002} allStarsTwinkle={true} />
         {/* Add ToastContainer for notifications */}
         <ToastContainer
