@@ -46,12 +46,15 @@ export function Hero(){
     <div className="relative h-[63rem] bg-black before:absolute before:bottom-0 before:left-0 before:w-full before:h-1/3 before:bg-gradient-to-b before:from-transparent before:to-black">
       {/* Cyberpunk Button */}
       <div className="top-right-btn">
+        <a href="/participants">
+          <button className="cybr-btn">
+            Participants
+          </button>
+        </a>
         <a href="/register">
-        <button className="cybr-btn">
-          Register
-          <span aria-hidden className="cybr-btn__glitch">Register</span>
-
-        </button>
+          <button className="cybr-btn">
+            Register
+          </button>
         </a>
       </div>
     
@@ -93,7 +96,7 @@ export function Hero(){
         <p className={`${oxan.className} text-xs md:text-xl text-muted-foreground -mt-7 md:-mt-24 max-w-xs sm:max-w-3xl mx-auto`}>
               A 36-hour Point Blank contest featuring CTF, a Kaggle competition,
               Hackathon, and DSA —where teams compete in a relentless test of skill, strategy, and endurance!
-            </p>
+        </p>
         <div className="pt-96">
           <EventTimer targetDate={new Date("2025-04-27T00:00:00").toISOString()} />
         </div>
