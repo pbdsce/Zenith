@@ -20,6 +20,53 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
+// Function to extract public_id from Cloudinary URL
+const extractPublicIdFromUrl = (url: string): string => {
+  if (!url) return '';
+  
+  try {
+    // Extract the path from URL
+    const urlObj = new URL(url);
+    let pathname = urlObj.pathname;
+    
+    // Remove /image/upload/ or /raw/upload/ part
+    pathname = pathname.replace(/\/(image|raw)\/upload\//, '');
+    
+    // Extract file path without extension
+    const publicId = pathname.substring(0, pathname.lastIndexOf('.'));
+    
+    return publicId;
+  } catch (error) {
+    console.error("Failed to extract public ID from URL:", error);
+    return '';
+  }
+};
+
+// Function to delete file from Cloudinary
+const deleteFromCloudinary = async (url: string, resourceType: string = 'image'): Promise<boolean> => {
+  if (!url) return true;
+  
+  const publicId = extractPublicIdFromUrl(url);
+  
+  if (!publicId) return false;
+  
+  return new Promise((resolve) => {
+    cloudinary.uploader.destroy(
+      publicId,
+      { resource_type: resourceType },
+      (error: Error | null, result: any) => {
+        if (error || result.result !== 'ok') {
+          console.error("Failed to delete from Cloudinary:", error || result);
+          resolve(false);
+        } else {
+          console.log("Successfully deleted from Cloudinary:", publicId);
+          resolve(true);
+        }
+      }
+    );
+  });
+};
+
 // Function to upload file to Cloudinary
 const uploadToCloudinary = async (filePath: string, folder: string, mimeType: string): Promise<string> => {
   // Choose the appropriate resource type based on mimetype
@@ -42,7 +89,7 @@ const uploadToCloudinary = async (filePath: string, folder: string, mimeType: st
     cloudinary.uploader.upload(
       filePath,
       uploadOptions,
-      (error, result) => {
+      (error: any, result: any) => {
         if (error) reject(error);
         else {
           let url = result?.secure_url || '';
@@ -171,6 +218,11 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
         );
       }
       
+      // Delete old resume from Cloudinary if it exists
+      if (userData.resume_link) {
+        await deleteFromCloudinary(userData.resume_link, 'raw');
+      }
+      
       // Upload new resume to Cloudinary
       try {
         const resumeUrl = await uploadToCloudinary(
@@ -217,6 +269,11 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
           },
           { status: 413 }
         );
+      }
+
+      // Delete old profile picture from Cloudinary if it exists
+      if (userData.profile_picture) {
+        await deleteFromCloudinary(userData.profile_picture, 'image');
       }
 
       // Upload new profile picture to Cloudinary
