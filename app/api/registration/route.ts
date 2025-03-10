@@ -60,7 +60,7 @@ const uploadToCloudinary = async (filePath: string, folder: string, mimeType: st
     cloudinary.uploader.upload(
       filePath,
       uploadOptions,
-      (error, result) => {
+      (error: any, result: any) => {
         if (error) reject(error);
         else {
           let url = result?.secure_url || '';
