@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import { StarsBackground } from "@/components/ui/stars-background";
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import { useAuth } from '@/hooks/useAuth'; // Import your existing auth hook
 
 // Add CSS for shake animation
 const shakeAnimation = {
@@ -22,6 +23,9 @@ export default function Login() {
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
+  
+  // Get the login function from your auth hook
+  const { login } = useAuth();
   
   // Add validation states
   const [emailError, setEmailError] = useState(false);
@@ -57,8 +61,11 @@ export default function Login() {
       return;
     }
 
-    // Simulate API call for login
-    setTimeout(() => {
+    try {
+      // Use the login function from your auth hook
+      await login(email, password);
+      
+      // Display success toast
       toast.success(`Successfully logged in as ${email}!`, {
         position: "top-center",
         autoClose: 3000,
@@ -74,13 +81,29 @@ export default function Login() {
           color: "#fff",
         },
       });
-      setIsSubmitting(false);
       
       // Give time for the user to see the toast before redirecting
       setTimeout(() => {
         router.push('/');
       }, 2000);
-    }, 1500);
+    } catch (err: any) {
+      console.error('Login error:', err);
+      const errorMessage = err?.message || 'An unexpected error occurred';
+      setError(errorMessage);
+      
+      toast.error(errorMessage, {
+        position: "top-center",
+        autoClose: 3000,
+        theme: "dark",
+        style: {
+          background: "#1a1a2e",
+          borderLeft: "4px solid #ff4757",
+          color: "#fff",
+        },
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
