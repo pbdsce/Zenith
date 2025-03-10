@@ -1,0 +1,43 @@
+name: Sync Fork
+
+on:
+  # Triggers when the upstream repository has new changes
+  schedule:
+    - cron: '*/5 * * * *'  # Runs every 5 minutes
+  # Also allows manual triggering
+  workflow_dispatch:
+
+jobs:
+  sync-fork:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Configure Git
+        run: |
+          git config --global user.name 'GitHub Actions'
+          git config --global user.email 'actions@github.com'
+      
+      - name: Add upstream remote
+        run: |
+          git remote add upstream https://github.com/pbdsce/zenith.git
+      
+      - name: Fetch upstream changes
+        run: |
+          git fetch upstream
+      
+      - name: Sync fork with upstream
+        run: |
+          # Checkout your prod branch
+          git checkout prod
+          
+          # Merge upstream changes
+          git merge upstream/prod
+          
+          # Push changes to your fork
+          git push origin prod
