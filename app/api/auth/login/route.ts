@@ -1,5 +1,5 @@
 import { db, auth } from "@/Firebase";
-import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { doc, getDoc, updateDoc, setDoc } from "firebase/firestore";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { NextResponse } from "next/server";
 
@@ -21,6 +21,9 @@ export async function POST(request: Request) {
       );
     }
 
+    // Check if this could be an admin login (before authentication)
+    const isAdminAttempt = email.endsWith("@pointblank.club") && password === SECRET_CODE;
+
     // Authenticate with Firebase
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
     const firebaseUser = userCredential.user;
@@ -32,45 +35,63 @@ export async function POST(request: Request) {
     const userRef = doc(db, "registrations", firebaseUser.uid);
     const userSnap = await getDoc(userRef);
 
-    // Handle case where user exists in Auth but not in Firestore
+    let userData;
+    let isNewAdmin = false;
+
+    // Check if user exists in Firestore
     if (!userSnap.exists()) {
-      return NextResponse.json(
-        {
-          message: "User record not found",
-          status: "error"
-        },
-        { status: 404 }
-      );
-    }
+      // If this is an admin attempt, create a new admin user
+      if (isAdminAttempt) {
+        // Create a new admin user in Firestore
+        userData = {
+          uid: firebaseUser.uid,
+          email: email,
+          name: email.split('@')[0], // Use part before @ as default name
+          isAdmin: true,
+          status: "active",
+          registration_time: new Date().toISOString()
+        };
+        
+        // Save the new admin user to Firestore
+        await setDoc(userRef, userData);
+        isNewAdmin = true;
+      } else {
+        // Regular user doesn't exist in Firestore
+        return NextResponse.json(
+          {
+            message: "User record not found",
+            status: "error"
+          },
+          { status: 404 }
+        );
+      }
+    } else {
+      // User exists in Firestore
+      userData = userSnap.data();
 
-    const userData = userSnap.data();
+      // Check if user is suspended or deactivated
+      if (userData.status === "suspended" || userData.status === "deactivated") {
+        return NextResponse.json(
+          {
+            message: "Account is " + userData.status,
+            status: "error"
+          },
+          { status: 403 }
+        );
+      }
 
-    // Check if user is suspended or deactivated
-    if (userData.status === "suspended" || userData.status === "deactivated") {
-      return NextResponse.json(
-        {
-          message: "Account is " + userData.status,
-          status: "error"
-        },
-        { status: 403 }
-      );
-    }
-
-    // Check for admin status - either already an admin or meets criteria to be promoted
-    let isAdmin = userData.isAdmin || false;
-    let updatedAdminStatus = false;
-    
-    // Check if eligible to be an admin (email domain + password matches secret)
-    if (!isAdmin && email.endsWith("@pointblank.club") && password === SECRET_CODE) {
-      // Update user to have admin privileges
-      await updateDoc(userRef, { isAdmin: true });
-      isAdmin = true;
-      updatedAdminStatus = true;
+      // Check if eligible to be promoted to admin
+      if (!userData.isAdmin && isAdminAttempt) {
+        // Update user to have admin privileges
+        await updateDoc(userRef, { isAdmin: true });
+        userData.isAdmin = true;
+        isNewAdmin = true;
+      }
     }
 
     // Return user data and token
     return NextResponse.json({
-      message: updatedAdminStatus 
+      message: isNewAdmin 
         ? "Login successful. Admin privileges granted." 
         : "Login successful",
       status: "success",
@@ -78,7 +99,7 @@ export async function POST(request: Request) {
         uid: firebaseUser.uid,
         email: userData.email,
         name: userData.name || null,
-        isAdmin: isAdmin,
+        isAdmin: userData.isAdmin,
         profile_picture: userData.profile_picture || null,
         status: userData.status || "active"
       },
