@@ -7,7 +7,7 @@ const SECRET_CODE = "pbstruggles";
 
 export async function POST(request: Request) {
   try {
-    // Extract login credentials
+    // Extract login credentials (removed rememberMe)
     const { email, password } = await request.json();
 
     // Validate request data
@@ -89,7 +89,7 @@ export async function POST(request: Request) {
       }
     }
 
-    // Return user data and token
+    // Return user data and token (removed rememberMe)
     return NextResponse.json({
       message: isNewAdmin 
         ? "Login successful. Admin privileges granted." 
