@@ -12,7 +12,7 @@ const mon = Monoton({
 
 export default function Loading() {
   return (
-    <div className="fixed inset-0 bg-black flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-black flex items-center justify-center z-50 select-none">
       <div className="text-center">
         <motion.h1 
           className={`font-dystopian text-4xl md:text-7xl text-white`}
