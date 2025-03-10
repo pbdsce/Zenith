@@ -69,7 +69,7 @@ export function Brief() {
         },
         {
           question: "Can I participate individually or in teams?",
-          answer: "Registrations will be individual, and teams will be formed on the spot during the event. However, you can view other participants' profiles and connect with them beforehand if you wish to set up your team in advance."
+          answer: "Registrations are individual, and teams will be formed on the spot during the event. You can explore participant profiles and connect with others beforehand to set up your team. If you don’t have a team by then, we’ll assign you one at the event."
         }
       ]
     },
