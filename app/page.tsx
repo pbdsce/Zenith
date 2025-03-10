@@ -6,7 +6,6 @@ import Events from "@/components/events";
 import { StarsBackground } from "@/components/ui/stars-background";
 
 export default function Home() {
-
   return (
     <main className="relative overflow-hidden">
       <div className="relative z-10">

@@ -13,6 +13,7 @@ export async function GET() {
         email: data.email,
         phone: data.phone,
         resume_link: data.resume_link,
+        college_name:data.college_name,
         upVotes: data.upVotes || 0,
       };
     });

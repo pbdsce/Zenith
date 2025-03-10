@@ -182,7 +182,7 @@ export default function Signup() {
     e.preventDefault();
     setIsSubmitting(true);
     setError("");
-
+  
     const step1Valid = validateStep1();
     const step2Valid = validateStep2();
     
@@ -190,31 +190,64 @@ export default function Signup() {
       setIsSubmitting(false);
       return;
     }
-
-    // Simulate API call
-    setTimeout(() => {
-      toast.success(`Account created successfully for ${email}!`, {
-        position: "top-center",
-        autoClose: 3000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-        progress: undefined,
-        theme: "dark",
-        style: {
-          background: "#1a1a2e",
-          borderLeft: "4px solid #2ad8db",
-          color: "#fff",
-        },
+  
+    const formData = new FormData();
+    formData.append('name', name);
+    formData.append('email', email);
+    formData.append('password', password);
+    formData.append('phone', stdCode + phone);
+    if (resume) formData.append('resume', resume);
+    if (profilePic) formData.append('profile_picture', profilePic);
+    formData.append('leetcode_profile', leetcodeProfile);
+    formData.append('github_link', githubLink);
+    formData.append('linkedin_link', linkedinLink);
+    formData.append('cp_profiles', cpProfiles);
+    formData.append('ctf_profile_links', ctfProfileLinks);
+    formData.append('kaggle_link', kaggleLink);
+    formData.append('devfolio_link', devfolioLink);
+    formData.append('portfolio_link', portfolioLink);
+    formData.append('short_bio', shortBio);
+    formData.append('age', age);
+    formData.append('college_name', collegeName);
+    formData.append('referral_code', referralCode);
+  
+    try {
+      const response = await fetch('/api/registration', {
+        method: 'POST',
+        body: formData,
       });
+  
+      const data = await response.json();
+  
+      if (response.ok) {
+        toast.success(`Account created successfully for ${email}!`, {
+          position: "top-center",
+          autoClose: 3000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+          progress: undefined,
+          theme: "dark",
+          style: {
+            background: "#1a1a2e",
+            borderLeft: "4px solid #2ad8db",
+            color: "#fff",
+          },
+        });
+  
+        setTimeout(() => {
+          router.push('/');
+        }, 2000);
+      } else {
+        throw new Error(data.message || 'Registration failed');
+      }
+    } catch (error) {
+      console.error('Registration error:', error);
+      setError(error instanceof Error ? error.message : 'An error occurred during registration');
+    } finally {
       setIsSubmitting(false);
-      
-      // Give time for the user to see the toast before redirecting
-      setTimeout(() => {
-        router.push('/');
-      }, 2000);
-    }, 1500);
+    }
   };
 
   return (
