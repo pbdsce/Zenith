@@ -1,8 +1,7 @@
 "use client"
 
 import type React from "react"
-
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
@@ -25,6 +24,7 @@ import {
   ImageIcon,
   Download,
   Upload,
+  Loader2
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -44,17 +44,90 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import { useToast } from "@/hooks/use-toast"
 
-// For demo purposes, we'll use the first profile from the data
-import { profiles } from "@/lib/data"
-import type { Profile } from "@/lib/types"
+// Auth hooks and utilities
+import { useAuth } from "@/hooks/useAuth"
+import { getAuthToken } from "@/lib/auth-storage"
+
+// Define user profile structure based on our API
+interface UserProfile {
+  uid: string;
+  name: string;
+  email: string;
+  college_name?: string;
+  bio?: string;
+  github_link?: string;
+  linkedin_link?: string;
+  portfolio_link?: string;
+  resume_link?: string;
+  profile_picture?: string | null;
+  isAdmin?: boolean;
+  status?: string;
+}
 
 export default function ProfilePage() {
   const router = useRouter()
+  const { toast } = useToast()
+  const { user, isAuthenticated, logout: authLogout, refreshUser } = useAuth()
+  
+  const [isLoading, setIsLoading] = useState(true)
+  const [isSaving, setIsSaving] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
-  const [profile, setProfile] = useState<Profile>(profiles[0])
-  const [formData, setFormData] = useState<Profile>(profiles[0])
+  const [profile, setProfile] = useState<UserProfile | null>(null)
+  const [formData, setFormData] = useState<Partial<UserProfile>>({})
+  
   const [resumeFile, setResumeFile] = useState<File | null>(null)
+  const [profilePictureFile, setProfilePictureFile] = useState<File | null>(null)
+
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (!isAuthenticated && !isLoading) {
+      router.push("/login")
+    }
+  }, [isAuthenticated, isLoading, router])
+
+  // Fetch user data on component mount
+  useEffect(() => {
+    const fetchUserData = async () => {
+      if (!user) return;
+      
+      try {
+        setIsLoading(true)
+        const token = getAuthToken()
+        
+        const response = await fetch(`/api/users/${user.uid}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        })
+        
+        const data = await response.json()
+        
+        if (data.status === "success" && data.user) {
+          setProfile(data.user)
+          setFormData(data.user)
+        } else {
+          toast({
+            title: "Error",
+            description: data.message || "Failed to load profile data",
+            variant: "destructive"
+          })
+        }
+      } catch (error) {
+        console.error("Error fetching user data:", error)
+        toast({
+          title: "Error",
+          description: "Failed to load profile data. Please try again.",
+          variant: "destructive"
+        })
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    
+    fetchUserData()
+  }, [user, toast])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
@@ -64,36 +137,173 @@ export default function ProfilePage() {
     }))
   }
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleResumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setResumeFile(e.target.files[0])
-      // Store filename in formData
-      setFormData(prev => ({
-        ...prev,
-        resumeFileName: e.target.files[0].name
-      }))
+      const file = e.target.files[0];
+      
+      // Validate file size (1MB)
+      if (file.size > 1 * 1024 * 1024) {
+        toast({
+          title: "File too large",
+          description: "Resume must be less than 1MB",
+          variant: "destructive"
+        })
+        return;
+      }
+      
+      // Validate file type
+      if (file.type !== "application/pdf") {
+        toast({
+          title: "Invalid file type",
+          description: "Only PDF files are allowed",
+          variant: "destructive"
+        })
+        return;
+      }
+      
+      setResumeFile(file)
     }
   }
 
-  const handleSave = () => {
-    // Include resumeFile handling if needed in a real app
-    setProfile(formData)
-    setIsEditing(false)
+  const handleProfilePictureChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      
+      // Validate file size (1MB)
+      if (file.size > 1 * 1024 * 1024) {
+        toast({
+          title: "File too large",
+          description: "Profile picture must be less than 1MB",
+          variant: "destructive"
+        })
+        return;
+      }
+      
+      // Validate image type
+      if (!file.type.startsWith("image/")) {
+        toast({
+          title: "Invalid file type",
+          description: "Only image files are allowed",
+          variant: "destructive"
+        })
+        return;
+      }
+      
+      setProfilePictureFile(file)
+    }
+  }
+
+  const handleSave = async () => {
+    if (!user || !user.uid) {
+      toast({
+        title: "Not authenticated",
+        description: "You must be logged in to update your profile",
+        variant: "destructive"
+      })
+      return;
+    }
+    
+    try {
+      setIsSaving(true)
+      
+      // Create form data to send
+      const formDataToSend = new FormData()
+      
+      // Add text fields
+      Object.entries(formData).forEach(([key, value]) => {
+        // Skip uid and other read-only fields
+        if (key !== 'uid' && key !== 'isAdmin' && key !== 'email' && key !== 'name' && value !== undefined) {
+          formDataToSend.append(key, String(value))
+        }
+      })
+      
+      // Add files if present
+      if (resumeFile) {
+        formDataToSend.append('resume', resumeFile)
+      }
+      
+      if (profilePictureFile) {
+        formDataToSend.append('profile_picture', profilePictureFile)
+      }
+      
+      // Send the update request
+      const token = getAuthToken()
+      const response = await fetch(`/api/users/${user.uid}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formDataToSend
+      })
+      
+      const data = await response.json()
+      
+      if (data.status === "success") {
+        // Refresh user data in context
+        await refreshUser()
+        
+        // Also refetch profile data to ensure UI is updated
+        const getResponse = await fetch(`/api/users/${user.uid}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        })
+        
+        const getUserData = await getResponse.json()
+        
+        if (getUserData.status === "success") {
+          setProfile(getUserData.user)
+        }
+        
+        toast({
+          title: "Success",
+          description: "Profile updated successfully",
+        })
+        
+        // Reset file inputs
+        setResumeFile(null)
+        setProfilePictureFile(null)
+        setIsEditing(false)
+      } else {
+        toast({
+          title: "Error",
+          description: data.message || "Failed to update profile",
+          variant: "destructive"
+        })
+      }
+    } catch (error) {
+      console.error("Error updating profile:", error)
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive"
+      })
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   const handleDownload = () => {
-    // In a real app, this would download the resume file
-    // For now, we'll just log it
-    console.log("Downloading resume:", profile.resumeFileName)
-    // Could redirect to the resumeLink if available
-    if (profile.resumeLink) {
-      window.open(profile.resumeLink, '_blank')
+    if (profile?.resume_link) {
+      window.open(profile.resume_link, '_blank')
     }
   }
 
   const handleLogout = () => {
-    // In a real app, you would handle logout logic here
-    router.push("/")
+    authLogout()
+    router.push("/login")
+  }
+
+  // Show loading state
+  if (isLoading || !profile) {
+    return (
+      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-8 w-8 animate-spin text-[#0ff]" />
+          <p className="text-lg text-gray-300">Loading your profile...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -112,15 +322,26 @@ export default function ProfilePage() {
                   variant="outline"
                   className="border-gray-700 text-gray-300 hover:bg-gray-800 w-full sm:w-auto"
                   onClick={() => setIsEditing(false)}
+                  disabled={isSaving}
                 >
                   Cancel
                 </Button>
                 <Button 
                   className="bg-[#0ff] hover:bg-[#0ff]/80 text-black w-full sm:w-auto" 
                   onClick={handleSave}
+                  disabled={isSaving}
                 >
-                  <Save className="mr-2 h-4 w-4" />
-                  Save Changes
+                  {isSaving ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="mr-2 h-4 w-4" />
+                      Save Changes
+                    </>
+                  )}
                 </Button>
               </>
             ) : (
@@ -173,44 +394,56 @@ export default function ProfilePage() {
           <div className="relative">
             <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full border-4 border-[#0ff]/30 overflow-hidden bg-gray-900 shadow-[0_0_15px_rgba(0,255,255,0.3)]">
               <img
-                src={profile.profilePic || "/placeholder.svg?height=200&width=200"}
+                src={profile.profile_picture || "/placeholder.svg?height=200&width=200"}
                 alt={profile.name}
                 className="w-full h-full object-cover"
               />
             </div>
 
             {isEditing && (
-              <Button
-                size="icon"
-                className="absolute bottom-0 right-0 bg-[#0ff] hover:bg-[#0ff]/80 text-black rounded-full h-6 w-6 sm:h-8 sm:w-8"
-              >
-                <ImageIcon className="h-3 w-3 sm:h-4 sm:w-4" />
-              </Button>
+              <label htmlFor="profile-picture-input">
+                <input
+                  id="profile-picture-input"
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleProfilePictureChange}
+                  disabled={isSaving}
+                />
+                <Button
+                  size="icon"
+                  type="button"
+                  className="absolute bottom-0 right-0 bg-[#0ff] hover:bg-[#0ff]/80 text-black rounded-full h-6 w-6 sm:h-8 sm:w-8 cursor-pointer"
+                >
+                  <ImageIcon className="h-3 w-3 sm:h-4 sm:w-4" />
+                </Button>
+              </label>
             )}
           </div>
 
           <div className="flex-1 text-center sm:text-left">
-            {isEditing ? (
-              <Input
-                name="name"
-                value={formData.name}
-                onChange={handleInputChange}
-                className="text-xl sm:text-2xl font-bold bg-gray-900 border-gray-700 mb-2"
-              />
-            ) : (
-              <h1 className="text-2xl sm:text-3xl font-bold text-white">{profile.name}</h1>
-            )}
-
-            {isEditing ? (
-              <Input
-                name="college"
-                value={formData.college}
-                onChange={handleInputChange}
-                className="text-gray-300 bg-gray-900 border-gray-700"
-              />
-            ) : (
-              <p className="text-base sm:text-lg text-gray-300">{profile.college}</p>
-            )}
+            <h1 className="text-2xl sm:text-3xl font-bold text-white">
+              {profile.name}
+              {profile.isAdmin && (
+                <span className="ml-2 inline-block bg-[#ff00ff]/20 text-[#ff00ff] text-xs px-2 py-1 rounded">
+                  ADMIN
+                </span>
+              )}
+            </h1>
+            <p className="text-base sm:text-lg text-gray-300">
+              {isEditing ? (
+                <Input
+                  name="college_name"
+                  value={formData.college_name || ""}
+                  onChange={handleInputChange}
+                  className="mt-2 text-gray-300 bg-gray-900 border-gray-700"
+                  placeholder="Your college/university"
+                  disabled={isSaving}
+                />
+              ) : (
+                profile.college_name || "No college/university added"
+              )}
+            </p>
           </div>
         </motion.div>
         
@@ -226,7 +459,7 @@ export default function ProfilePage() {
             <TabsTrigger value="bio" className="data-[state=active]:bg-[#0ff]/20 data-[state=active]:text-[#0ff] text-xs sm:text-sm">
               Bio & Resume
             </TabsTrigger>
-          </TabsList>
+            </TabsList>
 
           {/* Personal Info Tab */}
           <TabsContent value="personal">
@@ -245,11 +478,13 @@ export default function ProfilePage() {
                     <Input
                       id="name"
                       name="name"
-                      value={isEditing ? formData.name : profile.name}
-                      onChange={handleInputChange}
-                      disabled={!isEditing}
-                      className="bg-gray-800 border-gray-700"
+                      value={profile.name}
+                      disabled={true}
+                      className="bg-gray-800 border-gray-700 opacity-70"
                     />
+                    {isEditing && (
+                      <p className="text-xs text-gray-400">Name cannot be changed</p>
+                    )}
                   </div>
 
                   <div className="space-y-2">
@@ -260,41 +495,28 @@ export default function ProfilePage() {
                     <Input
                       id="email"
                       name="email"
-                      value={isEditing ? formData.email : profile.email}
-                      onChange={handleInputChange}
-                      disabled={!isEditing}
-                      className="bg-gray-800 border-gray-700"
+                      value={profile.email}
+                      disabled={true}
+                      className="bg-gray-800 border-gray-700 opacity-70"
                     />
+                    {isEditing && (
+                      <p className="text-xs text-gray-400">Email cannot be changed</p>
+                    )}
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="age" className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4 text-[#0ff]" />
-                      Age
-                    </Label>
-                    <Input
-                      id="age"
-                      name="age"
-                      type="number"
-                      value={isEditing ? formData.age : profile.age}
-                      onChange={handleInputChange}
-                      disabled={!isEditing}
-                      className="bg-gray-800 border-gray-700"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="college" className="flex items-center gap-2">
+                    <Label htmlFor="college_name" className="flex items-center gap-2">
                       <School className="h-4 w-4 text-[#0ff]" />
                       College/University
                     </Label>
                     <Input
-                      id="college"
-                      name="college"
-                      value={isEditing ? formData.college : profile.college}
+                      id="college_name"
+                      name="college_name"
+                      value={isEditing ? formData.college_name || "" : profile.college_name || ""}
                       onChange={handleInputChange}
-                      disabled={!isEditing}
+                      disabled={!isEditing || isSaving}
                       className="bg-gray-800 border-gray-700"
+                      placeholder="Your college or university"
                     />
                   </div>
                 </div>
@@ -320,182 +542,50 @@ export default function ProfilePage() {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                     <div className="space-y-2">
-                      <Label htmlFor="githubLink" className="flex items-center gap-2">
+                      <Label htmlFor="github_link" className="flex items-center gap-2">
                         <Github className="h-4 w-4 text-[#0ff]" />
                         GitHub Profile
                       </Label>
                       <Input
-                        id="githubLink"
-                        name="githubLink"
-                        value={isEditing ? formData.githubLink || "" : profile.githubLink || ""}
+                        id="github_link"
+                        name="github_link"
+                        value={isEditing ? formData.github_link || "" : profile.github_link || ""}
                         onChange={handleInputChange}
-                        disabled={!isEditing}
+                        disabled={!isEditing || isSaving}
                         className="bg-gray-800 border-gray-700"
                         placeholder="https://github.com/username"
                       />
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="linkedinLink" className="flex items-center gap-2">
+                      <Label htmlFor="linkedin_link" className="flex items-center gap-2">
                         <Linkedin className="h-4 w-4 text-[#0ff]" />
                         LinkedIn Profile
                       </Label>
                       <Input
-                        id="linkedinLink"
-                        name="linkedinLink"
-                        value={isEditing ? formData.linkedinLink || "" : profile.linkedinLink || ""}
+                        id="linkedin_link"
+                        name="linkedin_link"
+                        value={isEditing ? formData.linkedin_link || "" : profile.linkedin_link || ""}
                         onChange={handleInputChange}
-                        disabled={!isEditing}
+                        disabled={!isEditing || isSaving}
                         className="bg-gray-800 border-gray-700"
                         placeholder="https://linkedin.com/in/username"
                       />
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="portfolioLink" className="flex items-center gap-2">
+                      <Label htmlFor="portfolio_link" className="flex items-center gap-2">
                         <LinkIcon className="h-4 w-4 text-[#0ff]" />
                         Portfolio Website
                       </Label>
                       <Input
-                        id="portfolioLink"
-                        name="portfolioLink"
-                        value={isEditing ? formData.portfolioLink || "" : profile.portfolioLink || ""}
+                        id="portfolio_link"
+                        name="portfolio_link"
+                        value={isEditing ? formData.portfolio_link || "" : profile.portfolio_link || ""}
                         onChange={handleInputChange}
-                        disabled={!isEditing}
+                        disabled={!isEditing || isSaving}
                         className="bg-gray-800 border-gray-700"
                         placeholder="https://yourportfolio.com"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <Separator className="bg-gray-800" />
-
-                <div className="space-y-4">
-                  <h3 className="text-md sm:text-lg font-medium text-white flex items-center gap-2">
-                    <Code className="h-4 w-4 text-[#0ff]" />
-                    Coding Profiles
-                  </h3>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-                    <div className="space-y-2">
-                      <Label htmlFor="leetcodeProfile" className="flex items-center gap-2">
-                        <Code className="h-4 w-4 text-[#0ff]" />
-                        LeetCode Profile
-                      </Label>
-                      <Input
-                        id="leetcodeProfile"
-                        name="leetcodeProfile"
-                        value={isEditing ? formData.leetcodeProfile || "" : profile.leetcodeProfile || ""}
-                        onChange={handleInputChange}
-                        disabled={!isEditing}
-                        className="bg-gray-800 border-gray-700"
-                        placeholder="https://leetcode.com/username"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="cpProfiles" className="flex items-center gap-2">
-                        <Code className="h-4 w-4 text-[#0ff]" />
-                        Competitive Programming Profiles
-                      </Label>
-                      <Input
-                        id="cpProfiles"
-                        name="cpProfiles"
-                        value={
-                          isEditing
-                            ? formData.cpProfiles
-                              ? formData.cpProfiles.join(", ")
-                              : ""
-                            : profile.cpProfiles
-                              ? profile.cpProfiles.join(", ")
-                              : ""
-                        }
-                        onChange={(e) => {
-                          const value = e.target.value
-                          setFormData((prev) => ({
-                            ...prev,
-                            cpProfiles: value ? value.split(",").map((v) => v.trim()) : [],
-                          }))
-                        }}
-                        disabled={!isEditing}
-                        className="bg-gray-800 border-gray-700"
-                        placeholder="https://codeforces.com/profile/username, https://codechef.com/users/username"
-                      />
-                      {isEditing && <p className="text-xs text-gray-400 mt-1">Separate multiple links with commas</p>}
-                    </div>
-                  </div>
-                </div>
-
-                <Separator className="bg-gray-800" />
-
-                <div className="space-y-4">
-                  <h3 className="text-md sm:text-lg font-medium text-white flex items-center gap-2">
-                    <Shield className="h-4 w-4 text-[#0ff]" />
-                    CTF & Other Profiles
-                  </h3>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-                    <div className="space-y-2">
-                      <Label htmlFor="ctfProfileLinks" className="flex items-center gap-2">
-                        <Shield className="h-4 w-4 text-[#0ff]" />
-                        CTF Profiles
-                      </Label>
-                      <Input
-                        id="ctfProfileLinks"
-                        name="ctfProfileLinks"
-                        value={
-                          isEditing
-                            ? formData.ctfProfileLinks
-                              ? formData.ctfProfileLinks.join(", ")
-                              : ""
-                            : profile.ctfProfileLinks
-                              ? profile.ctfProfileLinks.join(", ")
-                              : ""
-                        }
-                        onChange={(e) => {
-                          const value = e.target.value
-                          setFormData((prev) => ({
-                            ...prev,
-                            ctfProfileLinks: value ? value.split(",").map((v) => v.trim()) : [],
-                          }))
-                        }}
-                        disabled={!isEditing}
-                        className="bg-gray-800 border-gray-700"
-                        placeholder="https://ctftime.org/user/username, https://hackthebox.eu/profile/username"
-                      />
-                      {isEditing && <p className="text-xs text-gray-400 mt-1">Separate multiple links with commas</p>}
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="kaggleLink" className="flex items-center gap-2">
-                        <Database className="h-4 w-4 text-[#0ff]" />
-                        Kaggle Profile
-                      </Label>
-                      <Input
-                        id="kaggleLink"
-                        name="kaggleLink"
-                        value={isEditing ? formData.kaggleLink || "" : profile.kaggleLink || ""}
-                        onChange={handleInputChange}
-                        disabled={!isEditing}
-                        className="bg-gray-800 border-gray-700"
-                        placeholder="https://kaggle.com/username"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="devfolioLink" className="flex items-center gap-2">
-                        <Award className="h-4 w-4 text-[#0ff]" />
-                        Devfolio Profile
-                      </Label>
-                      <Input
-                        id="devfolioLink"
-                        name="devfolioLink"
-                        value={isEditing ? formData.devfolioLink || "" : profile.devfolioLink || ""}
-                        onChange={handleInputChange}
-                        disabled={!isEditing}
-                        className="bg-gray-800 border-gray-700"
-                        placeholder="https://devfolio.co/@username"
                       />
                     </div>
                   </div>
@@ -513,24 +603,29 @@ export default function ProfilePage() {
               </CardHeader>
               <CardContent className="space-y-6 px-4 sm:px-6">
                 <div className="space-y-2">
-                  <Label htmlFor="shortBio" className="flex items-center gap-2">
+                  <Label htmlFor="bio" className="flex items-center gap-2">
                     <User className="h-4 w-4 text-[#0ff]" />
                     Professional Bio
                   </Label>
                   <Textarea
-                    id="shortBio"
-                    name="shortBio"
-                    value={isEditing ? formData.shortBio : profile.shortBio}
+                    id="bio"
+                    name="bio"
+                    value={isEditing ? formData.bio || "" : profile.bio || ""}
                     onChange={handleInputChange}
-                    disabled={!isEditing}
+                    disabled={!isEditing || isSaving}
                     className="bg-gray-800 border-gray-700 min-h-[120px]"
-                    placeholder="Write a short professional bio (100 words max)"
+                    placeholder="Write a short professional bio (500 characters max)"
+                    maxLength={500}
                   />
-                  {isEditing && <p className="text-xs text-gray-400 mt-1">{formData.shortBio.length}/500 characters</p>}
+                  {isEditing && (
+                    <p className="text-xs text-gray-400 mt-1">
+                      {(formData.bio?.length || 0)}/500 characters
+                    </p>
+                  )}
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="resumeLink" className="flex items-center gap-2">
+                  <Label htmlFor="resume" className="flex items-center gap-2">
                     <FileText className="h-4 w-4 text-[#0ff]" />
                     Resume
                   </Label>
@@ -538,7 +633,9 @@ export default function ProfilePage() {
                     <div className="flex flex-col sm:flex-row gap-2">
                       <div className="bg-gray-800 border border-gray-700 rounded-md flex-1 flex items-center px-3 py-2">
                         <span className="text-gray-400 truncate text-sm sm:text-base">
-                          {resumeFile ? resumeFile.name : (formData.resumeFileName || "No file selected")}
+                          {resumeFile ? 
+                            resumeFile.name : 
+                            (profile.resume_link ? "Current resume on file (PDF)" : "No file selected")}
                         </span>
                       </div>
                       <label htmlFor="resume-upload" className="w-full sm:w-auto">
@@ -546,13 +643,19 @@ export default function ProfilePage() {
                           id="resume-upload" 
                           type="file" 
                           className="hidden" 
-                          accept=".pdf,.doc,.docx"
-                          onChange={handleFileChange}
+                          accept=".pdf"
+                          onChange={handleResumeChange}
+                          disabled={isSaving}
                         />
-                        <Button variant="outline" className="border-[#0ff] text-[#0ff] hover:bg-[#0ff]/10 w-full sm:w-auto" asChild>
+                        <Button 
+                          variant="outline" 
+                          className="border-[#0ff] text-[#0ff] hover:bg-[#0ff]/10 w-full sm:w-auto" 
+                          asChild
+                          disabled={isSaving}
+                        >
                           <span>
                             <Upload className="mr-2 h-4 w-4" />
-                            Upload
+                            Upload PDF
                           </span>
                         </Button>
                       </label>
@@ -562,10 +665,10 @@ export default function ProfilePage() {
                       <div className="bg-gray-800 border border-gray-700 rounded-md flex-1 flex items-center px-3 py-2">
                         <FileText className="mr-2 h-4 w-4 text-gray-400" />
                         <span className="text-gray-300 truncate text-sm sm:text-base">
-                          {profile.resumeFileName || "No resume uploaded"}
+                          {profile.resume_link ? "Resume available (PDF)" : "No resume uploaded"}
                         </span>
                       </div>
-                      {profile.resumeFileName && (
+                      {profile.resume_link && (
                         <Button 
                           variant="outline" 
                           className="border-[#0ff] text-[#0ff] hover:bg-[#0ff]/10 w-full sm:w-auto"
@@ -578,7 +681,7 @@ export default function ProfilePage() {
                     </div>
                   )}
                   {isEditing && (
-                    <p className="text-xs text-gray-400 mt-1">Upload your resume (PDF, DOC, DOCX, max 500KB)</p>
+                    <p className="text-xs text-gray-400 mt-1">Upload your resume (PDF only, max 1MB)</p>
                   )}
                 </div>
               </CardContent>
@@ -589,12 +692,26 @@ export default function ProfilePage() {
                       variant="outline"
                       className="border-gray-700 text-gray-300 hover:bg-gray-800 w-full sm:w-auto"
                       onClick={() => setIsEditing(false)}
+                      disabled={isSaving}
                     >
                       Cancel
                     </Button>
-                    <Button className="bg-[#0ff] hover:bg-[#0ff]/80 text-black w-full sm:w-auto" onClick={handleSave}>
-                      <Save className="mr-2 h-4 w-4" />
-                      Save Changes
+                    <Button 
+                      className="bg-[#0ff] hover:bg-[#0ff]/80 text-black w-full sm:w-auto" 
+                      onClick={handleSave}
+                      disabled={isSaving}
+                    >
+                      {isSaving ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Saving...
+                        </>
+                      ) : (
+                        <>
+                          <Save className="mr-2 h-4 w-4" />
+                          Save Changes
+                        </>
+                      )}
                     </Button>
                   </>
                 ) : (

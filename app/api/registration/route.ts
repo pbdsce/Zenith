@@ -1,5 +1,6 @@
-import { db } from "@/Firebase";
-import { addDoc, collection, getDocs, query, where, runTransaction, doc, setDoc } from "firebase/firestore";
+import { db, auth } from "@/Firebase";
+import { addDoc, collection, getDocs, query, where, runTransaction, doc, setDoc, updateDoc } from "firebase/firestore";
+import { createUserWithEmailAndPassword, sendEmailVerification } from "firebase/auth";
 import { NextResponse } from "next/server";
 import { cloudinary } from "@/Cloudinary";
 import fs from 'fs';
@@ -8,7 +9,7 @@ import os from 'os';
 
 // Utility functions for format validation
 const validateEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-const validatePhone = (phone: string) => /^[6-9]\d{9}$/.test(phone);
+const validatePhone = (phone: string) => /^\+?\d{1,4}[-\s]?\d{10}$/.test(phone);
 const validateAge = (age: string) => {
   const ageNum = parseInt(age);
   return !isNaN(ageNum) && ageNum > 0 && ageNum < 120;
@@ -60,7 +61,7 @@ const uploadToCloudinary = async (filePath: string, folder: string, mimeType: st
     cloudinary.uploader.upload(
       filePath,
       uploadOptions,
-      (error, result) => {
+      (error: any, result: any) => {
         if (error) reject(error);
         else {
           let url = result?.secure_url || '';
@@ -125,12 +126,76 @@ const parseForm = async (req: Request): Promise<{ fields: any, files: any }> => 
   
   return { fields, files };
 };
+
+// Helper function to ensure college exists and increment counter
+const ensureCollegeExists = async (collegeName: string): Promise<void> => {
+  if (!collegeName) return;
+  
+  const collegeNameTrimmed = collegeName.trim();
+  if (collegeNameTrimmed.length === 0) return;
+  
+  // Check if college already exists
+  const collegesRef = collection(db, "colleges");
+  const collegeQuery = query(
+    collegesRef, 
+    where("name_lower", "==", collegeNameTrimmed.toLowerCase())
+  );
+  
+  const querySnapshot = await getDocs(collegeQuery);
+  
+  if (!querySnapshot.empty) {
+    // College exists, increment count
+    const collegeDoc = querySnapshot.docs[0];
+    const currentCount = collegeDoc.data().count || 0;
+    
+    await updateDoc(doc(db, "colleges", collegeDoc.id), {
+      count: currentCount + 1
+    });
+  } else {
+    // College doesn't exist, add it
+    const newCollegeRef = doc(collection(db, "colleges"));
+    await setDoc(newCollegeRef, {
+      name: collegeNameTrimmed,
+      name_lower: collegeNameTrimmed.toLowerCase(),
+      count: 1,
+      created_at: new Date().toISOString()
+    });
+  }
+};
+
+// Create user in Firebase Authentication
+const createAuthUser = async (email: string, password: string): Promise<string> => {
+  try {
+    // Create the user with email and password
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    
+    // Send email verification
+    await sendEmailVerification(userCredential.user);
+    
+    // Return the Firebase Auth UID
+    return userCredential.user.uid;
+  } catch (error: any) {
+    console.error("Firebase Auth error:", error);
+    
+    // Handle specific Firebase Auth errors
+    if (error.code === 'auth/email-already-in-use') {
+      throw new Error("Email is already in use with Firebase Authentication");
+    } else if (error.code === 'auth/invalid-email') {
+      throw new Error("Invalid email format for Firebase Authentication");
+    } else if (error.code === 'auth/weak-password') {
+      throw new Error("Password is too weak. It should be at least 6 characters");
+    }
+    
+    throw error;
+  }
+};
+
 export async function POST(request: Request) {
   try {
     // Parse form data with files
     const { fields, files } = await parseForm(request);
     const data = { ...fields };
-    const { recaptcha_token } = data;
+    const { recaptcha_token, password } = data;
 
     // Check if required resume file is present
     if (!files.resume) {
@@ -234,7 +299,8 @@ export async function POST(request: Request) {
       !data.name ||
       !data.email ||
       !data.phone ||
-      !resumeUrl
+      !resumeUrl ||
+      !password
     ) {
       return NextResponse.json(
         {
@@ -261,6 +327,17 @@ export async function POST(request: Request) {
         {
           message: "Invalid phone number format. It should be a 10-digit number starting with 6-9.",
           error: "Invalid phone",
+        },
+        { status: 400 }
+      );
+    }
+
+    // Validate password
+    if (password.length < 6) {
+      return NextResponse.json(
+        {
+          message: "Password must be at least 6 characters long.",
+          error: "Weak password",
         },
         { status: 400 }
       );
@@ -433,6 +510,25 @@ export async function POST(request: Request) {
       }
     }
 
+    // If college name is provided, ensure it exists in the colleges collection
+    if (data.college_name) {
+      await ensureCollegeExists(data.college_name);
+    }
+
+    // Create user in Firebase Authentication
+    let authUid;
+    try {
+      authUid = await createAuthUser(data.email, password);
+    } catch (error: any) {
+      return NextResponse.json(
+        {
+          message: error.message || "Authentication failed",
+          error: String(error),
+        },
+        { status: 400 }
+      );
+    }
+
     // Use transaction to ensure data consistency
     let registrationId = '';
     
@@ -443,7 +539,8 @@ export async function POST(request: Request) {
       registrationId = registrationRef.id;
 
       const registrationData = {
-        uid:registrationId,
+        uid: registrationId,
+        authUid: authUid, // Store the Firebase Auth UID
         name: data.name,
         email: data.email,
         phone: data.phone,
@@ -463,7 +560,8 @@ export async function POST(request: Request) {
         referral_code: data.referral_code || null,
         registration_time: new Date().toISOString(),
         status: "pending", 
-        isAdmin: false
+        isAdmin: false,
+        upVote: 0 // Add upVote field with default value 0
       };
       
       // Set the registration data in the transaction
@@ -473,6 +571,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ 
       message: "Registration successful", 
       id: registrationId,
+      authUid: authUid,
       status: "success"
     });
   } catch (error) {
