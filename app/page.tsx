@@ -68,13 +68,13 @@ export default function Home() {
   // Show landing page if not authenticated
   return (
     <main className="relative overflow-hidden">
-      {/* Navigation */}
+      {/* Navigation
       <div className="fixed top-4 w-full px-4 flex justify-between z-50">
         <div className="ml-4 sm:ml-6">
           <CountdownTimer />
         </div>
         <NavButtons disableFixedPositioning={true} />
-      </div>
+      </div> */}
       
       <div className="relative z-10">
         <section className="relative">

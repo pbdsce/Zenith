@@ -38,22 +38,14 @@ export async function POST(request: Request) {
       firebaseUser = userCredential.user;
       idToken = await firebaseUser.getIdToken();
       
-      const userRef = doc(db, "registrations", firebaseUser.uid);
-      const userSnap = await getDoc(userRef);
+      // First check by authUid for consistency
+      const usersRef = collection(db, "registrations");
+      const q = query(usersRef, where("authUid", "==", firebaseUser.uid));
+      const querySnapshot = await getDocs(q);
       
-      if (!userSnap.exists()) {
-        userData = {
-          uid: firebaseUser.uid,
-          email,
-          name: email.split('@')[0],
-          isAdmin: true,
-          status: "active",
-          registration_time: new Date().toISOString()
-        };
-        await setDoc(userRef, userData);
-        isNewAdmin = true;
-      } else {
-        userData = userSnap.data();
+      if (!querySnapshot.empty) {
+        // User found by authUid
+        userData = querySnapshot.docs[0].data();
         if (userData.status === "suspended" || userData.status === "deactivated") {
           return NextResponse.json(
             { message: "Account is " + userData.status, status: "error" },
@@ -61,9 +53,41 @@ export async function POST(request: Request) {
           );
         }
         if (!userData.isAdmin) {
-          await updateDoc(userRef, { isAdmin: true });
+          await updateDoc(doc(db, "registrations", querySnapshot.docs[0].id), { isAdmin: true });
           userData.isAdmin = true;
           isNewAdmin = true;
+        }
+      } else {
+        // Fall back to legacy method of looking by document ID
+        const userRef = doc(db, "registrations", firebaseUser.uid);
+        const userSnap = await getDoc(userRef);
+        
+        if (!userSnap.exists()) {
+          // Create new admin user
+          userData = {
+            uid: firebaseUser.uid,
+            authUid: firebaseUser.uid, // Add authUid for consistency
+            email,
+            name: email.split('@')[0],
+            isAdmin: true,
+            status: "active",
+            registration_time: new Date().toISOString()
+          };
+          await setDoc(userRef, userData);
+          isNewAdmin = true;
+        } else {
+          userData = userSnap.data();
+          if (userData.status === "suspended" || userData.status === "deactivated") {
+            return NextResponse.json(
+              { message: "Account is " + userData.status, status: "error" },
+              { status: 403 }
+            );
+          }
+          if (!userData.isAdmin) {
+            await updateDoc(userRef, { isAdmin: true });
+            userData.isAdmin = true;
+            isNewAdmin = true;
+          }
         }
       }
     } else {
@@ -72,19 +96,30 @@ export async function POST(request: Request) {
       firebaseUser = userCredential.user;
       idToken = await firebaseUser.getIdToken();
       
-      // Changed: Query by authUid field instead of using document ID
       const usersRef = collection(db, "registrations");
       const q = query(usersRef, where("authUid", "==", firebaseUser.uid));
       const querySnapshot = await getDocs(q);
       
       if (querySnapshot.empty) {
-        return NextResponse.json(
-          { message: "User record not found", status: "error" },
-          { status: 404 }
-        );
+        // Try fallback to email query in case authUid is missing
+        const emailQuery = query(usersRef, where("email", "==", email));
+        const emailQuerySnapshot = await getDocs(emailQuery);
+        
+        if (emailQuerySnapshot.empty) {
+          return NextResponse.json(
+            { message: "User record not found", status: "error" },
+            { status: 404 }
+          );
+        } else {
+          // Found by email, update authUid for future logins
+          const userDoc = emailQuerySnapshot.docs[0];
+          userData = userDoc.data();
+          await updateDoc(doc(db, "registrations", userDoc.id), { authUid: firebaseUser.uid });
+        }
+      } else {
+        userData = querySnapshot.docs[0].data();
       }
       
-      userData = querySnapshot.docs[0].data();
       if (userData.status === "suspended" || userData.status === "deactivated") {
         return NextResponse.json(
           { message: "Account is " + userData.status, status: "error" },
@@ -93,13 +128,16 @@ export async function POST(request: Request) {
       }
     }
     
+    // Fix the returned user object to include the correct UID (the document ID, not the auth UID)
+    const userDocId = isAdminAttempt ? firebaseUser.uid : userData.uid;
+    
     return NextResponse.json({
       message: isNewAdmin
         ? "Login successful. Admin privileges granted."
         : "Login successful",
       status: "success",
       user: {
-        uid: firebaseUser.uid,
+        uid: userDocId,
         email: userData.email,
         name: userData.name || null,
         isAdmin: userData.isAdmin,

@@ -171,20 +171,46 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     // In a production app, you would verify the token here
     // For example, with Firebase Admin SDK or a JWT library
     
+    // Try finding user by document ID first
     const userRef = doc(db, "registrations", params.id);
     const userSnap = await getDoc(userRef);
 
-    if (!userSnap.exists()) {
-      return NextResponse.json({ message: "User not found", status: "error" }, { status: 404 });
+    let userData;
+    let userId = params.id;
+
+    if (userSnap.exists()) {
+      userData = userSnap.data();
+    } else {
+      // If not found, try finding by authUid
+      const usersRef = collection(db, "registrations");
+      const q = query(usersRef, where("authUid", "==", params.id));
+      const querySnapshot = await getDocs(q);
+      
+      if (querySnapshot.empty) {
+        // Last resort: try by email (in case the ID is actually an email)
+        if (params.id.includes('@')) {
+          const emailQuery = query(usersRef, where("email", "==", params.id));
+          const emailSnapshot = await getDocs(emailQuery);
+          
+          if (emailSnapshot.empty) {
+            return NextResponse.json({ message: "User not found", status: "error" }, { status: 404 });
+          }
+          
+          userData = emailSnapshot.docs[0].data();
+          userId = emailSnapshot.docs[0].id;
+        } else {
+          return NextResponse.json({ message: "User not found", status: "error" }, { status: 404 });
+        }
+      } else {
+        userData = querySnapshot.docs[0].data();
+        userId = querySnapshot.docs[0].id; // Use the document ID, not authUid
+      }
     }
 
-    // Return the user data without sensitive information
-    const userData = userSnap.data();
-    
     // Construct the response object with only necessary fields
-    // This ensures we're not exposing sensitive data
     const user = {
-      uid: params.id,
+      uid: userId,
+      authUid: userData.authUid || null,
       email: userData.email,
       name: userData.name,
       isAdmin: userData.isAdmin || false,
@@ -277,15 +303,46 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
       return NextResponse.json({ message: "Name cannot be updated", status: "error" }, { status: 400 });
     }
     
-    // Verify the user exists
-    const userRef = doc(db, "registrations", params.id);
-    const userSnap = await getDoc(userRef);
+    // Find the user document by document ID or authUid
+    let userRef;
+    let userData;
+    let userDocId = params.id;
     
-    if (!userSnap.exists()) {
-      return NextResponse.json({ message: "User not found", status: "error" }, { status: 404 });
+    // First try by document ID
+    const directRef = doc(db, "registrations", params.id);
+    const directSnap = await getDoc(directRef);
+    
+    if (directSnap.exists()) {
+      userRef = directRef;
+      userData = directSnap.data();
+    } else {
+      // If not found, try finding by authUid
+      const usersRef = collection(db, "registrations");
+      const q = query(usersRef, where("authUid", "==", params.id));
+      const querySnapshot = await getDocs(q);
+      
+      if (querySnapshot.empty) {
+        // Last resort: try by email (in case the ID is actually an email)
+        if (params.id.includes('@')) {
+          const emailQuery = query(usersRef, where("email", "==", params.id));
+          const emailSnapshot = await getDocs(emailQuery);
+          
+          if (emailSnapshot.empty) {
+            return NextResponse.json({ message: "User not found", status: "error" }, { status: 404 });
+          }
+          
+          userDocId = emailSnapshot.docs[0].id;
+          userRef = doc(db, "registrations", userDocId);
+          userData = emailSnapshot.docs[0].data();
+        } else {
+          return NextResponse.json({ message: "User not found", status: "error" }, { status: 404 });
+        }
+      } else {
+        userDocId = querySnapshot.docs[0].id;
+        userRef = doc(db, "registrations", userDocId);
+        userData = querySnapshot.docs[0].data();
+      }
     }
-    
-    const userData = userSnap.data();
     
     // Handle college name update if provided
     if (updates.college_name && updates.college_name !== userData.college_name) {
@@ -402,7 +459,8 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     await updateDoc(userRef, updates);
     
     return NextResponse.json({ 
-      message: "User updated successfully", 
+      message: "User updated successfully",
+      userId: userDocId,
       status: "success" 
     });
   } catch (error) {
@@ -416,34 +474,83 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
 }
 
 export async function DELETE(req: Request, { params }: { params: { id: string } }) {
-    try {
-      const { uid } = await req.json(); // The UID of the requester
-  
-      if (!uid) {
-        return NextResponse.json({ message: "Unauthorized: Missing UID", status: "error" }, { status: 401 });
-      }
-  
-      // Fetch the requester's user data
-      const adminRef = doc(db, "registrations", uid);
-      const adminSnap = await getDoc(adminRef);
-  
-      if (!adminSnap.exists() || !adminSnap.data().isAdmin) {
-        return NextResponse.json({ message: "Unauthorized: Not an admin", status: "error" }, { status: 403 });
-      }
-  
-      // Delete the target user
-      const userRef = doc(db, "registrations", params.id);
-      const userSnap = await getDoc(userRef);
-  
-      if (!userSnap.exists()) {
-        return NextResponse.json({ message: "User not found", status: "error" }, { status: 404 });
-      }
-  
-      await deleteDoc(userRef);
-  
-      return NextResponse.json({ message: "User deleted successfully", status: "success" });
-    } catch (error) {
-      console.error("Error deleting user:", error);
-      return NextResponse.json({ message: "Failed to delete user", error: String(error), status: "error" }, { status: 500 });
+  try {
+    const { uid } = await req.json(); // The UID of the requester
+    
+    if (!uid) {
+      return NextResponse.json({ message: "Unauthorized: Missing UID", status: "error" }, { status: 401 });
     }
+    
+    // Verify admin permissions - allow checking by either document ID or authUid
+    const adminRef = doc(db, "registrations", uid);
+    let adminSnap = await getDoc(adminRef);
+    let isAdmin = false;
+    
+    if (adminSnap.exists()) {
+      isAdmin = adminSnap.data().isAdmin || false;
+    } else {
+      // Try finding admin by authUid
+      const adminsRef = collection(db, "registrations");
+      const q = query(adminsRef, where("authUid", "==", uid));
+      const querySnapshot = await getDocs(q);
+      
+      if (!querySnapshot.empty) {
+        isAdmin = querySnapshot.docs[0].data().isAdmin || false;
+      }
+    }
+    
+    if (!isAdmin) {
+      return NextResponse.json({ message: "Unauthorized: Not an admin", status: "error" }, { status: 403 });
+    }
+    
+    // Find the user to delete by document ID or authUid
+    let userRef;
+    let userExists = false;
+    
+    // First try by document ID
+    const directRef = doc(db, "registrations", params.id);
+    const directSnap = await getDoc(directRef);
+    
+    if (directSnap.exists()) {
+      userRef = directRef;
+      userExists = true;
+    } else {
+      // If not found, try finding by authUid
+      const usersRef = collection(db, "registrations");
+      const q = query(usersRef, where("authUid", "==", params.id));
+      const querySnapshot = await getDocs(q);
+      
+      if (querySnapshot.empty) {
+        // Last resort: try by email (in case the ID is actually an email)
+        if (params.id.includes('@')) {
+          const emailQuery = query(usersRef, where("email", "==", params.id));
+          const emailSnapshot = await getDocs(emailQuery);
+          
+          if (emailSnapshot.empty) {
+            return NextResponse.json({ message: "User not found", status: "error" }, { status: 404 });
+          }
+          
+          userRef = doc(db, "registrations", emailSnapshot.docs[0].id);
+          userExists = true;
+        } else {
+          return NextResponse.json({ message: "User not found", status: "error" }, { status: 404 });
+        }
+      } else {
+        userRef = doc(db, "registrations", querySnapshot.docs[0].id);
+        userExists = true;
+      }
+    }
+    
+    if (!userExists) {
+      return NextResponse.json({ message: "User not found", status: "error" }, { status: 404 });
+    }
+    
+    // Delete the user document
+    await deleteDoc(userRef);
+    
+    return NextResponse.json({ message: "User deleted successfully", status: "success" });
+  } catch (error) {
+    console.error("Error deleting user:", error);
+    return NextResponse.json({ message: "Failed to delete user", error: String(error), status: "error" }, { status: 500 });
   }
+}
