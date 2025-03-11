@@ -19,7 +19,7 @@ export const achievementList: AchievementList = {
         { name: "Aditya B N", achievements: ["GSoC '23 @MIT App Inventor"] },
         { name: "Jigyasa Gupta", achievements: ["GSoC '23 @NRNB"] },
         { name: "Kirthi Lodha", achievements: ["GSoC '22 @AOSSIE"] },
-        { name: "Sreeniketh Magudu", achievements: ["GSoC '22 @AOSSIE"] },
+        { name: "Sreeniketh Madgula", achievements: ["GSoC '22 @AOSSIE"] },
         { name: "Jeffrey Paul", achievements: ["GSoC '21 @SunPy"] }
       ],
       "Smart India Hackathon": [
@@ -34,9 +34,12 @@ export const achievementList: AchievementList = {
         { name: "Vivek Aggarwal", achievements: ["Winner 2024"] },
         { name: "Naman Parlecha", achievements: ["Winner 2024"] },
         { name: "Prajwal Kp", achievements: ["Winner 2024"] },
-        { name: "Inchar J", achievements: ["Winner 2024"] }
+        { name: "Inchara J", achievements: ["Winner 2024"] },
+        { name: "Mrityunjay Singh", achievements: ["Winner 2024"] }
       ],
       Hackathons: [
+        { name: "Akash Singh, Abhyuday", achievements: ["Finalist @HackGlobal Singapore"] },
+        { name: "Ankit Singh", achievements: ["Centurion National Level Winner"] },
         { name: "Gaurav Sarkar", achievements: [
             "3rd Prize in Academic Grand Challenge, Wells Fargo, and Nasscom",
             "Secured 3rd Prize in BOB World Hackathon"
@@ -53,17 +56,17 @@ export const achievementList: AchievementList = {
           ] 
         },
         { name: "Pragati Raj, Tanmay R K, R Aswin", achievements: ["NTIK Cybersecurity track Grand Winner 2025"] },
-        { name: "Chetan R, Aliyfa Fatima, Yuktha P S", achievements: ["NTIK AI track Grand Winner 2025"] },
-        { name: "Madhur Mehta", achievements: ["1st runner-up @ IEEE MUJ Hackathon", "2nd runner-up @ Nokia Hack@MSU 5.0"] },
+        { name: "Chetan R, Alfiya Fatima, Yuktha P S", achievements: ["NTIK AI track Grand Winner 2025"] },
+        { name: "Madhur Mehta", achievements: ["1st runner-up @ IEEE MUJ Hackathon", "2nd runner-up @ Nokia Hackman 5.0"] },
         { name: "Akash Singh", achievements: ["Finalist @HackGlobal Singapore"] },
         { name: "Ankit Singh", achievements: ["Centurion National Level Winner"] },
         { name: "Shreyas Reddy B, Akash Singh, Dhruv Puri", achievements: ["NTIK Grand Winner 2025"] },
-        { name: "Bhuvan M, Naman Parlecha", achievements: ["Winner of Innerev 9.0 Hackathon"] },
+        { name: "Bhuvan M, Naman Parlecha,Vivek Agarwal,Mohit Nagaraj", achievements: ["Winner of Innerev 9.0 Hackathon"] },
         { name: "Vivek Aggarwal", achievements: ["Winner of Innerev 9.0 Hackathon"] },
         { name: "Mohit Nagraaj", achievements: ["Winner of Innerev 9.0 Hackathon"] }
       ],
       CP: [
-        { name: "Soumya Pattnayak", achievements: [
+        { name: "Soumya Pattanayak", achievements: [
             "First team to qualify to ICPC regionals from DSCE",
             "Expert @CF, 5* @CC",
             "Ranked 221 worldwide in Google KickStart '20 Round H"
@@ -104,7 +107,12 @@ export const achievementList: AchievementList = {
             "Expert - Codeforces",
             "5 Stars - CodeChef"
           ] 
-        }
+        },
+        { name: "Prashan Porshaker", achievements: [
+          "ICPC'24'24 regionalist",
+          "Candidate Master"
+        ] 
+        } 
       ],
       LFX: [
         { name: "Ashutosh Pandey", achievements: ["LFX '20 with Intel Mobileye"] },
