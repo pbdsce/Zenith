@@ -9,6 +9,7 @@ import { Loader2 } from "lucide-react";
 import { Hero } from "@/components/hero";
 import { Brief } from "@/components/brief";
 import { Timeline } from "@/components/timeline";
+import { Achievements } from "@/components/achievements";
 import { SpaceFooter } from "@/components/footer";
 import Events from "@/components/events";
 import { StarsBackground } from "@/components/ui/stars-background";
@@ -93,7 +94,11 @@ export default function Home() {
           <Brief />
         </section>
         <section className="relative">
-          <SpaceFooter />
+
+          <Achievements />
+        </section>
+        <section className="relative">
+          <SpaceFooter/>
         </section>
       </div>
     </main>
