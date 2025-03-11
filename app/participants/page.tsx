@@ -231,19 +231,18 @@ export default function Participants() {
     if (searchTerm) {
       result = result.filter(
         (profile) =>
-          profile.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          profile.college.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          (profile.shortBio &&
-            profile.shortBio.toLowerCase().includes(searchTerm.toLowerCase()))
+          (profile.name?.toLowerCase().includes(searchTerm.toLowerCase()) || false) ||
+          (profile.college?.toLowerCase().includes(searchTerm.toLowerCase()) || false) ||
+          (profile.shortBio?.toLowerCase().includes(searchTerm.toLowerCase()) || false)
       );
     }
 
     // Sort profiles
     result.sort((a, b) => {
       if (sortBy === "name") {
-        return a.name?.localeCompare(b.name) ?? 0;
+        return (a.name || '').localeCompare(b.name || '');
       } else {
-        return (b.upvotes ?? 0) - (a.upvotes ?? 0);
+        return (b.upvotes || 0) - (a.upvotes || 0);
       }
     });
 
