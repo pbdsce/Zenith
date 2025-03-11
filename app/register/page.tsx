@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { motion } from "framer-motion";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { StarsBackground } from "@/components/ui/stars-background";
 import { ToastContainer, toast } from 'react-toastify';
@@ -73,6 +73,135 @@ export default function Signup() {
   
   // Add state for resume file name
   const [resumeFileName, setResumeFileName] = useState<string>("");
+
+  const [colleges, setColleges] = useState<{ id: string, name: string }[]>([]);
+  const [collegeSearchInput, setCollegeSearchInput] = useState("");
+  const [isCustomCollege, setIsCustomCollege] = useState(false);
+  const [dropdownVisible, setDropdownVisible] = useState(false);
+  const collegeDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const fetchColleges = async () => {
+      try {
+        const response = await fetch('/api/colleges');
+        const data = await response.json();
+        if (data.status === "success") {
+          setColleges(data.colleges);
+        } else {
+          console.error("Failed to fetch colleges:", data.message);
+        }
+      } catch (error) {
+        console.error("Error fetching colleges:", error);
+      }
+    };
+
+    fetchColleges();
+    
+    // Add click outside listener to close dropdown
+    const handleClickOutside = (event: MouseEvent) => {
+      if (collegeDropdownRef.current && !collegeDropdownRef.current.contains(event.target as Node)) {
+        setDropdownVisible(false);
+      }
+    };
+    
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  // Filter colleges based on search input
+  const filteredColleges = collegeSearchInput
+    ? colleges.filter(college => 
+        college.name.toLowerCase().includes(collegeSearchInput.toLowerCase()))
+    : colleges;
+
+  const handleCollegeSelect = (collegeName: string) => {
+    setCollegeName(collegeName);
+    setCollegeSearchInput(collegeName);
+    setIsCustomCollege(false);
+    setDropdownVisible(false);
+  };
+
+  const handleCollegeInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setCollegeSearchInput(value);
+    
+    // If the input doesn't match any college exactly, it's potentially a custom college
+    const matchingCollege = colleges.find(
+      college => college.name.toLowerCase() === value.toLowerCase()
+    );
+    
+    if (!matchingCollege && value.trim()) {
+      setIsCustomCollege(true);
+      setCollegeName(value); // Update collegeName with the custom value
+    } else {
+      setIsCustomCollege(false);
+      // Only update collegeName if a college is selected from the dropdown
+      if (matchingCollege) {
+        setCollegeName(matchingCollege.name);
+      } else {
+        setCollegeName("");
+      }
+    }
+    
+    // Show dropdown when typing
+    if (value.trim()) {
+      setDropdownVisible(true);
+    } else {
+      setDropdownVisible(false);
+    }
+  };
+
+  // Add this new function to handle key press in college input
+  const handleCollegeKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
+    // If Enter key is pressed and we have a custom college
+    if (e.key === 'Enter' && isCustomCollege && collegeSearchInput.trim()) {
+      e.preventDefault(); // Prevent form submission
+      
+      try {
+        // Call the API to add the new college
+        const response = await fetch('/api/colleges', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ name: collegeSearchInput.trim() }),
+        });
+        
+        const data = await response.json();
+        
+        if (data.status === "success") {
+          // Update the list of colleges with the new one
+          setColleges(prev => [...prev, { 
+            id: data.college.id, 
+            name: data.college.name 
+          }]);
+          
+          // Close dropdown and set college name
+          setCollegeName(data.college.name);
+          setCollegeSearchInput(data.college.name);
+          setDropdownVisible(false);
+          
+          // Show success message
+          toast.success("College added successfully!", {
+            position: "top-center",
+            autoClose: 2000,
+            theme: "dark",
+          });
+          
+          // College is now from database, no longer custom
+          setIsCustomCollege(false);
+        }
+      } catch (error) {
+        console.error("Error adding college:", error);
+        toast.error("Failed to add college", {
+          position: "top-center",
+          theme: "dark",
+        });
+      }
+    }
+  };
 
   const validateStep1 = () => {
     let isValid = true;
@@ -211,6 +340,7 @@ export default function Signup() {
     formData.append('age', age);
     formData.append('college_name', collegeName);
     formData.append('referral_code', referralCode);
+    formData.append('is_custom_college', isCustomCollege.toString());
   
     try {
       const response = await fetch('/api/registration', {
@@ -732,15 +862,55 @@ export default function Signup() {
                   
                   <div className="space-y-2">
                     <Label htmlFor="collegeName">College Name</Label>
-                    <motion.div whileHover={{ scale: 1.05 }} className='relative'>
+                    <motion.div 
+                      whileHover={{ scale: 1.05 }} 
+                      className='relative'
+                      ref={collegeDropdownRef}
+                    >
                       <Input 
                         id="collegeName" 
                         type="text"
-                        placeholder="Your College Name"
-                        value={collegeName}
-                        onChange={(e) => setCollegeName(e.target.value)}
+                        placeholder="Search or enter your college name"
+                        value={collegeSearchInput}
+                        onChange={handleCollegeInputChange}
+                        onKeyDown={handleCollegeKeyDown}
+                        onFocus={() => collegeSearchInput && setDropdownVisible(true)}
                         className="bg-transparent border border-gray-300"
+                        required
                       />
+                      
+                      {dropdownVisible && (
+                        <div className="absolute z-20 mt-1 w-full bg-gray-900 border border-gray-700 rounded-md shadow-lg max-h-60 overflow-auto">
+                          {filteredColleges.length > 0 ? (
+                            filteredColleges.map((college) => (
+                              <div 
+                                key={college.id} 
+                                className="px-4 py-2 hover:bg-gray-800 cursor-pointer"
+                                onClick={() => handleCollegeSelect(college.name)}
+                              >
+                                {college.name}
+                              </div>
+                            ))
+                          ) : (
+                            <div className="px-4 py-2 text-gray-400">
+                              {collegeSearchInput ? (
+                                <>
+                                  <p>&quot;{collegeSearchInput}&quot; not found</p>
+                                  <p className="text-xs mt-1 text-gray-500">Press Enter to add this college</p>
+                                </>
+                              ) : (
+                                "No colleges found"
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      
+                      {isCustomCollege && collegeSearchInput && (
+                        <div className="mt-1 text-xs text-amber-400">
+                          Custom college name will be added to our database
+                        </div>
+                      )}
                     </motion.div>
                   </div>
                 </div>
@@ -773,7 +943,7 @@ export default function Signup() {
                   </motion.div>
                 </div>
                 
-                <div className="space-y-2">
+                <div className="space-y-2"></div>
                   <Label htmlFor="referralCode">Referral Code</Label>
                   <motion.div whileHover={{ scale: 1.05 }} className='relative'>
                     <Input 
@@ -785,7 +955,7 @@ export default function Signup() {
                       className="bg-transparent border border-gray-300"
                     />
                   </motion.div>
-                </div>
+              </div>
                 
                 <div className="flex justify-between mt-6">
                   <Button type="button" className="w-1/2 mr-2" onClick={handleBack}>
@@ -799,11 +969,9 @@ export default function Signup() {
                     {isSubmitting ? 'Creating Account...' : 'Create Account'}
                   </Button>
                 </div>
-              </div>
             </>
           )}
         </form>
-
       </motion.div>
       </div>
     </div>

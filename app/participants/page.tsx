@@ -288,12 +288,7 @@ export default function Participants() {
           Are you getting selected? Probably not lol.
         </motion.p>
 
-        {/* Login status */}
-        {isAuthenticated && (
-          <p className="text-center text-green-400 mb-4">
-            Logged in as {user?.name || user?.email}
-          </p>
-        )}
+        
 
         {/* Search and Filter */}
         <div className="mt-2 mb-8">
