@@ -1,5 +1,5 @@
 import { db, auth } from "@/Firebase";
-import { doc, getDoc, updateDoc, setDoc } from "firebase/firestore";
+import { doc, getDoc, updateDoc, setDoc, collection, query, where, getDocs } from "firebase/firestore";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { NextResponse } from "next/server";
 
@@ -72,17 +72,19 @@ export async function POST(request: Request) {
       firebaseUser = userCredential.user;
       idToken = await firebaseUser.getIdToken();
       
-      const userRef = doc(db, "registrations", firebaseUser.uid);
-      const userSnap = await getDoc(userRef);
+      // Changed: Query by authUid field instead of using document ID
+      const usersRef = collection(db, "registrations");
+      const q = query(usersRef, where("authUid", "==", firebaseUser.uid));
+      const querySnapshot = await getDocs(q);
       
-      if (!userSnap.exists()) {
+      if (querySnapshot.empty) {
         return NextResponse.json(
           { message: "User record not found", status: "error" },
           { status: 404 }
         );
       }
       
-      userData = userSnap.data();
+      userData = querySnapshot.docs[0].data();
       if (userData.status === "suspended" || userData.status === "deactivated") {
         return NextResponse.json(
           { message: "Account is " + userData.status, status: "error" },
