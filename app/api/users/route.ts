@@ -8,13 +8,14 @@ export async function GET() {
     const users = querySnapshot.docs.map((doc) => {
       const data = doc.data();
       return {
-        uid: data.uid || doc.id, // Use doc.id if uid is missing
+        uid: doc.id, // Always use doc.id for consistency
         name: data.name,
         email: data.email,
         phone: data.phone,
         resume_link: data.resume_link,
-        college_name:data.college_name,
-        upVotes: data.upVotes || 0,
+        college_name: data.college_name,
+        bio: data.bio,
+        upVote: data.upVote || 0, // Make consistent with upVote elsewhere
       };
     });
 
