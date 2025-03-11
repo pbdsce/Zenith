@@ -4,7 +4,7 @@ import SearchBar from "../../components/ui/search-bar";
 import { useAuth } from "@/hooks/useAuth";
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Search } from "lucide-react";
+import { CatIcon, Search } from "lucide-react";
 import ProfileCard from "../../components/ui/profile-card";
 import ProfileModal from "../../components/ui/profile-modal";
 import { profiles as initialProfiles } from "@/lib/data";
@@ -49,6 +49,7 @@ export default function Participants() {
               resumeLink: user.resume_link || "#",
               shortBio: user.bio, // Default value since it's not in the API
               upvotes: user.upVote || 0, // Default value
+              profile_picture: user.profile_picture || CatIcon
               // Add any other required fields with default values
             })
           );

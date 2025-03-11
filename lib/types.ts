@@ -14,7 +14,7 @@ export interface Profile {
     shortBio: string
     age: number
     college: string
-    profilePic: string
+    profile_picture: string
     upvotes: number
   }
   
