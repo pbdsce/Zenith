@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { motion } from "framer-motion"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
@@ -79,6 +79,22 @@ export default function ProfilePage() {
   
   const [resumeFile, setResumeFile] = useState<File | null>(null)
   const [profilePictureFile, setProfilePictureFile] = useState<File | null>(null)
+  const [profilePicturePreview, setProfilePicturePreview] = useState<string | null>(null);
+  const [colleges, setColleges] = useState<{ id: string, name: string }[]>([]);
+  const [collegeSearchInput, setCollegeSearchInput] = useState("");
+  const [isCustomCollege, setIsCustomCollege] = useState(false);
+  const [dropdownVisible, setDropdownVisible] = useState(false);
+  const collegeDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Create a reference for the profile picture input
+  const profilePictureInputRef = useRef<HTMLInputElement>(null);
+
+  // Add a function to trigger the file input click
+  const triggerProfilePictureUpload = () => {
+    if (profilePictureInputRef.current) {
+      profilePictureInputRef.current.click();
+    }
+  };
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -128,6 +144,134 @@ export default function ProfilePage() {
     
     fetchUserData()
   }, [user, toast])
+
+  // Fetch colleges on component mount
+  useEffect(() => {
+    const fetchColleges = async () => {
+      try {
+        const response = await fetch('/api/colleges');
+        const data = await response.json();
+        if (data.status === "success") {
+          setColleges(data.colleges);
+        } else {
+          console.error("Failed to fetch colleges:", data.message);
+        }
+      } catch (error) {
+        console.error("Error fetching colleges:", error);
+      }
+    };
+
+    fetchColleges();
+
+    // Add click outside listener to close dropdown
+    const handleClickOutside = (event: MouseEvent) => {
+      if (collegeDropdownRef.current && !collegeDropdownRef.current.contains(event.target as Node)) {
+        setDropdownVisible(false);
+      }
+    };
+    
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  // Set initial college search input when profile data is loaded
+  useEffect(() => {
+    if (profile?.college_name) {
+      setCollegeSearchInput(profile.college_name);
+    }
+  }, [profile]);
+
+  // Filter colleges based on search input
+  const filteredColleges = collegeSearchInput
+    ? colleges.filter(college => 
+        college.name.toLowerCase().includes(collegeSearchInput.toLowerCase()))
+    : colleges;
+
+  const handleCollegeSelect = (collegeName: string) => {
+    setFormData(prev => ({ ...prev, college_name: collegeName }));
+    setCollegeSearchInput(collegeName);
+    setIsCustomCollege(false);
+    setDropdownVisible(false);
+  };
+
+  const handleCollegeInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setCollegeSearchInput(value);
+    
+    // Update form data with the current input value
+    setFormData(prev => ({ ...prev, college_name: value }));
+    
+    // If the input doesn't match any college exactly, it's potentially a custom college
+    const matchingCollege = colleges.find(
+      college => college.name.toLowerCase() === value.toLowerCase()
+    );
+    
+    if (!matchingCollege && value.trim()) {
+      setIsCustomCollege(true);
+    } else {
+      setIsCustomCollege(false);
+    }
+    
+    // Show dropdown when typing
+    if (value.trim()) {
+      setDropdownVisible(true);
+    } else {
+      setDropdownVisible(false);
+    }
+  };
+
+  const handleCollegeKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
+    // If Enter key is pressed and we have a custom college
+    if (e.key === 'Enter' && isCustomCollege && collegeSearchInput.trim()) {
+      e.preventDefault(); // Prevent form submission
+      
+      try {
+        // Call the API to add the new college
+        const response = await fetch('/api/colleges', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ name: collegeSearchInput.trim() }),
+        });
+        
+        const data = await response.json();
+        
+        if (data.status === "success") {
+          // Update the list of colleges with the new one
+          setColleges(prev => [...prev, { 
+            id: data.college.id, 
+            name: data.college.name 
+          }]);
+          
+          // Set form data with the added college name
+          setFormData(prev => ({ ...prev, college_name: data.college.name }));
+          setCollegeSearchInput(data.college.name);
+          setDropdownVisible(false);
+          
+          // Show success message
+          toast({
+            title: "College Added",
+            description: "College added successfully to our database",
+          });
+          
+          // College is now from database, no longer custom
+          setIsCustomCollege(false);
+        } else {
+          throw new Error(data.message || "Failed to add college");
+        }
+      } catch (error) {
+        console.error("Error adding college:", error);
+        toast({
+          title: "Error",
+          description: "Failed to add college. Please try again.",
+          variant: "destructive"
+        });
+      }
+    }
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
@@ -189,7 +333,16 @@ export default function ProfilePage() {
         return;
       }
       
-      setProfilePictureFile(file)
+      // Create a preview URL for the selected image
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        if (event.target?.result) {
+          setProfilePicturePreview(event.target.result as string);
+        }
+      };
+      reader.readAsDataURL(file);
+      
+      setProfilePictureFile(file);
     }
   }
 
@@ -216,6 +369,13 @@ export default function ProfilePage() {
           formDataToSend.append(key, String(value))
         }
       })
+      
+      // Add is_custom_college flag if needed
+      if (isCustomCollege && formData.college_name) {
+        formDataToSend.append('is_custom_college', 'true');
+      } else {
+        formDataToSend.append('is_custom_college', 'false');
+      }
       
       // Add files if present
       if (resumeFile) {
@@ -369,7 +529,7 @@ export default function ProfilePage() {
                 <AlertDialogHeader>
                   <AlertDialogTitle className="text-white">Are you sure you want to logout?</AlertDialogTitle>
                   <AlertDialogDescription className="text-gray-400">
-                    Your session will be ended and you'll need to login again to access your profile.
+                    Your session will be ended and you&apos;ll need to login again to access your profile.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -394,15 +554,20 @@ export default function ProfilePage() {
           <div className="relative">
             <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full border-4 border-[#0ff]/30 overflow-hidden bg-gray-900 shadow-[0_0_15px_rgba(0,255,255,0.3)]">
               <img
-                src={profile.profile_picture || "/placeholder.svg?height=200&width=200"}
+                src={
+                  profilePicturePreview || 
+                  profile.profile_picture || 
+                  "/placeholder.svg?height=200&width=200"
+                }
                 alt={profile.name}
                 className="w-full h-full object-cover"
               />
             </div>
 
             {isEditing && (
-              <label htmlFor="profile-picture-input">
+              <>
                 <input
+                  ref={profilePictureInputRef}
                   id="profile-picture-input"
                   type="file"
                   accept="image/*"
@@ -410,14 +575,23 @@ export default function ProfilePage() {
                   onChange={handleProfilePictureChange}
                   disabled={isSaving}
                 />
-                <Button
-                  size="icon"
-                  type="button"
-                  className="absolute bottom-0 right-0 bg-[#0ff] hover:bg-[#0ff]/80 text-black rounded-full h-6 w-6 sm:h-8 sm:w-8 cursor-pointer"
+                {/* Replace the Button with a div to improve clickability */}
+                <div
+                  className="absolute bottom-0 right-0 bg-[#0ff] hover:bg-[#0ff]/80 text-black rounded-full h-6 w-6 sm:h-8 sm:w-8 flex items-center justify-center cursor-pointer"
+                  onClick={triggerProfilePictureUpload}
                 >
                   <ImageIcon className="h-3 w-3 sm:h-4 sm:w-4" />
-                </Button>
-              </label>
+                </div>
+                {/* Add an explicit text link below profile picture for better visibility */}
+                <div className="mt-2 text-center w-full">
+                  <span 
+                    onClick={triggerProfilePictureUpload}
+                    className="text-xs text-[#0ff] underline cursor-pointer"
+                  >
+              
+                  </span>
+                </div>
+              </>
             )}
           </div>
 
@@ -509,15 +683,62 @@ export default function ProfilePage() {
                       <School className="h-4 w-4 text-[#0ff]" />
                       College/University
                     </Label>
-                    <Input
-                      id="college_name"
-                      name="college_name"
-                      value={isEditing ? formData.college_name || "" : profile.college_name || ""}
-                      onChange={handleInputChange}
-                      disabled={!isEditing || isSaving}
-                      className="bg-gray-800 border-gray-700"
-                      placeholder="Your college or university"
-                    />
+                    {isEditing ? (
+                      <div ref={collegeDropdownRef} className="relative">
+                        <Input
+                          id="college_name"
+                          name="college_name"
+                          value={collegeSearchInput}
+                          onChange={handleCollegeInputChange}
+                          onKeyDown={handleCollegeKeyDown}
+                          onFocus={() => collegeSearchInput && setDropdownVisible(true)}
+                          disabled={isSaving}
+                          className="bg-gray-800 border-gray-700"
+                          placeholder="Search or enter your college"
+                        />
+                        
+                        {dropdownVisible && (
+                          <div className="absolute z-20 mt-1 w-full bg-gray-900 border border-gray-700 rounded-md shadow-lg max-h-60 overflow-auto">
+                            {filteredColleges.length > 0 ? (
+                              filteredColleges.map((college) => (
+                                <div 
+                                  key={college.id} 
+                                  className="px-4 py-2 hover:bg-gray-800 cursor-pointer"
+                                  onClick={() => handleCollegeSelect(college.name)}
+                                >
+                                  {college.name}
+                                </div>
+                              ))
+                            ) : (
+                              <div className="px-4 py-2 text-gray-400">
+                                {collegeSearchInput ? (
+                                  <>
+                                    <p>&quot;{collegeSearchInput}&quot; not found</p>
+                                    <p className="text-xs mt-1 text-gray-500">Press Enter to add this college</p>
+                                  </>
+                                ) : (
+                                  "No colleges found"
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        
+                        {isCustomCollege && collegeSearchInput && (
+                          <div className="mt-1 text-xs text-amber-400">
+                            &quot;{collegeSearchInput}&quot; will be added to our database
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <Input
+                        id="college_name"
+                        value={profile.college_name || ""}
+                        disabled={true}
+                        className="bg-gray-800 border-gray-700"
+                        placeholder="No college/university added"
+                      />
+                    )}
                   </div>
                 </div>
               </CardContent>

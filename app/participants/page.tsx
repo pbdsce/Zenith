@@ -2,16 +2,16 @@
 
 import SearchBar from "../../components/ui/search-bar";
 import { useAuth } from "@/hooks/useAuth";
-import { useState, useEffect } from "react"
-import { motion } from "framer-motion"
-import { Search } from "lucide-react"
-import ProfileCard from "../../components/ui/profile-card"
-import ProfileModal from "../../components/ui/profile-modal"
-import { profiles as initialProfiles } from "@/lib/data"
-import type { Profile } from "@/lib/types"
-import CountdownTimer from "@/components/ui/countdown-timer"
-import Link from "next/link"
-import NavButtons from "@/components/navbar"
+import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
+import { Search } from "lucide-react";
+import ProfileCard from "../../components/ui/profile-card";
+import ProfileModal from "../../components/ui/profile-modal";
+import { profiles as initialProfiles } from "@/lib/data";
+import type { Profile } from "@/lib/types";
+import CountdownTimer from "@/components/ui/countdown-timer";
+import Link from "next/link";
+import NavButtons from "@/components/navbar";
 
 export default function Participants() {
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
@@ -21,9 +21,9 @@ export default function Participants() {
   const [filteredProfiles, setFilteredProfiles] = useState<Profile[]>([]);
   const [selectedProfile, setSelectedProfile] = useState<Profile | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [upvotedProfiles, setUpvotedProfiles] = useState<Set<string>>(
-    new Set()
-  );
+  const [upvotedProfiles, setUpvotedProfiles] = useState<Set<string>>(new Set());
+  const [pendingUpvotes, setPendingUpvotes] = useState<Set<string>>(new Set());
+  const [pendingDownvotes, setPendingDownvotes] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -48,12 +48,17 @@ export default function Participants() {
               phone: user.phone || "N/A",
               resumeLink: user.resume_link || "#",
               shortBio: user.bio, // Default value since it's not in the API
-              upvotes: user.upVote, // Default value
+              upvotes: user.upVote || 0, // Default value
               // Add any other required fields with default values
             })
           );
 
           setProfiles(transformedProfiles);
+          
+          // Load current user's upvoted profiles if authenticated
+          if (isAuthenticated && user) {
+            fetchUserUpvotedProfiles();
+          }
         } else {
           setError(data.message || "Failed to fetch profiles");
         }
@@ -66,12 +71,99 @@ export default function Participants() {
     };
 
     fetchProfiles();
-  }, []);
+  }, [isAuthenticated, user]);
+  
+  // Fetch the user's previously upvoted profiles
+  const fetchUserUpvotedProfiles = async () => {
+    if (!user || !user.uid) return;
+    
+    try {
+      // Get token from zenith_auth_data in localStorage
+      let token = '';
+      const authDataStr = localStorage.getItem('zenith_auth_data');
+      if (authDataStr) {
+        try {
+          const authData = JSON.parse(authDataStr);
+          token = authData.token || '';
+        } catch (e) {
+          console.error('Failed to parse auth data:', e);
+        }
+      }
+      
+      const response = await fetch(`/api/users/${user.uid}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      const data = await response.json();
+      
+      if (data.status === "success" && data.user) {
+        const upvotedByUser = data.user.upvotedProfiles || [];
+        setUpvotedProfiles(new Set(upvotedByUser));
+      }
+    } catch (err) {
+      console.error("Error loading user's upvoted profiles:", err);
+    }
+  };
+
+  // Sync upvotes when leaving the page
+  useEffect(() => {
+    // Function to sync upvotes with the server
+    const syncUpvotes = async () => {
+      if (!isAuthenticated || !user || (!pendingUpvotes.size && !pendingDownvotes.size)) {
+        return;
+      }
+      
+      try {
+        // Get token from zenith_auth_data in localStorage
+        let token = '';
+        const authDataStr = localStorage.getItem('zenith_auth_data');
+        if (authDataStr) {
+          try {
+            const authData = JSON.parse(authDataStr);
+            token = authData.token || '';
+          } catch (e) {
+            console.error('Failed to parse auth data:', e);
+          }
+        }
+        
+        await fetch('/api/users/sync-upvotes', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            userId: user.uid,
+            upvotes: Array.from(pendingUpvotes),
+            downvotes: Array.from(pendingDownvotes),
+          }),
+        });
+        
+        // Clear pending changes after successful sync
+        setPendingUpvotes(new Set());
+        setPendingDownvotes(new Set());
+      } catch (err) {
+        console.error("Failed to sync upvotes:", err);
+      }
+    };
+
+    // Sync when component unmounts or on page unload
+    window.addEventListener('beforeunload', syncUpvotes);
+    
+    // Cleanup function that runs when component unmounts
+    return () => {
+      window.removeEventListener('beforeunload', syncUpvotes);
+      syncUpvotes(); // Sync when navigating away within the app
+    };
+  }, [isAuthenticated, user, pendingUpvotes, pendingDownvotes]);
 
   // Handle upvoting
   const handleUpvote = (id: string) => {
-    if (!isAuthenticated) {
-      // Optional: Show login prompt
+    if (!isAuthenticated || !user) {
+      // Show login prompt
       alert("Please log in to upvote profiles");
       return;
     }
@@ -90,16 +182,45 @@ export default function Participants() {
 
     setUpvotedProfiles((prev) => {
       const newSet = new Set(prev);
+      
       if (newSet.has(id)) {
+        // User is removing an upvote
         newSet.delete(id);
+        
+        // Track for backend sync
+        setPendingDownvotes(prev => {
+          const newDownvotes = new Set(prev);
+          newDownvotes.add(id);
+          return newDownvotes;
+        });
+        
+        // Remove from pending upvotes if it was just added
+        setPendingUpvotes(prev => {
+          const newUpvotes = new Set(prev);
+          newUpvotes.delete(id);
+          return newUpvotes;
+        });
       } else {
+        // User is adding an upvote
         newSet.add(id);
+        
+        // Track for backend sync
+        setPendingUpvotes(prev => {
+          const newUpvotes = new Set(prev);
+          newUpvotes.add(id);
+          return newUpvotes;
+        });
+        
+        // Remove from pending downvotes if it was previously removed
+        setPendingDownvotes(prev => {
+          const newDownvotes = new Set(prev);
+          newDownvotes.delete(id);
+          return newDownvotes;
+        });
       }
+            
       return newSet;
     });
-
-    // Optional: Save upvote to backend
-    // This would require an additional API endpoint
   };
 
   // Filter and sort profiles
@@ -110,19 +231,18 @@ export default function Participants() {
     if (searchTerm) {
       result = result.filter(
         (profile) =>
-          profile.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          profile.college.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          (profile.shortBio &&
-            profile.shortBio.toLowerCase().includes(searchTerm.toLowerCase()))
+          (profile.name?.toLowerCase().includes(searchTerm.toLowerCase()) || false) ||
+          (profile.college?.toLowerCase().includes(searchTerm.toLowerCase()) || false) ||
+          (profile.shortBio?.toLowerCase().includes(searchTerm.toLowerCase()) || false)
       );
     }
 
     // Sort profiles
     result.sort((a, b) => {
       if (sortBy === "name") {
-        return a.name?.localeCompare(b.name) ?? 0;
+        return (a.name || '').localeCompare(b.name || '');
       } else {
-        return (b.upvotes ?? 0) - (a.upvotes ?? 0);
+        return (b.upvotes || 0) - (a.upvotes || 0);
       }
     });
 
@@ -167,12 +287,7 @@ export default function Participants() {
           Are you getting selected? Probably not lol.
         </motion.p>
 
-        {/* Login status */}
-        {isAuthenticated && (
-          <p className="text-center text-green-400 mb-4">
-            Logged in as {user?.name || user?.email}
-          </p>
-        )}
+        
 
         {/* Search and Filter */}
         <div className="mt-2 mb-8">
