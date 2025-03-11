@@ -37,7 +37,7 @@ export default function ZenithPage() {
   // Show Zenith landing page
   return (
     <main className="relative overflow-hidden">
-      {/* Navigation - Using disableFixedPositioning=true to avoid duplicates
+      {/* Navigation
       <div className="fixed top-4 w-full px-4 flex justify-between z-50">
         <div className="ml-4 sm:ml-6">
           <CountdownTimer />

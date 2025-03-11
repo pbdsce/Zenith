@@ -14,6 +14,7 @@ import { StarsBackground } from "@/components/ui/stars-background";
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import Link from "next/link";
+import NavButtons from "@/components/navbar";
 
 // Add CSS for shake animation
 const shakeAnimation = {
@@ -257,6 +258,11 @@ export default function Signup() {
           transition={{ duration: 0.8 }}
         >
     <div className="min-h-screen flex items-center justify-center relative p-4">
+        {/* Navigation */}
+        <div className="fixed top-4 w-full px-4 flex justify-end z-50">
+          <NavButtons disableFixedPositioning={true} />
+        </div>
+
         <Link href="/" className="absolute top-6 left-6 text-gray-400 hover:text-white transition-colors flex items-center gap-2 py-2 px-4 rounded-md hover:bg-gray-800/50 z-50">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M19 12H5M12 19l-7-7 7-7"/>
@@ -283,7 +289,7 @@ export default function Signup() {
             borderLeft: "4px solid #2ad8db",
           }}
         />
-      <div className="relative w-full max-w-xl p-8 space-y-6 rounded-lg shadow-lg border">
+      <div className="relative w-full max-w-xl p-8 space-y-6 rounded-lg shadow-lg border mt-16">
         <div className="absolute -inset-4 bg-gradient-to-r from-[#2ad8db33] to-[#113341ad] blur-3xl rounded-lg"></div>
       <motion.div
         initial={{ opacity: 0, scale: .95 }}
