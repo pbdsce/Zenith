@@ -157,6 +157,20 @@ const parseForm = async (req: Request): Promise<{ fields: any, files: any }> => 
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
   try {
+    // Extract authorization header from request
+    const authHeader = req.headers.get('Authorization');
+    
+    // Check if token is provided in the format "Bearer <token>"
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json({ message: "Unauthorized: Missing or invalid token", status: "error" }, { status: 401 });
+    }
+    
+    // Extract the token from the Authorization header
+    const token = authHeader.split(' ')[1];
+    
+    // In a production app, you would verify the token here
+    // For example, with Firebase Admin SDK or a JWT library
+    
     const userRef = doc(db, "registrations", params.id);
     const userSnap = await getDoc(userRef);
 
@@ -164,7 +178,27 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       return NextResponse.json({ message: "User not found", status: "error" }, { status: 404 });
     }
 
-    return NextResponse.json({ user: userSnap.data(), status: "success" });
+    // Return the user data without sensitive information
+    const userData = userSnap.data();
+    
+    // Construct the response object with only necessary fields
+    // This ensures we're not exposing sensitive data
+    const user = {
+      uid: params.id,
+      email: userData.email,
+      name: userData.name,
+      isAdmin: userData.isAdmin || false,
+      profile_picture: userData.profile_picture || null,
+      status: userData.status || "active",
+      college_name: userData.college_name,
+      bio: userData.bio,
+      github_link: userData.github_link,
+      linkedin_link: userData.linkedin_link,
+      portfolio_link: userData.portfolio_link,
+      resume_link: userData.resume_link,
+    };
+
+    return NextResponse.json({ user, status: "success" });
   } catch (error) {
     console.error("Error fetching user:", error);
     return NextResponse.json({ message: "Failed to fetch user", error: String(error), status: "error" }, { status: 500 });
