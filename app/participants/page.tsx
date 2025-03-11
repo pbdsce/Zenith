@@ -7,11 +7,11 @@ import { motion } from "framer-motion"
 import { Search } from "lucide-react"
 import ProfileCard from "../../components/ui/profile-card"
 import ProfileModal from "../../components/ui/profile-modal"
-// import SearchBar from "../../components/ui/search-bar"
 import { profiles as initialProfiles } from "@/lib/data"
 import type { Profile } from "@/lib/types"
 import CountdownTimer from "@/components/ui/countdown-timer"
 import Link from "next/link"
+import NavButtons from "@/components/navbar"
 
 export default function Participants() {
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
@@ -137,21 +137,18 @@ export default function Participants() {
 
   return (
     <main className="min-h-screen bg-black text-white relative">
-      <div className="container mx-auto pt-6">
-        {/* Header with navigation and countdown */}
-        <div className="flex flex-col sm:flex-row justify-between items-center mb-6">
-          <Link href="/" className="text-gray-400 hover:text-white transition-colors flex items-center py-2 rounded-md hover:bg-gray-800/50">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M19 12H5M12 19l-7-7 7-7"/>
-            </svg>
-            Back to Home
-          </Link>
+      <div className="fixed top-4 w-full px-4 flex justify-between z-50">
+        <div className="ml-4 sm:ml-6">
           <CountdownTimer />
         </div>
-        
+        <NavButtons disableFixedPositioning={true} />
+      </div>
+      
+      {/* Add padding-top to account for fixed navbar */}
+      <div className="container mx-auto pt-24 px-4">
         {/* Header */}
         <motion.h1
-          className="text-5xl font-bold text-center mb-2"
+          className="text-4xl md:text-5xl font-bold text-center mb-3 mt-6"
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
@@ -178,16 +175,34 @@ export default function Participants() {
         )}
 
         {/* Search and Filter */}
-        <SearchBar
-          searchTerm={searchTerm}
-          setSearchTerm={setSearchTerm}
-          sortBy={sortBy}
-          setSortBy={setSortBy}
-        />
+        <div className="mt-2 mb-8">
+          <SearchBar
+            searchTerm={searchTerm}
+            setSearchTerm={setSearchTerm}
+            sortBy={sortBy}
+            setSortBy={setSortBy}
+          />
+        </div>
+
+        {/* Loading state */}
+        {isLoading && (
+          <div className="text-center py-10">
+            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-[#0ff] border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]"></div>
+            <p className="mt-4 text-gray-400">Loading profiles...</p>
+          </div>
+        )}
+
+        {/* Error state */}
+        {error && (
+          <div className="text-center py-10">
+            <div className="text-red-500 mb-2">Error:</div>
+            <p>{error}</p>
+          </div>
+        )}
 
         {/* Profile Grid */}
         {!isLoading && !error && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-10">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6 pb-10">
             {filteredProfiles.map((profile) => (
               <ProfileCard
                 key={profile.id}
@@ -201,7 +216,7 @@ export default function Participants() {
         )}
 
         {!isLoading && !error && filteredProfiles.length === 0 && (
-          <div className="text-center mt-10 text-gray-400">
+          <div className="text-center mt-10 py-16 text-gray-400">
             <Search className="mx-auto h-12 w-12 mb-4 text-[#ff00ff]" />
             <p className="text-xl">
               No profiles found matching your search criteria

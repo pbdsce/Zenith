@@ -1,8 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { isAuthenticated } from "@/lib/auth-storage";
 import { Loader2 } from "lucide-react";
 
 // Import components for the landing page
@@ -15,34 +13,17 @@ import { StarsBackground } from "@/components/ui/stars-background";
 import NavButtons from "@/components/navbar";
 import CountdownTimer from "@/components/ui/countdown-timer";
 
-export default function Home() {
-  const router = useRouter();
+export default function ZenithPage() {
   const [isLoading, setIsLoading] = useState(true);
-  const [isAuth, setIsAuth] = useState(false);
 
-  // Check authentication status and handle redirect
   useEffect(() => {
-    const checkAuthAndRedirect = () => {
-      const authenticated = isAuthenticated();
-
-      if (authenticated) {
-        // User is logged in, redirect to participants page
-        router.replace("/participants");
-        setIsAuth(true);
-      } else {
-        // User is not logged in, show landing page
-        setIsAuth(false);
-        setIsLoading(false);
-      }
-    };
-
     // Small delay to ensure proper hydration
-    const timer = setTimeout(checkAuthAndRedirect, 100);
+    const timer = setTimeout(() => setIsLoading(false), 100);
     return () => clearTimeout(timer);
-  }, [router]);
+  }, []);
 
-  // Show loading state while checking auth
-  if (isLoading && !isAuth) {
+  // Show loading state initially
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-black text-white flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
@@ -53,28 +34,16 @@ export default function Home() {
     );
   }
 
-  // If authenticated, show a loading state until redirect completes
-  if (isAuth) {
-    return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="h-8 w-8 animate-spin text-[#0ff]" />
-          <p className="text-lg text-gray-300">Redirecting to dashboard...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Show landing page if not authenticated
+  // Show Zenith landing page
   return (
     <main className="relative overflow-hidden">
-      {/* Navigation */}
+      {/* Navigation - Using disableFixedPositioning=true to avoid duplicates
       <div className="fixed top-4 w-full px-4 flex justify-between z-50">
         <div className="ml-4 sm:ml-6">
           <CountdownTimer />
         </div>
         <NavButtons disableFixedPositioning={true} />
-      </div>
+      </div> */}
       
       <div className="relative z-10">
         <section className="relative">
