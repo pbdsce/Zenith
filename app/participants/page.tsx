@@ -342,11 +342,13 @@ export default function Participants() {
       </div>
 
       {/* Profile Modal */}
-      <ProfileModal
-        profile={selectedProfile}
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-      />
+      {selectedProfile && (
+        <ProfileModal
+          profile={selectedProfile}
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+        />
+      )}
     </main>
   );
 }

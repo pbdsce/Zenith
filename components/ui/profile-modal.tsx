@@ -5,11 +5,10 @@ import { motion, AnimatePresence } from "framer-motion"
 import { X, ExternalLink, Github, Linkedin, Download, Code, Shield, Award, Database } from "lucide-react"
 import type { Profile } from "../../lib/types"
 import { Separator } from "@/components/ui/separator"
-import catpfp from "@/public/images/catpfp.jpeg"
 import Image from "next/image"
 
 interface ProfileModalProps {
-  profile: Profile | null
+  profile: Profile // Removed the null type
   isOpen: boolean
   onClose: () => void
 }
@@ -63,8 +62,6 @@ export default function ProfileModal({ profile, isOpen, onClose }: ProfileModalP
       document.body.style.overflow = "auto"
     }
   }, [isOpen])
-
-  if (!profile) return null
 
   return (
     <AnimatePresence>
