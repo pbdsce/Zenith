@@ -20,16 +20,26 @@ export function Hero(){
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
+    // Check if video was previously loaded in this session
+    const videoLoaded = sessionStorage.getItem('zenithVideoLoaded');
+    
+    if (videoLoaded === 'true') {
+      setIsLoading(false);
+      return;
+    }
+    
     const video = videoRef.current;
     
     // If video is already loaded
     if (video && video.readyState >= 3) {
       setIsLoading(false);
+      sessionStorage.setItem('zenithVideoLoaded', 'true');
     }
 
     // Fallback timeout after 5 seconds
     const timeoutId = setTimeout(() => {
       setIsLoading(false);
+      sessionStorage.setItem('zenithVideoLoaded', 'true');
     }, 5000);
 
     return () => clearTimeout(timeoutId);
@@ -37,6 +47,7 @@ export function Hero(){
 
   const handleVideoLoad = () => {
     setIsLoading(false);
+    sessionStorage.setItem('zenithVideoLoaded', 'true');
   };
 
   if (isLoading) {

@@ -336,7 +336,7 @@ export default function Signup() {
     formData.append('kaggle_link', kaggleLink);
     formData.append('devfolio_link', devfolioLink);
     formData.append('portfolio_link', portfolioLink);
-    formData.append('short_bio', shortBio);
+    formData.append('bio', shortBio);
     formData.append('age', age);
     formData.append('college_name', collegeName);
     formData.append('referral_code', referralCode);

@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { isAuthenticated } from "@/lib/auth-storage";
-import { Loader2 } from "lucide-react";
 
 // Import components for the landing page
 import { Hero } from "@/components/hero";
@@ -28,8 +27,8 @@ export default function Home() {
 
       if (authenticated) {
         // User is logged in, redirect to participants page
-        router.replace("/participants");
         setIsAuth(true);
+        router.replace("/participants");
       } else {
         // User is not logged in, show landing page
         setIsAuth(false);
@@ -42,41 +41,14 @@ export default function Home() {
     return () => clearTimeout(timer);
   }, [router]);
 
-  // Show loading state while checking auth
-  if (isLoading && !isAuth) {
-    return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="h-8 w-8 animate-spin text-[#0ff]" />
-          <p className="text-lg text-gray-300">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // If authenticated, show a loading state until redirect completes
-  if (isAuth) {
-    return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="h-8 w-8 animate-spin text-[#0ff]" />
-          <p className="text-lg text-gray-300">Redirecting to dashboard...</p>
-        </div>
-      </div>
-    );
+  // During initial loading or authenticated redirect, return null to show loading.tsx
+  if (isLoading || isAuth) {
+    return null;
   }
 
   // Show landing page if not authenticated
   return (
     <main className="relative overflow-hidden">
-      {/* Navigation
-      <div className="fixed top-4 w-full px-4 flex justify-between z-50">
-        <div className="ml-4 sm:ml-6">
-          <CountdownTimer />
-        </div>
-        <NavButtons disableFixedPositioning={true} />
-      </div> */}
-      
       <div className="relative z-10">
         <section className="relative">
           <Hero />
@@ -94,7 +66,6 @@ export default function Home() {
           <Brief />
         </section>
         <section className="relative">
-
           <Achievements />
         </section>
         <section className="relative">
