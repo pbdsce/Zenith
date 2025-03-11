@@ -1,7 +1,7 @@
 type AchievementList = {
   [key: string]: { name: string; achievements: string[] }[];
   GSoC: { name: string; achievements: string[] }[];
-  SmartIndiaHackathon: { name: string; achievements: string[] }[];
+  "Smart India Hackathon": { name: string; achievements: string[] }[];
   Hackathons: { name: string; achievements: string[] }[];
   CP: { name: string; achievements: string[] }[];
   LFX: { name: string; achievements: string[] }[];
@@ -22,7 +22,7 @@ export const achievementList: AchievementList = {
         { name: "Sreeniketh Magudu", achievements: ["GSoC '22 @AOSSIE"] },
         { name: "Jeffrey Paul", achievements: ["GSoC '21 @SunPy"] }
       ],
-      SmartIndiaHackathon: [
+      "Smart India Hackathon": [
         { name: "Ashutosh Pandey", achievements: ["Winner 2019"] },
         { name: "Rithik Raj Pandey", achievements: ["Finalist 2022"] },
         { name: "Prakhar Tibrewal", achievements: ["Winner 2019"] },
