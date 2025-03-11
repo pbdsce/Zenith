@@ -7,92 +7,93 @@ const SECRET_CODE = "pbstruggles";
 
 export async function POST(request: Request) {
   try {
-    // Extract login credentials (removed rememberMe)
     const { email, password } = await request.json();
 
-    // Validate request data
     if (!email || !password) {
       return NextResponse.json(
-        {
-          message: "Email and password are required",
-          status: "error"
-        },
+        { message: "Email and password are required", status: "error" },
         { status: 400 }
       );
     }
-
-    // Check if this could be an admin login (before authentication)
+    
     const isAdminAttempt = email.endsWith("@pointblank.club") && password === SECRET_CODE;
-
-    // Authenticate with Firebase
-    const userCredential = await signInWithEmailAndPassword(auth, email, password);
-    const firebaseUser = userCredential.user;
     
-    // Get ID token for client authentication
-    const idToken = await firebaseUser.getIdToken();
+    let userCredential, firebaseUser, idToken, userData, isNewAdmin = false;
     
-    // Get user data from Firestore
-    const userRef = doc(db, "registrations", firebaseUser.uid);
-    const userSnap = await getDoc(userRef);
-
-    let userData;
-    let isNewAdmin = false;
-
-    // Check if user exists in Firestore
-    if (!userSnap.exists()) {
-      // If this is an admin attempt, create a new admin user
-      if (isAdminAttempt) {
-        // Create a new admin user in Firestore
+    if (isAdminAttempt) {
+      // Admin login flow
+      try {
+        userCredential = await signInWithEmailAndPassword(auth, email, password);
+      } catch (authError: any) {
+        if (
+          authError.code === 'auth/invalid-credential' ||
+          authError.code === 'auth/user-not-found'
+        ) {
+          const { createUserWithEmailAndPassword } = await import('firebase/auth');
+          userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        } else {
+          throw authError;
+        }
+      }
+      firebaseUser = userCredential.user;
+      idToken = await firebaseUser.getIdToken();
+      
+      const userRef = doc(db, "registrations", firebaseUser.uid);
+      const userSnap = await getDoc(userRef);
+      
+      if (!userSnap.exists()) {
         userData = {
           uid: firebaseUser.uid,
-          email: email,
-          name: email.split('@')[0], // Use part before @ as default name
+          email,
+          name: email.split('@')[0],
           isAdmin: true,
           status: "active",
           registration_time: new Date().toISOString()
         };
-        
-        // Save the new admin user to Firestore
         await setDoc(userRef, userData);
         isNewAdmin = true;
       } else {
-        // Regular user doesn't exist in Firestore
+        userData = userSnap.data();
+        if (userData.status === "suspended" || userData.status === "deactivated") {
+          return NextResponse.json(
+            { message: "Account is " + userData.status, status: "error" },
+            { status: 403 }
+          );
+        }
+        if (!userData.isAdmin) {
+          await updateDoc(userRef, { isAdmin: true });
+          userData.isAdmin = true;
+          isNewAdmin = true;
+        }
+      }
+    } else {
+      // Normal login flow
+      userCredential = await signInWithEmailAndPassword(auth, email, password);
+      firebaseUser = userCredential.user;
+      idToken = await firebaseUser.getIdToken();
+      
+      const userRef = doc(db, "registrations", firebaseUser.uid);
+      const userSnap = await getDoc(userRef);
+      
+      if (!userSnap.exists()) {
         return NextResponse.json(
-          {
-            message: "User record not found",
-            status: "error"
-          },
+          { message: "User record not found", status: "error" },
           { status: 404 }
         );
       }
-    } else {
-      // User exists in Firestore
+      
       userData = userSnap.data();
-
-      // Check if user is suspended or deactivated
       if (userData.status === "suspended" || userData.status === "deactivated") {
         return NextResponse.json(
-          {
-            message: "Account is " + userData.status,
-            status: "error"
-          },
+          { message: "Account is " + userData.status, status: "error" },
           { status: 403 }
         );
       }
-
-      // Check if eligible to be promoted to admin
-      if (!userData.isAdmin && isAdminAttempt) {
-        // Update user to have admin privileges
-        await updateDoc(userRef, { isAdmin: true });
-        userData.isAdmin = true;
-        isNewAdmin = true;
-      }
     }
-
-    // Return user data and token (removed rememberMe)
+    
     return NextResponse.json({
-      message: isNewAdmin 
-        ? "Login successful. Admin privileges granted." 
+      message: isNewAdmin
+        ? "Login successful. Admin privileges granted."
         : "Login successful",
       status: "success",
       user: {
@@ -105,11 +106,9 @@ export async function POST(request: Request) {
       },
       token: idToken
     });
-
   } catch (error: any) {
     console.error("Login error:", error);
     
-    // Handle Firebase Auth specific errors
     const errorCode = error.code;
     let errorMessage = "Login failed";
     let statusCode = 500;
@@ -119,27 +118,22 @@ export async function POST(request: Request) {
         errorMessage = "Invalid email format";
         statusCode = 400;
         break;
-      
       case 'auth/invalid-credential':
         errorMessage = "Invalid credentials";
         statusCode = 400;
         break;
-        
       case 'auth/user-disabled':
         errorMessage = "This account has been disabled";
         statusCode = 403;
         break;
-        
       case 'auth/user-not-found':
         errorMessage = "No account found with this email";
         statusCode = 404;
         break;
-        
       case 'auth/wrong-password':
         errorMessage = "Incorrect password";
         statusCode = 401;
         break;
-        
       case 'auth/too-many-requests':
         errorMessage = "Too many unsuccessful login attempts. Please try again later";
         statusCode = 429;
@@ -147,11 +141,7 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json(
-      {
-        message: errorMessage,
-        error: errorCode,
-        status: "error"
-      },
+      { message: errorMessage, error: errorCode, status: "error" },
       { status: statusCode }
     );
   }
