@@ -572,7 +572,17 @@ export async function POST(request: Request) {
       message: "Registration successful", 
       id: registrationId,
       authUid: authUid,
-      status: "success"
+      status: "success",
+      // Include any token or auth information needed for subsequent requests
+      token: authUid, // You may want to use a proper JWT token system
+      user: {
+        uid: registrationId,
+        authUid: authUid,
+        email: data.email,
+        name: data.name,
+        isAdmin: false,
+        profile_picture: profilePictureUrl
+      }
     });
   } catch (error) {
     console.error("Registration error:", error);
