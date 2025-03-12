@@ -5,15 +5,43 @@ import { motion, AnimatePresence } from "framer-motion"
 import { X, ExternalLink, Github, Linkedin, Download, Code, Shield, Award, Database } from "lucide-react"
 import type { Profile } from "../../lib/types"
 import { Separator } from "@/components/ui/separator"
-import catpfp from "@/public/images/catpfp.jpeg"
+import Image from "next/image"
 
 interface ProfileModalProps {
-  profile: Profile | null
+  profile: Profile // Removed the null type
   isOpen: boolean
   onClose: () => void
 }
 
 export default function ProfileModal({ profile, isOpen, onClose }: ProfileModalProps) {
+    // Generate a consistent color based on name
+    const getColorFromName = (name: string) => {
+      const colors = [
+        '#FF5733', '#33FF57', '#3357FF', '#FF33A8', 
+        '#33FFF5', '#FF5733', '#C733FF', '#FFD133',
+        '#8C33FF', '#FF336E', '#33FFEC', '#FF8633'
+      ];
+      
+      // Simple hash function to get a number from the name
+      let hash = 0;
+      for (let i = 0; i < name.length; i++) {
+        hash = name.charCodeAt(i) + ((hash << 5) - hash);
+      }
+      
+      // Use the hash to pick a color
+      const index = Math.abs(hash) % colors.length;
+      return colors[index];
+    };
+  
+    // Get the first letter of user's name or a fallback
+    const getInitial = (name: string) => {
+      if (!name || name.length === 0) return '?';
+      return name.charAt(0).toUpperCase();
+    };
+  
+    // Check if the profile picture exists and is valid
+    const hasValidProfilePicture = Boolean(profile.profile_picture && profile.profile_picture.length > 0);
+  
   // Close on escape key
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -34,8 +62,6 @@ export default function ProfileModal({ profile, isOpen, onClose }: ProfileModalP
       document.body.style.overflow = "auto"
     }
   }, [isOpen])
-
-  if (!profile) return null
 
   return (
     <AnimatePresence>
@@ -84,11 +110,37 @@ export default function ProfileModal({ profile, isOpen, onClose }: ProfileModalP
               <div className="pt-8 px-8 pb-4 relative z-10 flex flex-col md:flex-row gap-6 items-center md:items-start">
                 {/* Profile image */}
                 <div className="w-28 h-28 rounded-full border-4 border-[#0ff] shadow-[0_0_15px_rgba(0,255,255,0.5)] overflow-hidden flex-shrink-0">
-                  <img
-                    src={profile.profilePic || catpfp.src}
-                    alt={profile.name}
-                    className="w-full h-full object-cover"
-                  />
+                  <div className="w-full h-full rounded-full overflow-hidden border-2 border-[#0ff] relative">
+                              {hasValidProfilePicture ? (
+                                <Image
+                                  src={profile.profile_picture}
+                                  alt={profile.name}
+                                  fill
+                                  className="object-cover"
+                                  unoptimized={typeof profile.profile_picture === 'string' && profile.profile_picture.startsWith('http')}
+                                  onError={(e) => {
+                                    // On error, show the letter avatar instead
+                                    const target = e.target as HTMLImageElement;
+                                    target.style.display = 'none';
+                                    const parent = target.parentElement;
+                                    if (parent) {
+                                      const letterDiv = document.createElement('div');
+                                      letterDiv.className = 'w-full h-full flex items-center justify-center text-3xl font-bold text-white';
+                                      letterDiv.style.backgroundColor = getColorFromName(profile.name || 'User');
+                                      letterDiv.textContent = getInitial(profile.name || 'User');
+                                      parent.appendChild(letterDiv);
+                                    }
+                                  }}
+                                />
+                              ) : (
+                                <div 
+                                  className="w-full h-full flex items-center justify-center text-3xl font-bold text-white"
+                                  style={{ backgroundColor: getColorFromName(profile.name || 'User') }}
+                                >
+                                  {getInitial(profile.name || 'User')}
+                                </div>
+                              )}
+                            </div>
                 </div>
 
                 {/* Basic info */}

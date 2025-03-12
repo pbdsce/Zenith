@@ -7,6 +7,19 @@ export async function GET() {
     const querySnapshot = await getDocs(collection(db, "registrations"));
     const users = querySnapshot.docs.map((doc) => {
       const data = doc.data();
+      const returnObj = {  uid: doc.id, // Always use doc.id for consistency
+        name: data.name,
+        email: data.email,
+        phone: data.phone,
+        resume_link: data.resume_link,
+        college_name: data.college_name,
+        bio: data.bio,
+        profile_picture: data.profile_picture,
+        upVote: data.upVote 
+      }
+
+      console.log("REturned object is : ", returnObj);
+      
       return {
         uid: doc.id, // Always use doc.id for consistency
         name: data.name,
@@ -15,6 +28,7 @@ export async function GET() {
         resume_link: data.resume_link,
         college_name: data.college_name,
         bio: data.bio,
+        profile_picture: data.profile_picture,
         upVote: data.upVote || 0, // Make consistent with upVote elsewhere
       };
     });

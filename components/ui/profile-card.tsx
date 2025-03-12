@@ -6,7 +6,8 @@ import { ThumbsUp, Github, Linkedin, ExternalLink } from "lucide-react"
 import type { Profile } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import catpfp from "@/public/images/catpfp.jpeg"
+import Image from "next/image"
+import FallbackProfilePic from "@/public/images/catpfp.jpeg"
 
 interface ProfileCardProps {
   profile: Profile
@@ -20,6 +21,34 @@ export default function ProfileCard({ profile, onSelect, upvoteProfile, hasUpvot
     e.stopPropagation()
     upvoteProfile(profile.id)
   }
+
+  // Generate a consistent color based on name
+  const getColorFromName = (name: string) => {
+    const colors = [
+      '#FF5733', '#33FF57', '#3357FF', '#FF33A8', 
+      '#33FFF5', '#FF5733', '#C733FF', '#FFD133',
+      '#8C33FF', '#FF336E', '#33FFEC', '#FF8633'
+    ];
+    
+    // Simple hash function to get a number from the name
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+      hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    
+    // Use the hash to pick a color
+    const index = Math.abs(hash) % colors.length;
+    return colors[index];
+  };
+
+  // Get the first letter of user's name or a fallback
+  const getInitial = (name: string) => {
+    if (!name || name.length === 0) return '?';
+    return name.charAt(0).toUpperCase();
+  };
+
+  // Check if the profile picture exists and is valid
+  const hasValidProfilePicture = Boolean(profile.profile_picture && profile.profile_picture.length > 0);
 
   return (
     <motion.div
@@ -37,12 +66,36 @@ export default function ProfileCard({ profile, onSelect, upvoteProfile, hasUpvot
     >
       <div className="p-5 flex gap-4">
         <div className="flex-shrink-0">
-          <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-[#0ff]">
-            <img
-              src={profile.profilePic || catpfp.src}
-              alt={profile.name}
-              className="w-full h-full object-cover"
-            />
+          <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-[#0ff] relative">
+            {hasValidProfilePicture ? (
+              <Image
+                src={profile.profile_picture}
+                alt={profile.name}
+                fill
+                className="object-cover"
+                unoptimized={typeof profile.profile_picture === 'string' && profile.profile_picture.startsWith('http')}
+                onError={(e) => {
+                  // On error, show the letter avatar instead
+                  const target = e.target as HTMLImageElement;
+                  target.style.display = 'none';
+                  const parent = target.parentElement;
+                  if (parent) {
+                    const letterDiv = document.createElement('div');
+                    letterDiv.className = 'w-full h-full flex items-center justify-center text-3xl font-bold text-white';
+                    letterDiv.style.backgroundColor = getColorFromName(profile.name || 'User');
+                    letterDiv.textContent = getInitial(profile.name || 'User');
+                    parent.appendChild(letterDiv);
+                  }
+                }}
+              />
+            ) : (
+              <div 
+                className="w-full h-full flex items-center justify-center text-3xl font-bold text-white"
+                style={{ backgroundColor: getColorFromName(profile.name || 'User') }}
+              >
+                {getInitial(profile.name || 'User')}
+              </div>
+            )}
           </div>
         </div>
 

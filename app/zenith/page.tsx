@@ -10,6 +10,7 @@ import { Timeline } from "@/components/timeline";
 import { SpaceFooter } from "@/components/footer";
 import Events from "@/components/events";
 import { StarsBackground } from "@/components/ui/stars-background";
+import { Achievements } from "@/components/achievements";
 import NavButtons from "@/components/navbar";
 import CountdownTimer from "@/components/ui/countdown-timer";
 
@@ -60,6 +61,9 @@ export default function ZenithPage() {
         </section>
         <section className="relative">
           <Brief />
+        </section>
+        <section className="relative">
+          <Achievements />
         </section>
         <section className="relative">
           <SpaceFooter />
