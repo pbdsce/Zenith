@@ -105,9 +105,9 @@ export default function ProfileCard({ profile, onSelect, upvoteProfile, hasUpvot
 
           <div className="flex items-center justify-between mt-2">
             <div className="flex gap-2">
-              {profile.githubLink && (
+              {profile.github_link && (
                 <a
-                  href={profile.githubLink}
+                  href={profile.github_link}
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={(e) => e.stopPropagation()}
@@ -116,9 +116,9 @@ export default function ProfileCard({ profile, onSelect, upvoteProfile, hasUpvot
                   <Github size={18} />
                 </a>
               )}
-              {profile.linkedinLink && (
+              {profile.linkedin_link && (
                 <a
-                  href={profile.linkedinLink}
+                  href={profile.linkedin_link}
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={(e) => e.stopPropagation()}
@@ -127,9 +127,9 @@ export default function ProfileCard({ profile, onSelect, upvoteProfile, hasUpvot
                   <Linkedin size={18} />
                 </a>
               )}
-              {profile.portfolioLink && (
+              {profile.portfolio_link && (
                 <a
-                  href={profile.portfolioLink}
+                  href={profile.portfolio_link}
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={(e) => e.stopPropagation()}

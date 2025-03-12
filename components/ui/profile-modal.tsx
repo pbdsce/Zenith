@@ -149,9 +149,9 @@ export default function ProfileModal({ profile, isOpen, onClose }: ProfileModalP
                   <p className="text-xl text-gray-300 mb-3">{profile.college}</p>
 
                   <div className="flex flex-wrap gap-2 justify-center md:justify-start">
-                    {profile.githubLink && (
+                    {profile.github_link && (
                       <a
-                        href={profile.githubLink}
+                        href={profile.github_link}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center gap-1.5 bg-gray-800 hover:bg-gray-700 text-white px-3 py-1.5 rounded-full text-sm transition-colors"
@@ -161,9 +161,9 @@ export default function ProfileModal({ profile, isOpen, onClose }: ProfileModalP
                       </a>
                     )}
 
-                    {profile.linkedinLink && (
+                    {profile.linkedin_link && (
                       <a
-                        href={profile.linkedinLink}
+                        href={profile.linkedin_link}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center gap-1.5 bg-gray-800 hover:bg-gray-700 text-white px-3 py-1.5 rounded-full text-sm transition-colors"
@@ -173,9 +173,9 @@ export default function ProfileModal({ profile, isOpen, onClose }: ProfileModalP
                       </a>
                     )}
 
-                    {profile.portfolioLink && (
+                    {profile.portfolio_link && (
                       <a
-                        href={profile.portfolioLink}
+                        href={profile.portfolio_link}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center gap-1.5 bg-gray-800 hover:bg-gray-700 text-white px-3 py-1.5 rounded-full text-sm transition-colors"
@@ -185,9 +185,9 @@ export default function ProfileModal({ profile, isOpen, onClose }: ProfileModalP
                       </a>
                     )}
 
-                    {profile.resumeLink && (
+                    {profile.resume_link && (
                       <a
-                        href={profile.resumeLink}
+                        href={profile.resume_link}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center gap-1.5 bg-[#0a3333] hover:bg-[#0a4444] text-white px-3 py-1.5 rounded-full text-sm transition-colors"
@@ -210,11 +210,11 @@ export default function ProfileModal({ profile, isOpen, onClose }: ProfileModalP
                 {/* Bio */}
                 <div>
                   <h3 className="text-xl font-semibold text-[#0ff] mb-3">About</h3>
-                  <p className="text-gray-300 leading-relaxed">{profile.shortBio}</p>
+                  <p className="text-gray-300 leading-relaxed">{profile.bio}</p>
                 </div>
 
                 {/* Competitive Programming */}
-                {((profile.cpProfiles && profile.cpProfiles.length > 0) || profile.leetcodeProfile) && (
+                {((profile.competitive_profiles && profile.competitive_profiles.length > 0) || profile.leetcode_profile) && (
                   <div>
                     <h3 className="text-xl font-semibold text-[#0ff] mb-3 flex items-center gap-2">
                       <Code className="text-[#0ff]" size={20} />
@@ -222,9 +222,9 @@ export default function ProfileModal({ profile, isOpen, onClose }: ProfileModalP
                     </h3>
 
                     <div className="space-y-4">
-                      {profile.leetcodeProfile && (
+                      {profile.leetcode_profile && (
                         <a
-                          href={profile.leetcodeProfile}
+                          href={profile.leetcode_profile}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="flex items-center gap-3 bg-gray-800/50 hover:bg-gray-800 p-3 rounded-lg transition-colors"
@@ -240,12 +240,12 @@ export default function ProfileModal({ profile, isOpen, onClose }: ProfileModalP
                         </a>
                       )}
 
-                      {profile.cpProfiles && profile.cpProfiles.length > 0 && (
+                      {profile.competitive_profiles && profile.competitive_profiles.length > 0 && (
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          {profile.cpProfiles.map((link, index) => (
+                          {/* {profile.competitive_profiles.map((link, index) => ( */}
                             <a
-                              key={index}
-                              href={link}
+                              // key={index}
+                              href={profile.competitive_profiles}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="flex items-center gap-3 bg-gray-800/50 hover:bg-gray-800 p-3 rounded-lg transition-colors"
@@ -254,12 +254,12 @@ export default function ProfileModal({ profile, isOpen, onClose }: ProfileModalP
                                 <span className="text-[#0ff] font-bold">CP</span>
                               </div>
                               <div>
-                                <h4 className="font-medium text-white">CP Profile {index + 1}</h4>
-                                <p className="text-sm text-gray-400 truncate max-w-[150px]">{link}</p>
+                                {/* <h4 className="font-medium text-white">CP Profile {index + 1}</h4> */}
+                                <p className="text-sm text-gray-400 truncate max-w-[150px]">{profile.competitive_profiles}</p>
                               </div>
                               <ExternalLink size={16} className="ml-auto text-gray-500" />
                             </a>
-                          ))}
+                          {/* ))} */}
                         </div>
                       )}
                     </div>
@@ -267,7 +267,7 @@ export default function ProfileModal({ profile, isOpen, onClose }: ProfileModalP
                 )}
 
                 {/* CTF Profiles */}
-                {profile.ctfProfileLinks && profile.ctfProfileLinks.length > 0 && (
+                {/* {profile.ctf_profile && profile.ctf_profile.length > 0 && ( */}
                   <div>
                     <h3 className="text-xl font-semibold text-[#0ff] mb-3 flex items-center gap-2">
                       <Shield className="text-[#0ff]" size={20} />
@@ -275,10 +275,10 @@ export default function ProfileModal({ profile, isOpen, onClose }: ProfileModalP
                     </h3>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {profile.ctfProfileLinks.map((link, index) => (
+                      {/* {profile.ctf_profile.map((link, index) => ( */}
                         <a
-                          key={index}
-                          href={link}
+                          // key={index}
+                          href={profile.ctf_profile}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="flex items-center gap-3 bg-gray-800/50 hover:bg-gray-800 p-3 rounded-lg transition-colors"
@@ -287,18 +287,18 @@ export default function ProfileModal({ profile, isOpen, onClose }: ProfileModalP
                             <span className="text-[#0ff] font-bold">CTF</span>
                           </div>
                           <div>
-                            <h4 className="font-medium text-white">CTF Profile {index + 1}</h4>
-                            <p className="text-sm text-gray-400 truncate max-w-[150px]">{link}</p>
+                            <h4 className="font-medium text-white">CTF Profile</h4>
+                            <p className="text-sm text-gray-400 truncate max-w-[150px]">{profile.ctf_profile}</p>
                           </div>
                           <ExternalLink size={16} className="ml-auto text-gray-500" />
                         </a>
-                      ))}
+                      {/* // ))} */}
                     </div>
                   </div>
-                )}
+                {/* )} */}
 
                 {/* Data Science */}
-                {profile.kaggleLink && (
+                {profile.kaggle_link && (
                   <div>
                     <h3 className="text-xl font-semibold text-[#0ff] mb-3 flex items-center gap-2">
                       <Database className="text-[#0ff]" size={20} />
@@ -306,7 +306,7 @@ export default function ProfileModal({ profile, isOpen, onClose }: ProfileModalP
                     </h3>
 
                     <a
-                      href={profile.kaggleLink}
+                      href={profile.kaggle_link}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex items-center gap-3 bg-gray-800/50 hover:bg-gray-800 p-3 rounded-lg transition-colors"
@@ -324,7 +324,7 @@ export default function ProfileModal({ profile, isOpen, onClose }: ProfileModalP
                 )}
 
                 {/* Hackathons */}
-                {profile.devfolioLink && (
+                {profile.devfolio_link && (
                   <div>
                     <h3 className="text-xl font-semibold text-[#0ff] mb-3 flex items-center gap-2">
                       <Award className="text-[#0ff]" size={20} />
@@ -332,7 +332,7 @@ export default function ProfileModal({ profile, isOpen, onClose }: ProfileModalP
                     </h3>
 
                     <a
-                      href={profile.devfolioLink}
+                      href={profile.devfolio_link}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex items-center gap-3 bg-gray-800/50 hover:bg-gray-800 p-3 rounded-lg transition-colors"

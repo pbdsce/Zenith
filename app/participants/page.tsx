@@ -49,8 +49,17 @@ export default function Participants() {
               resumeLink: user.resume_link || "#",
               shortBio: user.bio, // Default value since it's not in the API
               upvotes: user.upVote || 0, // Default value
-              profile_picture: user.profile_picture || CatIcon
-              // Add any other required fields with default values
+              profile_picture: user.profile_picture || CatIcon,
+              // Add the additional fields
+              leetcode_profile: user.leetcode_profile || null,
+              github_link: user.github_link || null,
+              linkedin_link: user.linkedin_link || null,
+              competitive_profile: user.competitive_profile || null,
+              ctf_profile: user.ctf_profile || null,
+              kaggle_link: user.kaggle_link || null,
+              devfolio_link: user.devfolio_link || null,
+              portfolio_link: user.portfolio_link || null,
+              status: user.status || "pending"
             })
           );
 
@@ -234,7 +243,7 @@ export default function Participants() {
         (profile) =>
           (profile.name?.toLowerCase().includes(searchTerm.toLowerCase()) || false) ||
           (profile.college?.toLowerCase().includes(searchTerm.toLowerCase()) || false) ||
-          (profile.shortBio?.toLowerCase().includes(searchTerm.toLowerCase()) || false)
+          (profile.bio?.toLowerCase().includes(searchTerm.toLowerCase()) || false)
       );
     }
 

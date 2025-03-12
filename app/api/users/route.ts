@@ -15,9 +15,17 @@ export async function GET() {
         college_name: data.college_name,
         bio: data.bio,
         profile_picture: data.profile_picture,
-        upVote: data.upVote 
+        upVote: data.upVote,
+        leetcode_profile: data.leetcode_profile || null,
+        github_link: data.github_link || null,
+        linkedin_link: data.linkedin_link || null,
+        competitive_profile: data.competitive_profile || null,
+        ctf_profile: data.ctf_profile || null,
+        kaggle_link: data.kaggle_link || null,
+        devfolio_link: data.devfolio_link || null,
+        portfolio_link: data.portfolio_link || null,
+        status: "pending",
       }
-
       console.log("REturned object is : ", returnObj);
       
       return {
@@ -28,8 +36,18 @@ export async function GET() {
         resume_link: data.resume_link,
         college_name: data.college_name,
         bio: data.bio,
+        age: data.age,
         profile_picture: data.profile_picture,
         upVote: data.upVote || 0, // Make consistent with upVote elsewhere
+        leetcode_profile: data.leetcode_profile || null,
+        github_link: data.github_link || null,
+        linkedin_link: data.linkedin_link || null,
+        competitive_profile: data.competitive_profile || null,
+        ctf_profile: data.ctf_profile || null,
+        kaggle_link: data.kaggle_link || null,
+        devfolio_link: data.devfolio_link || null,
+        portfolio_link: data.portfolio_link || null,
+        status: "pending",
       };
     });
 
