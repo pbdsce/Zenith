@@ -15,6 +15,7 @@ import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import Link from "next/link";
 import NavButtons from "@/components/navbar";
+import { useAuth } from "@/hooks/useAuth";
 
 // Add CSS for shake animation
 const shakeAnimation = {
@@ -49,6 +50,7 @@ export default function Signup() {
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
+  const { register } = useAuth(); // Add useAuth hook
   
   const countryCodes = [
     { value: "+91", label: "+91 (India)" },
@@ -331,8 +333,8 @@ export default function Signup() {
     formData.append('leetcode_profile', leetcodeProfile);
     formData.append('github_link', githubLink);
     formData.append('linkedin_link', linkedinLink);
-    formData.append('cp_profiles', cpProfiles);
-    formData.append('ctf_profile_links', ctfProfileLinks);
+    formData.append('competitive_profile', cpProfiles);
+    formData.append('ctf_profile', ctfProfileLinks);
     formData.append('kaggle_link', kaggleLink);
     formData.append('devfolio_link', devfolioLink);
     formData.append('portfolio_link', portfolioLink);
@@ -343,36 +345,29 @@ export default function Signup() {
     formData.append('is_custom_college', isCustomCollege.toString());
   
     try {
-      const response = await fetch('/api/registration', {
-        method: 'POST',
-        body: formData,
+      // Replace direct fetch with register function from useAuth hook
+      const userId = await register(formData);
+      
+      toast.success(`Account created successfully for ${email}!`, {
+        position: "top-center",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+        theme: "dark",
+        style: {
+          background: "#1a1a2e",
+          borderLeft: "4px solid #2ad8db",
+          color: "#fff",
+        },
       });
-  
-      const data = await response.json();
-  
-      if (response.ok) {
-        toast.success(`Account created successfully for ${email}!`, {
-          position: "top-center",
-          autoClose: 3000,
-          hideProgressBar: false,
-          closeOnClick: true,
-          pauseOnHover: true,
-          draggable: true,
-          progress: undefined,
-          theme: "dark",
-          style: {
-            background: "#1a1a2e",
-            borderLeft: "4px solid #2ad8db",
-            color: "#fff",
-          },
-        });
-  
-        setTimeout(() => {
-          router.push('/');
-        }, 2000);
-      } else {
-        throw new Error(data.message || 'Registration failed');
-      }
+
+      // User is already logged in via useAuth, redirect to dashboard
+      setTimeout(() => {
+        router.push('/participants'); // Redirect to dashboard instead of home
+      }, 2000);
     } catch (error) {
       console.error('Registration error:', error);
       setError(error instanceof Error ? error.message : 'An error occurred during registration');

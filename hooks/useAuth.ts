@@ -18,6 +18,7 @@ interface UseAuthReturn {
   isAdmin: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
+  register: (formData: FormData) => Promise<string>;
   logout: () => void;
   refreshUser: () => Promise<void>;
 }
@@ -65,6 +66,55 @@ export function useAuth(): UseAuthReturn {
       setUser(data.user);
     } catch (error) {
       console.error('Login failed:', error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Register function
+  const register = async (formData: FormData): Promise<string> => {
+    setIsLoading(true);
+    
+    try {
+      const response = await fetch('/api/registration', {
+        method: 'POST',
+        body: formData
+      });
+      
+      const data = await response.json();
+      
+      if (data.status !== 'success') {
+        throw new Error(data.message || 'Registration failed');
+      }
+      
+      // Create user object from registration data
+      const newUser: AuthUser = {
+        uid: data.id,
+        // Remove authUid or update the AuthUser type in auth-storage.ts
+        email: formData.get('email') as string,
+        name: formData.get('name') as string,
+        isAdmin: false,
+        profile_picture: data.profile_picture || '',  // Add default value
+        status: data.status || 'active',  // Add default value
+        // Include other user properties as needed
+      };
+
+      // Create auth data object
+      const authData: AuthData = {
+        user: newUser,
+        token: data.token || '' // If your API returns a token
+      };
+      
+      // Store auth data in local storage
+      storeAuthData(authData);
+      
+      // Update user state
+      setUser(newUser);
+      
+      return data.id;
+    } catch (error) {
+      console.error('Registration failed:', error);
       throw error;
     } finally {
       setIsLoading(false);
@@ -125,6 +175,7 @@ export function useAuth(): UseAuthReturn {
     isAdmin: user?.isAdmin || false,
     isLoading,
     login,
+    register,
     logout,
     refreshUser
   };
