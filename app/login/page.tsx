@@ -11,6 +11,8 @@ import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { useAuth } from '@/hooks/useAuth'; // Import your existing auth hook
 import Link from "next/link";
+import { Eye, EyeOff } from "lucide-react";
+import NavButtons from "@/components/navbar";
 
 // Add CSS for shake animation
 const shakeAnimation = {
@@ -24,6 +26,7 @@ export default function Login() {
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
+  const [showPassword, setshowPassword] = useState(false);
   
   // Get the login function from your auth hook
   const { login } = useAuth();
@@ -114,12 +117,15 @@ export default function Login() {
       transition={{ duration: 0.8 }}
     >
       <div className="min-h-screen flex flex-col items-center justify-center relative p-4">
-        <Link href="/" className="absolute top-6 left-6 text-gray-400 hover:text-white transition-colors flex items-center gap-2 py-2 px-4 rounded-md hover:bg-gray-800/50 z-50">
+        <div className="fixed top-4 w-full  justify-end z-50">
+          <NavButtons disableFixedPositioning={true} />
+        </div>
+        {/* <Link href="/" className="absolute top-6 left-6 text-gray-400 hover:text-white transition-colors flex items-center gap-2 py-2 px-4 rounded-md hover:bg-gray-800/50 z-50">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M19 12H5M12 19l-7-7 7-7"/>
           </svg>
           Back to Home
-        </Link>
+        </Link> */}
         
         <StarsBackground starDensity={0.0002} allStarsTwinkle={true} />
         {/* Add ToastContainer for notifications */}
@@ -194,7 +200,7 @@ export default function Login() {
                 >
                   <Input 
                     id="password" 
-                    type="password" 
+                    type={showPassword ? "text" : "password"}
                     placeholder="Enter Password"
                     value={password}
                     onChange={(e) => {
@@ -207,6 +213,15 @@ export default function Login() {
                     className={`bg-transparent border ${passwordError ? 'border-red-500' : 'border-gray-300'}`}
                     required
                   />
+                  <motion.button
+                    type="button"
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5"
+                    onClick={() => setshowPassword(!showPassword)}
+                    whileHover={{ scale: 1.2 }}
+                    whileTap={{ scale: 0.9 }}
+                  >
+                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                  </motion.button>
                 </motion.div>
               </div>
               <br />

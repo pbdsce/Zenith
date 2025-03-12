@@ -55,7 +55,7 @@ export function NavButtons({ disableFixedPositioning = false }) {
         {isLoggedIn ? (
           <Link href="/profile">
             <button className="cybr-btn">
-              Settings
+              Profile
             </button>
           </Link>
         ) : (

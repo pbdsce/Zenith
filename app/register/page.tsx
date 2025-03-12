@@ -1,9 +1,5 @@
 "use client";
 
-//trigger-rebuild
-// import { auth, db } from '@/lib/firebase/config';
-// import { createUserWithEmailAndPassword } from 'firebase/auth';
-// import { doc, setDoc } from 'firebase/firestore';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,11 +12,108 @@ import 'react-toastify/dist/ReactToastify.css';
 import Link from "next/link";
 import NavButtons from "@/components/navbar";
 import { useAuth } from "@/hooks/useAuth";
+import { Eye, EyeOff, X, Plus } from "lucide-react";
 
 // Add CSS for shake animation
 const shakeAnimation = {
   x: [-10, 10, -10, 10, -5, 5, -2, 2, 0],
   transition: { duration: 0.5 }
+};
+
+// Multi-link input component for CP and CTF profiles
+const MultiLinkInput = ({ 
+  links, 
+  setLinks, 
+  placeholder,
+  hasError,
+  setHasError
+}: { 
+  links: string[], 
+  setLinks: (links: string[]) => void,
+  placeholder: string,
+  hasError: boolean[],
+  setHasError: (errors: boolean[]) => void
+}) => {
+  const addLink = () => {
+    setLinks([...links, '']);
+    setHasError([...hasError, false]);
+  };
+
+  const removeLink = (index: number) => {
+    const newLinks = [...links];
+    newLinks.splice(index, 1);
+    setLinks(newLinks);
+    
+    const newErrors = [...hasError];
+    newErrors.splice(index, 1);
+    setHasError(newErrors);
+  };
+
+  const updateLink = (index: number, value: string) => {
+    const newLinks = [...links];
+    newLinks[index] = value;
+    setLinks(newLinks);
+    
+    // Clear error when typing
+    if (hasError[index]) {
+      const newErrors = [...hasError];
+      newErrors[index] = false;
+      setHasError(newErrors);
+    }
+  };
+
+  const isValidUrl = (url: string): boolean => {
+    try {
+      new URL(url);
+      return true;
+    } catch (err) {
+      return false;
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      {links.map((link, index) => (
+        <div key={index} className="flex items-center space-x-2">
+          <motion.div 
+            className="relative flex-1"
+            whileHover={{ scale: 1.02 }}
+            animate={hasError[index] ? shakeAnimation : undefined}
+          >
+            <Input
+              type="url" 
+              value={link}
+              onChange={(e) => updateLink(index, e.target.value)}
+              placeholder={`${placeholder} ${index + 1}`}
+              className={`bg-transparent border ${hasError[index] ? 'border-red-500' : 'border-gray-300'}`}
+            />
+            {hasError[index] && (
+              <p className="text-xs text-red-500 mt-1">Please enter a valid URL</p>
+            )}
+          </motion.div>
+          <Button 
+            type="button"
+            variant="outline"
+            size="icon"
+            onClick={() => removeLink(index)}
+            className="flex-shrink-0 bg-transparent border-border border-gray-300"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+      ))}
+      <Button
+        type="button"
+        variant="outline" 
+        size="sm"
+        onClick={addLink}
+        className="mt-2 bg-transparent border-border border-gray-300"
+      >
+        <Plus className="h-4 w-4 mr-2" />
+        Add {placeholder}
+      </Button>
+    </div>
+  );
 };
 
 export default function Signup() {
@@ -37,8 +130,8 @@ export default function Signup() {
   const [leetcodeProfile, setLeetcodeProfile] = useState("");
   const [githubLink, setGithubLink] = useState("");
   const [linkedinLink, setLinkedinLink] = useState("");
-  const [cpProfiles, setCpProfiles] = useState("");
-  const [ctfProfileLinks, setCtfProfileLinks] = useState("");
+  const [cpProfiles, setCpProfiles] = useState<string[]>(['']);
+  const [ctfProfileLinks, setCtfProfileLinks] = useState<string[]>(['']);
   const [kaggleLink, setKaggleLink] = useState("");
   const [devfolioLink, setDevfolioLink] = useState("");
   const [portfolioLink, setPortfolioLink] = useState("");
@@ -47,11 +140,13 @@ export default function Signup() {
   const [collegeName, setCollegeName] = useState("");
   const [profilePic, setProfilePic] = useState<File | null>(null);
   const [referralCode, setReferralCode] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfPassword, setshowConfPassword] = useState(false);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
-  const { register } = useAuth(); // Add useAuth hook
-  
+  const { register } = useAuth();
+
   const countryCodes = [
     { value: "+91", label: "+91 (India)" },
     { value: "+1", label: "+1 (USA/Canada)" },
@@ -62,6 +157,7 @@ export default function Signup() {
     { value: "+33", label: "+33 (France)" },
     { value: "+81", label: "+81 (Japan)" },
   ];
+  
   // Add validation states
   const [nameError, setNameError] = useState(false);
   const [emailError, setEmailError] = useState(false);
@@ -69,6 +165,15 @@ export default function Signup() {
   const [confirmPasswordError, setConfirmPasswordError] = useState(false);
   const [phoneError, setPhoneError] = useState(false);
   const [resumeError, setResumeError] = useState(false);
+  const [githubError, setGithubError] = useState(false);
+  const [linkedinError, setLinkedinError] = useState(false);
+  const [leetcodeError, setLeetcodeError] = useState(false);
+  const [portfolioError, setPortfolioError] = useState(false);
+  const [kaggleError, setKaggleError] = useState(false);
+  const [devfolioError, setDevfolioError] = useState(false);
+  const [cpProfilesErrors, setCpProfilesErrors] = useState<boolean[]>([false]);
+  const [ctfProfilesErrors, setCtfProfilesErrors] = useState<boolean[]>([false]);
+  const [ageError, setAgeError] = useState(false);
 
   // Add reference to file input element
   const resumeInputRef = useRef<HTMLInputElement>(null);
@@ -81,6 +186,24 @@ export default function Signup() {
   const [isCustomCollege, setIsCustomCollege] = useState(false);
   const [dropdownVisible, setDropdownVisible] = useState(false);
   const collegeDropdownRef = useRef<HTMLDivElement>(null);
+
+  // URL validation patterns
+  const githubUrlPattern = /^https?:\/\/(www\.)?github\.com\/[a-zA-Z0-9_-]+\/?$/;
+  const linkedinUrlPattern = /^https?:\/\/(www\.)?linkedin\.com\/(in|company)\/[a-zA-Z0-9_-]+\/?$/;
+  const leetcodeUrlPattern = /^https?:\/\/(www\.)?leetcode\.com\/[a-zA-Z0-9_-]+\/?$/;
+  const kaggleUrlPattern = /^https?:\/\/(www\.)?kaggle\.com\/[a-zA-Z0-9_-]+\/?$/;
+  const devfolioUrlPattern = /^https?:\/\/(www\.)?devfolio\.co\/@?[a-zA-Z0-9_-]+\/?$/;
+  
+  // Generic URL validation function
+  const isValidUrl = (url: string): boolean => {
+    if (!url) return true; // Allow empty values for optional fields
+    try {
+      new URL(url);
+      return true;
+    } catch (err) {
+      return false;
+    }
+  };
 
   useEffect(() => {
     const fetchColleges = async () => {
@@ -265,6 +388,129 @@ export default function Signup() {
     return isValid;
   };
 
+  const validateStep3 = () => {
+    let isValid = true;
+    
+    // Reset error states
+    setGithubError(false);
+    setLinkedinError(false);
+    setLeetcodeError(false);
+    setPortfolioError(false);
+    
+    // Validate GitHub link
+    if (!githubLink.trim()) {
+      setGithubError(true);
+      setError("GitHub profile link is required");
+      isValid = false;
+    } else if (!githubUrlPattern.test(githubLink)) {
+      setGithubError(true);
+      setError("Please enter a valid GitHub profile URL (https://github.com/username)");
+      isValid = false;
+    }
+    
+    // Validate LinkedIn link
+    if (!linkedinLink.trim()) {
+      setLinkedinError(true);
+      setError("LinkedIn profile link is required");
+      isValid = false;
+    } else if (!linkedinUrlPattern.test(linkedinLink)) {
+      setLinkedinError(true);
+      setError("Please enter a valid LinkedIn profile URL (https://linkedin.com/in/username)");
+      isValid = false;
+    }
+    
+    // Validate LeetCode link (optional)
+    if (leetcodeProfile && !leetcodeUrlPattern.test(leetcodeProfile)) {
+      setLeetcodeError(true);
+      setError("Please enter a valid LeetCode profile URL (https://leetcode.com/username)");
+      isValid = false;
+    }
+    
+    // Validate Portfolio link (optional)
+    if (portfolioLink && !isValidUrl(portfolioLink)) {
+      setPortfolioError(true);
+      setError("Please enter a valid portfolio URL");
+      isValid = false;
+    }
+    
+    return isValid;
+  };
+
+  const validateStep4 = () => {
+    let isValid = true;
+    
+    // Reset error states
+    setKaggleError(false);
+    setDevfolioError(false);
+    const newCpErrors = cpProfiles.map(() => false);
+    const newCtfErrors = ctfProfileLinks.map(() => false);
+    setCpProfilesErrors(newCpErrors);
+    setCtfProfilesErrors(newCtfErrors);
+    
+    // Validate CP profiles
+    cpProfiles.forEach((link, index) => {
+      if (link && !isValidUrl(link)) {
+        newCpErrors[index] = true;
+        isValid = false;
+      }
+    });
+    
+    // Validate CTF profiles
+    ctfProfileLinks.forEach((link, index) => {
+      if (link && !isValidUrl(link)) {
+        newCtfErrors[index] = true;
+        isValid = false;
+      }
+    });
+    
+    // Update error states
+    setCpProfilesErrors(newCpErrors);
+    setCtfProfilesErrors(newCtfErrors);
+    
+    // Validate Kaggle link (optional)
+    if (kaggleLink && !kaggleUrlPattern.test(kaggleLink)) {
+      setKaggleError(true);
+      setError("Please enter a valid Kaggle profile URL (https://kaggle.com/username)");
+      isValid = false;
+    }
+    
+    // Validate Devfolio link (optional)
+    if (devfolioLink && !devfolioUrlPattern.test(devfolioLink)) {
+      setDevfolioError(true);
+      setError("Please enter a valid Devfolio profile URL (https://devfolio.co/@username)");
+      isValid = false;
+    }
+    
+    if (!isValid && !error) {
+      setError("Please fix the validation errors in the profile links");
+    }
+    
+    return isValid;
+  };
+
+  const validateStep5 = () => {
+    let isValid = true;
+    
+    // Reset error states
+    setAgeError(false);
+    
+    // Validate age (required)
+    if (!age.trim()) {
+      setAgeError(true);
+      setError("Age is required");
+      isValid = false;
+    } else {
+      const ageNum = parseInt(age);
+      if (isNaN(ageNum) || ageNum < 1 || ageNum > 120) {
+        setAgeError(true);
+        setError("Please enter a valid age between 1 and 120");
+        isValid = false;
+      }
+    }
+    
+    return isValid;
+  };
+
   const handleResumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files[0]) {
@@ -302,9 +548,11 @@ export default function Signup() {
       const isValid = validateStep2();
       if (isValid) setStep(2);
     } else if (step === 2) {
-      setStep(3);
+      const isValid = validateStep3();
+      if (isValid) setStep(3);
     } else if (step === 3) {
-      setStep(4);
+      const isValid = validateStep4();
+      if (isValid) setStep(4);
     }
   };
 
@@ -317,8 +565,11 @@ export default function Signup() {
   
     const step1Valid = validateStep1();
     const step2Valid = validateStep2();
+    const step3Valid = validateStep3();
+    const step4Valid = validateStep4();
+    const step5Valid = validateStep5();
     
-    if (!step1Valid || !step2Valid) {
+    if (!step1Valid || !step2Valid || !step3Valid || !step4Valid || !step5Valid) {
       setIsSubmitting(false);
       return;
     }
@@ -333,8 +584,8 @@ export default function Signup() {
     formData.append('leetcode_profile', leetcodeProfile);
     formData.append('github_link', githubLink);
     formData.append('linkedin_link', linkedinLink);
-    formData.append('competitive_profile', cpProfiles);
-    formData.append('ctf_profile', ctfProfileLinks);
+    formData.append('competitive_profiles', JSON.stringify(cpProfiles.filter(link => link.trim())));
+    formData.append('ctf_profiles', JSON.stringify(ctfProfileLinks.filter(link => link.trim())));
     formData.append('kaggle_link', kaggleLink);
     formData.append('devfolio_link', devfolioLink);
     formData.append('portfolio_link', portfolioLink);
@@ -384,16 +635,16 @@ export default function Signup() {
         >
     <div className="min-h-screen flex items-center justify-center relative p-4">
         {/* Navigation */}
-        <div className="fixed top-4 w-full px-4 flex justify-end z-50">
+        <div className="fixed top-4 w-full  justify-end z-50">
           <NavButtons disableFixedPositioning={true} />
         </div>
 
-        <Link href="/" className="absolute top-6 left-6 text-gray-400 hover:text-white transition-colors flex items-center gap-2 py-2 px-4 rounded-md hover:bg-gray-800/50 z-50">
+        {/* <Link href="/" className="absolute top-6 left-6 text-gray-400 hover:text-white transition-colors flex items-center gap-2 py-2 px-4 rounded-md hover:bg-gray-800/50 z-50">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M19 12H5M12 19l-7-7 7-7"/>
           </svg>
           Back to Home
-        </Link>
+        </Link> */}
         
         <StarsBackground starDensity={0.0002} allStarsTwinkle={true} />
         {/* Add ToastContainer for notifications */}
@@ -440,7 +691,7 @@ export default function Signup() {
           </div>
         )}
 
-        <form className="space-y-4" onSubmit={handleSubmit}>
+        <form className="space-y-4" onSubmit={handleSubmit} noValidate>
 
           {/* Step 1: Basic Information */}
           {step === 0 && (
@@ -498,7 +749,7 @@ export default function Signup() {
                 >
                   <Input 
                     id="password" 
-                    type="password" 
+                    type={showPassword ? "text" : "password"}
                     placeholder="Enter Password"
                     value={password}
                     onChange={(e) => {
@@ -511,7 +762,17 @@ export default function Signup() {
                     className={`bg-transparent border ${passwordError ? 'border-red-500' : 'border-gray-300'}`}
                     required
                   />
+                  <motion.button
+                    type="button"
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5"
+                    onClick={() => setShowPassword(!showPassword)}
+                    whileHover={{ scale: 1.2 }}
+                    whileTap={{ scale: 0.9 }}
+                  >
+                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                  </motion.button>
                 </motion.div>
+                
                 <p className="text-xs text-muted-foreground">Password must be at least 6 characters long</p>
               </div>
               
@@ -524,7 +785,7 @@ export default function Signup() {
                 >
                   <Input 
                     id="confirmPassword" 
-                    type="password" 
+                    type={showConfPassword ? "text" : "password"} 
                     placeholder="Confirm Password"
                     value={confirmPassword}
                     onChange={(e) => {
@@ -537,6 +798,15 @@ export default function Signup() {
                     className={`bg-transparent border ${confirmPasswordError ? 'border-red-500' : 'border-gray-300'}`}
                     required
                   />
+                  <motion.button
+                    type="button"
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5"
+                    onClick={() => setshowConfPassword(!showConfPassword)}
+                    whileHover={{ scale: 1.2 }}
+                    whileTap={{ scale: 0.9 }}
+                  >
+                    {showConfPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                  </motion.button>
                 </motion.div>
               </div>
               
@@ -552,7 +822,7 @@ export default function Signup() {
               <div className="space-y-2">
                 <Label htmlFor="phone">Phone Number <span className="text-red-500">*</span></Label>
                 <div className="flex gap-2">
-                  <motion.div whileHover={{ scale: 1.05 }} className="relative w-1/3">
+                  <motion.div whileHover={{ scale: 1.05 }} className="relative w-1/5">
                     <select 
                       id="stdCode"
                       value={stdCode}
@@ -580,27 +850,26 @@ export default function Signup() {
                       </svg>
                     </div>
                   </motion.div>
-                  <motion.div
-                    whileHover={{ scale: 1.05 }}
-                    className='relative w-2/3'
-                    animate={phoneError ? shakeAnimation : undefined}
-                  >
-                    <Input 
-                      id="phone" 
-                      type="tel"
-                      placeholder="Enter Phone Number"
-                      value={phone}
-                      onChange={(e) => {
-                        // Limit to 10 digits
-                        const input = e.target.value.replace(/\D/g, '').slice(0, 10);
-                        setPhone(input);
-                        if (phoneError) setPhoneError(false);
-                      }}
-                      className={`bg-transparent border ${phoneError ? 'border-red-500' : 'border-gray-300'}`}
-                      required
-                      maxLength={10}
-                    />
-                  </motion.div>
+                    <motion.div
+                      whileHover={{ scale: 1.05 }}
+                      className='relative w-4/5'
+                      animate={phoneError ? shakeAnimation : undefined}
+                    >
+                      <Input 
+                        id="phone" 
+                        type="tel"
+                        placeholder="XXXXX XXXXX"
+                        value={phone.replace(/(\d{5})(?=\d)/g, '$1 ')}
+                        onChange={(e) => {
+                          const input = e.target.value.replace(/\D/g, '').slice(0, 10);
+                          setPhone(input);
+                          if (phoneError) setPhoneError(false);
+                        }}
+                        className={`bg-transparent border tracking-widest ${phoneError ? 'border-red-500' : 'border-gray-300'}`}
+                        required
+                        maxLength={12}
+                      />
+                    </motion.div>
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">Your phone number will not be visible to the public</p>
               </div>
@@ -688,59 +957,113 @@ export default function Signup() {
                 <h3 className="text-lg font-medium text-center">Professional Profiles</h3>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="githubLink">GitHub Link</Label>
-                  <motion.div whileHover={{ scale: 1.05 }} className='relative'>
+                  <Label htmlFor="githubLink">GitHub Link <span className="text-red-500">*</span></Label>
+                  <motion.div 
+                    whileHover={{ scale: 1.05 }} 
+                    className='relative'
+                    animate={githubError ? shakeAnimation : undefined}
+                  >
                     <Input 
                       id="githubLink" 
                       type="text"
-                      placeholder="GitHub Profile URL"
+                      placeholder="GitHub Profile URL (e.g., https://github.com/username)"
                       value={githubLink}
-                      onChange={(e) => setGithubLink(e.target.value)}
-                      className="bg-transparent border border-gray-300"
+                      onChange={(e) => {
+                        setGithubLink(e.target.value);
+                        if (githubError) {
+                          setGithubError(false);
+                          setError("");
+                        }
+                      }}
+                      className={`bg-transparent border ${githubError ? 'border-red-500' : 'border-gray-300'}`}
+                      required
                     />
                   </motion.div>
+                  {githubError && !error && (
+                    <p className="text-xs text-red-500 mt-1">Valid GitHub profile link is required (https://github.com/username)</p>
+                  )}
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="linkedinLink">LinkedIn Link</Label>
-                  <motion.div whileHover={{ scale: 1.05 }} className='relative'>
+                  <Label htmlFor="linkedinLink">LinkedIn Link <span className="text-red-500">*</span></Label>
+                  <motion.div 
+                    whileHover={{ scale: 1.05 }} 
+                    className='relative'
+                    animate={linkedinError ? shakeAnimation : undefined}
+                  >
                     <Input 
                       id="linkedinLink" 
                       type="text"
-                      placeholder="LinkedIn Profile URL"
+                      placeholder="LinkedIn Profile URL (e.g., https://linkedin.com/in/username)"
                       value={linkedinLink}
-                      onChange={(e) => setLinkedinLink(e.target.value)}
-                      className="bg-transparent border border-gray-300"
+                      onChange={(e) => {
+                        setLinkedinLink(e.target.value);
+                        if (linkedinError) {
+                          setLinkedinError(false);
+                          setError("");
+                        }
+                      }}
+                      className={`bg-transparent border ${linkedinError ? 'border-red-500' : 'border-gray-300'}`}
+                      required
                     />
                   </motion.div>
+                  {linkedinError && !error && (
+                    <p className="text-xs text-red-500 mt-1">Valid LinkedIn profile link is required (https://linkedin.com/in/username)</p>
+                  )}
                 </div>
                 
                 <div className="space-y-2">
                   <Label htmlFor="leetcodeProfile">LeetCode Profile</Label>
-                  <motion.div whileHover={{ scale: 1.05 }} className='relative'>
+                  <motion.div 
+                    whileHover={{ scale: 1.05 }} 
+                    className='relative'
+                    animate={leetcodeError ? shakeAnimation : undefined}
+                  >
                     <Input 
                       id="leetcodeProfile" 
                       type="text"
-                      placeholder="LeetCode Profile URL"
+                      placeholder="LeetCode Profile URL (e.g., https://leetcode.com/username)"
                       value={leetcodeProfile}
-                      onChange={(e) => setLeetcodeProfile(e.target.value)}
-                      className="bg-transparent border border-gray-300"
+                      onChange={(e) => {
+                        setLeetcodeProfile(e.target.value);
+                        if (leetcodeError) {
+                          setLeetcodeError(false);
+                          setError("");
+                        }
+                      }}
+                      className={`bg-transparent border ${leetcodeError ? 'border-red-500' : 'border-gray-300'}`}
                     />
                   </motion.div>
+                  {leetcodeError && !error && (
+                    <p className="text-xs text-red-500 mt-1">Please enter a valid LeetCode profile URL</p>
+                  )}
                 </div>
                 
                 <div className="space-y-2">
                   <Label htmlFor="portfolioLink">Portfolio Link</Label>
-                  <motion.div whileHover={{ scale: 1.05 }} className='relative'>
+                  <motion.div 
+                    whileHover={{ scale: 1.05 }} 
+                    className='relative'
+                    animate={portfolioError ? shakeAnimation : undefined}
+                  >
                     <Input 
                       id="portfolioLink" 
                       type="text"
                       placeholder="Personal Portfolio URL"
                       value={portfolioLink}
-                      onChange={(e) => setPortfolioLink(e.target.value)}
-                      className="bg-transparent border border-gray-300"
+                      onChange={(e) => {
+                        setPortfolioLink(e.target.value);
+                        if (portfolioError) {
+                          setPortfolioError(false);
+                          setError("");
+                        }
+                      }}
+                      className={`bg-transparent border ${portfolioError ? 'border-red-500' : 'border-gray-300'}`}
                     />
                   </motion.div>
+                  {portfolioError && !error && (
+                    <p className="text-xs text-red-500 mt-1">Please enter a valid URL</p>
+                  )}
                 </div>
                 
                 <div className="flex justify-between mt-6">
@@ -762,59 +1085,79 @@ export default function Signup() {
                 <h3 className="text-lg font-medium text-center">Competition & Dev Profiles</h3>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="cpProfiles">CP Profiles</Label>
-                  <motion.div whileHover={{ scale: 1.05 }} className='relative'>
-                    <Input 
-                      id="cpProfiles" 
-                      type="text"
-                      placeholder="Competitive Programming Profiles"
-                      value={cpProfiles}
-                      onChange={(e) => setCpProfiles(e.target.value)}
-                      className="bg-transparent border border-gray-300"
-                    />
-                  </motion.div>
+                  <Label>Competitive Programming Profile Links</Label>
+                  <MultiLinkInput
+                    links={cpProfiles}
+                    setLinks={setCpProfiles}
+                    placeholder="CP Profile URL"
+                    hasError={cpProfilesErrors}
+                    setHasError={setCpProfilesErrors}
+                  />
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="ctfProfileLinks">CTF Profile Links</Label>
-                  <motion.div whileHover={{ scale: 1.05 }} className='relative'>
-                    <Input 
-                      id="ctfProfileLinks" 
-                      type="text"
-                      placeholder="CTF Profile Links"
-                      value={ctfProfileLinks}
-                      onChange={(e) => setCtfProfileLinks(e.target.value)}
-                      className="bg-transparent border border-gray-300"
-                    />
-                  </motion.div>
+                  <Label>CTF Profile Links</Label>
+                  <MultiLinkInput
+                    links={ctfProfileLinks}
+                    setLinks={setCtfProfileLinks}
+                    placeholder="CTF Profile URL"
+                    hasError={ctfProfilesErrors}
+                    setHasError={setCtfProfilesErrors}
+                  />
                 </div>
                 
                 <div className="space-y-2">
                   <Label htmlFor="kaggleLink">Kaggle Link</Label>
-                  <motion.div whileHover={{ scale: 1.05 }} className='relative'>
+                  <motion.div 
+                    whileHover={{ scale: 1.05 }} 
+                    className='relative'
+                    animate={kaggleError ? shakeAnimation : undefined}
+                  >
                     <Input 
                       id="kaggleLink" 
                       type="text"
-                      placeholder="Kaggle Profile URL"
+                      placeholder="Kaggle Profile URL (e.g., https://kaggle.com/username)"
                       value={kaggleLink}
-                      onChange={(e) => setKaggleLink(e.target.value)}
-                      className="bg-transparent border border-gray-300"
+                      onChange={(e) => {
+                        setKaggleLink(e.target.value);
+                        if (kaggleError) {
+                          setKaggleError(false);
+                          setError("");
+                        }
+                      }}
+                      className={`bg-transparent border ${kaggleError ? 'border-red-500' : 'border-gray-300'}`}
                     />
                   </motion.div>
+                  {kaggleError && !error && (
+                    <p className="text-xs text-red-500 mt-1">Please enter a valid Kaggle profile URL</p>
+                  )}
                 </div>
                 
                 <div className="space-y-2">
                   <Label htmlFor="devfolioLink">Devfolio Link</Label>
-                  <motion.div whileHover={{ scale: 1.05 }} className='relative'>
+                  <motion.div 
+                    whileHover={{ scale: 1.05 }} 
+                    className='relative'
+                    animate={devfolioError ? shakeAnimation : undefined}
+                  >
                     <Input 
                       id="devfolioLink" 
                       type="text"
-                      placeholder="Devfolio Profile URL"
+                      placeholder="Devfolio Profile URL (e.g., https://devfolio.co/@username)"
                       value={devfolioLink}
-                      onChange={(e) => setDevfolioLink(e.target.value)}
-                      className="bg-transparent border border-gray-300"
+                      onChange={(e) => {
+                        setDevfolioLink(e.target.value);
+                        if (devfolioError) {
+                          setDevfolioError(false);
+                          setError("");
+                        }
+                      }}
+                      className={`bg-transparent border ${devfolioError ? 'border-red-500' : 'border-gray-300'}`}
                     />
                   </motion.div>
+                  {devfolioError && !error && (
+                    <p className="text-xs text-red-500 mt-1">Please enter a valid Devfolio profile URL</p>
+                  )}
                 </div>
                 
                 <div className="flex justify-between mt-6">
@@ -837,22 +1180,34 @@ export default function Signup() {
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                    <Label htmlFor="age">Age</Label>
-                    <motion.div whileHover={{ scale: 1.05 }} className='relative'>
+                    <Label htmlFor="age">Age <span className="text-red-500">*</span></Label>
+                    <motion.div 
+                      whileHover={{ scale: 1.05 }} 
+                      className='relative'
+                      animate={ageError ? shakeAnimation : undefined}
+                    >
                       <Input 
                         id="age" 
                         type="number"
                         placeholder="Your Age"
                         value={age}
                         onChange={(e) => {
-                          const input = e.target.value.replace(/\D/g, '').slice(0, 2);
+                          const input = e.target.value.replace(/\D/g, '').slice(0, 3);
                           setAge(input);
+                          if (ageError) {
+                            setAgeError(false);
+                            setError("");
+                          }
                         }}
                         min="1"
-                        max="99"
-                        className="bg-transparent border border-gray-300"
+                        max="120"
+                        className={`bg-transparent border ${ageError ? 'border-red-500' : 'border-gray-300'}`}
+                        required
                       />
                     </motion.div>
+                    {ageError && !error && (
+                      <p className="text-xs text-red-500 mt-1">Please enter a valid age</p>
+                    )}
                     </div>
                   
                   <div className="space-y-2">
