@@ -148,14 +148,21 @@ export default function Signup() {
   const { register } = useAuth();
 
   const countryCodes = [
-    { value: "+91", label: "+91 (India)" },
-    { value: "+1", label: "+1 (USA/Canada)" },
-    { value: "+44", label: "+44 (UK)" },
-    { value: "+61", label: "+61 (Australia)" },
-    { value: "+86", label: "+86 (China)" },
-    { value: "+49", label: "+49 (Germany)" },
-    { value: "+33", label: "+33 (France)" },
-    { value: "+81", label: "+81 (Japan)" },
+    { value: "+91", label: "+91 - IN" },
+    { value: "+1", label: "+1 - US" },
+    { value: "+44", label: "+44 - GB" },
+    { value: "+61", label: "+61 - AU" },
+    { value: "+86", label: "+86 - CN" },
+    { value: "+49", label: "+49 - DE" },
+    { value: "+33", label: "+33 - FR" },
+    { value: "+81", label: "+81 - JP" },
+    { value: "+7", label: "+7 - RU" },
+    { value: "+82", label: "+82 - KR" },
+    { value: "+39", label: "+39 - IT" },
+    { value: "+34", label: "+34 - ES" },
+    { value: "+55", label: "+55 - BR" },
+    { value: "+31", label: "+31 - NL" },
+    { value: "+65", label: "+65 - SG" },
   ];
   
   // Add validation states
