@@ -24,7 +24,11 @@ import {
   ImageIcon,
   Download,
   Upload,
-  Loader2
+  Loader2,
+  Plus,
+  X,
+  Flag,
+  Trophy
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -64,6 +68,8 @@ interface UserProfile {
   profile_picture?: string | null;
   isAdmin?: boolean;
   status?: string;
+  ctf_profiles?: Array<{id: string, url: string}>;
+  cp_profiles?: Array<{id: string, url: string}>;
 }
 
 export default function ProfilePage() {
@@ -96,6 +102,12 @@ export default function ProfilePage() {
     }
   };
 
+  // New state for handling CTF and CP profiles
+  const [ctfProfiles, setCtfProfiles] = useState<Array<{id?: string, url: string}>>([])
+  const [cpProfiles, setCpProfiles] = useState<Array<{id?: string, url: string}>>([])
+  const [newCtfUrl, setNewCtfUrl] = useState('')
+  const [newCpUrl, setNewCpUrl] = useState('')
+
   // Redirect if not authenticated
   useEffect(() => {
     if (!isAuthenticated && !isLoading) {
@@ -123,6 +135,10 @@ export default function ProfilePage() {
         if (data.status === "success" && data.user) {
           setProfile(data.user)
           setFormData(data.user)
+          
+          // Initialize the CTF and CP profiles from the fetched data
+          setCtfProfiles(data.user.ctf_profiles || [])
+          setCpProfiles(data.user.cp_profiles || [])
         } else {
           toast({
             title: "Error",
@@ -346,6 +362,75 @@ export default function ProfilePage() {
     }
   }
 
+  // Functions to handle CTF and CP profiles
+  const addCtfProfile = () => {
+    if (!newCtfUrl.trim()) {
+      toast({
+        title: "Missing information",
+        description: "Please provide a profile URL",
+        variant: "destructive"
+      })
+      return
+    }
+    
+    // Simple URL validation
+    try {
+      new URL(newCtfUrl)
+    } catch (e) {
+      toast({
+        title: "Invalid URL",
+        description: "Please enter a valid URL including http:// or https://",
+        variant: "destructive"
+      })
+      return
+    }
+    
+    const newProfile = {
+      url: newCtfUrl.trim()
+    }
+    
+    setCtfProfiles(prev => [...prev, newProfile])
+    setNewCtfUrl('')
+  }
+  
+  const removeCtfProfile = (index: number) => {
+    setCtfProfiles(prev => prev.filter((_, i) => i !== index))
+  }
+  
+  const addCpProfile = () => {
+    if (!newCpUrl.trim()) {
+      toast({
+        title: "Missing information",
+        description: "Please provide a profile URL",
+        variant: "destructive"
+      })
+      return
+    }
+    
+    // Simple URL validation
+    try {
+      new URL(newCpUrl)
+    } catch (e) {
+      toast({
+        title: "Invalid URL",
+        description: "Please enter a valid URL including http:// or https://",
+        variant: "destructive"
+      })
+      return
+    }
+    
+    const newProfile = {
+      url: newCpUrl.trim()
+    }
+    
+    setCpProfiles(prev => [...prev, newProfile])
+    setNewCpUrl('')
+  }
+  
+  const removeCpProfile = (index: number) => {
+    setCpProfiles(prev => prev.filter((_, i) => i !== index))
+  }
+
   const handleSave = async () => {
     if (!user || !user.uid) {
       toast({
@@ -365,7 +450,8 @@ export default function ProfilePage() {
       // Add text fields
       Object.entries(formData).forEach(([key, value]) => {
         // Skip uid and other read-only fields
-        if (key !== 'uid' && key !== 'isAdmin' && key !== 'email' && key !== 'name' && value !== undefined) {
+        if (key !== 'uid' && key !== 'isAdmin' && key !== 'email' && key !== 'name' && 
+            key !== 'ctf_profiles' && key !== 'cp_profiles' && value !== undefined) {
           formDataToSend.append(key, String(value))
         }
       })
@@ -376,6 +462,10 @@ export default function ProfilePage() {
       } else {
         formDataToSend.append('is_custom_college', 'false');
       }
+      
+      // Add CTF and CP profiles as JSON strings
+      formDataToSend.append('ctf_profiles', JSON.stringify(ctfProfiles))
+      formDataToSend.append('cp_profiles', JSON.stringify(cpProfiles))
       
       // Add files if present
       if (resumeFile) {
@@ -413,6 +503,8 @@ export default function ProfilePage() {
         
         if (getUserData.status === "success") {
           setProfile(getUserData.user)
+          setCtfProfiles(getUserData.user.ctf_profiles || [])
+          setCpProfiles(getUserData.user.cp_profiles || [])
         }
         
         toast({
@@ -809,6 +901,142 @@ export default function ProfilePage() {
                         placeholder="https://yourportfolio.com"
                       />
                     </div>
+                  </div>
+
+                  {/* CTF Profiles Section */}
+                  <div className="mt-6 pt-6 border-t border-gray-800">
+                    <h3 className="text-md sm:text-lg font-medium text-white flex items-center gap-2 mb-4">
+                      <Flag className="h-4 w-4 text-[#0ff]" />
+                      CTF Profiles
+                    </h3>
+                    
+                    {/* Display existing CTF profiles */}
+                    {!isEditing ? (
+                      <div className="space-y-3">
+                        {ctfProfiles && ctfProfiles.length > 0 ? (
+                          ctfProfiles.map((profile, index) => (
+                            <div key={profile.id || index} className="flex items-center gap-2 p-2 bg-gray-800 rounded-md">
+                              <Flag className="h-4 w-4 text-[#0ff]" />
+                              <a 
+                                href={profile.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-[#0ff] hover:underline text-sm truncate flex-1"
+                              >
+                                {profile.url}
+                              </a>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-gray-400 text-sm">No CTF profiles added</p>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {/* Edit mode: Show existing profiles with remove buttons */}
+                        {ctfProfiles && ctfProfiles.map((profile, index) => (
+                          <div key={profile.id || index} className="flex items-center gap-2 p-2 bg-gray-800 rounded-md">
+                            <Flag className="h-4 w-4 flex-shrink-0 text-[#0ff]" />
+                            <span className="text-sm text-gray-300 truncate flex-1">{profile.url}</span>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => removeCtfProfile(index)}
+                              disabled={isSaving}
+                              className="h-8 w-8 p-0 text-gray-400 hover:text-red-500"
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ))}
+                        
+                        {/* Form to add new profiles */}
+                        <div className="mt-2 flex gap-2">
+                          <Input
+                            placeholder="Profile URL (e.g., https://hackthebox.com/profile/...)"
+                            value={newCtfUrl}
+                            onChange={(e) => setNewCtfUrl(e.target.value)}
+                            disabled={isSaving}
+                            className="bg-gray-800 border-gray-700 flex-1"
+                          />
+                          <Button
+                            onClick={addCtfProfile}
+                            disabled={isSaving || !newCtfUrl}
+                            className="bg-[#0ff]/20 hover:bg-[#0ff]/30 text-[#0ff] px-2"
+                          >
+                            <Plus className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* CP Profiles Section */}
+                  <div className="mt-6 pt-6 border-t border-gray-800">
+                    <h3 className="text-md sm:text-lg font-medium text-white flex items-center gap-2 mb-4">
+                      <Trophy className="h-4 w-4 text-[#0ff]" />
+                      Competitive Programming Profiles
+                    </h3>
+                    
+                    {/* Display existing CP profiles */}
+                    {!isEditing ? (
+                      <div className="space-y-3">
+                        {cpProfiles && cpProfiles.length > 0 ? (
+                          cpProfiles.map((profile, index) => (
+                            <div key={profile.id || index} className="flex items-center gap-2 p-2 bg-gray-800 rounded-md">
+                              <Trophy className="h-4 w-4 text-[#0ff]" />
+                              <a 
+                                href={profile.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-[#0ff] hover:underline text-sm truncate flex-1"
+                              >
+                                {profile.url}
+                              </a>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-gray-400 text-sm">No competitive programming profiles added</p>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {/* Edit mode: Show existing profiles with remove buttons */}
+                        {cpProfiles && cpProfiles.map((profile, index) => (
+                          <div key={profile.id || index} className="flex items-center gap-2 p-2 bg-gray-800 rounded-md">
+                            <Trophy className="h-4 w-4 flex-shrink-0 text-[#0ff]" />
+                            <span className="text-sm text-gray-300 truncate flex-1">{profile.url}</span>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => removeCpProfile(index)}
+                              disabled={isSaving}
+                              className="h-8 w-8 p-0 text-gray-400 hover:text-red-500"
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ))}
+                        
+                        {/* Form to add new profiles */}
+                        <div className="mt-2 flex gap-2">
+                          <Input
+                            placeholder="Profile URL (e.g., https://codeforces.com/profile/...)"
+                            value={newCpUrl}
+                            onChange={(e) => setNewCpUrl(e.target.value)}
+                            disabled={isSaving}
+                            className="bg-gray-800 border-gray-700 flex-1"
+                          />
+                          <Button
+                            onClick={addCpProfile}
+                            disabled={isSaving || !newCpUrl}
+                            className="bg-[#0ff]/20 hover:bg-[#0ff]/30 text-[#0ff] px-2"
+                          >
+                            <Plus className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </CardContent>

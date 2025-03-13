@@ -267,15 +267,17 @@ export default function Participants() {
 
   return (
     <main className="min-h-screen bg-black text-white relative">
-      <div className="fixed top-4 w-full px-4 flex justify-between z-50">
-        <div className="ml-4 sm:ml-6">
+      <div className="fixed top-4 w-full px-4 z-50 flex flex-col sm:flex-row sm:justify-between items-center">
+        <div className="mb-3 sm:mb-1 sm:order-2">
+        <NavButtons disableFixedPositioning={true} />
+        </div>
+        <div className="sm:ml-6 sm:order-1">
           <CountdownTimer />
         </div>
-        <NavButtons disableFixedPositioning={true} />
       </div>
       
       {/* Add padding-top to account for fixed navbar */}
-      <div className="container mx-auto pt-24 px-4">
+      <div className="container mx-auto pt-32 sm:pt-24 px-4">
         {/* Header */}
         <motion.h1
           className="text-4xl md:text-5xl font-bold text-center mb-3 mt-6"
