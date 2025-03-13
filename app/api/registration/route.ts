@@ -655,9 +655,9 @@ export async function POST(request: Request) {
       message: "Registration successful", 
       id: profileId,
       authUid: authUid,
-      status: "success",
+      status: "pending_verification",
       // Include any token or auth information needed for subsequent requests
-      token: authUid,
+      // token: authUid,
       user: {
         uid: profileId,
         authUid: authUid,
