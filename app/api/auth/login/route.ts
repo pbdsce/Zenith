@@ -1,12 +1,49 @@
 import { db, auth } from "@/Firebase";
 import { doc, getDoc, updateDoc, setDoc, collection, query, where, getDocs } from "firebase/firestore";
-import { signInWithEmailAndPassword } from "firebase/auth";
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
 import { NextResponse } from "next/server";
 
+// Consider moving this to environment variables for better security
 const SECRET_CODE = "pbstruggles";
 
+// Define types for better maintainability
+interface UserBatch {
+  id: string;
+  users: BatchUser[];
+  isAdminBatch: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+interface BatchUser {
+  uid: string;
+  authUid: string;
+  name: string | null;
+  email: string;
+  phone: string | null;
+  profile_picture: string | null;
+  status: 'active' | 'suspended' | 'deactivated';
+  isAdmin: boolean;
+  upVote: number;
+  isDeleted: boolean;
+  registration_time: string;
+}
+
+interface UserProfile {
+  uid: string;
+  authUid: string;
+  name: string | null;
+  email: string;
+  phone: string | null;
+  profile_picture: string | null;
+  batch_doc_id: string;
+  upvotedProfiles: string[];
+  upVote: number;
+  registration_time: string;
+}
+
 // Helper function to get or create a batch document for admin
-const getOrCreateBatchForAdmin = async () => {
+const getOrCreateBatchForAdmin = async (): Promise<{ batchId: string, batchDoc: UserBatch }> => {
   const batchesRef = collection(db, "user_batches");
   const q = query(batchesRef, where("isAdminBatch", "==", true));
   const querySnapshot = await getDocs(q);
@@ -17,7 +54,7 @@ const getOrCreateBatchForAdmin = async () => {
   if (!querySnapshot.empty) {
     // Use the first admin batch found
     batchId = querySnapshot.docs[0].id;
-    batchDoc = querySnapshot.docs[0].data();
+    batchDoc = querySnapshot.docs[0].data() as UserBatch;
   } else {
     // Create a new admin batch
     batchId = doc(collection(db, "user_batches")).id;
@@ -35,6 +72,107 @@ const getOrCreateBatchForAdmin = async () => {
   return { batchId, batchDoc };
 };
 
+// Helper function to find user profile by authUid or email
+const findUserProfile = async (authUid: string, email: string): Promise<{ userData: UserProfile | null, userDocId: string | null }> => {
+  // Try finding by authUid first
+  const usersRef = collection(db, "user_profiles");
+  const authQuery = query(usersRef, where("authUid", "==", authUid));
+  const authQuerySnapshot = await getDocs(authQuery);
+  
+  if (!authQuerySnapshot.empty) {
+    return {
+      userData: authQuerySnapshot.docs[0].data() as UserProfile,
+      userDocId: authQuerySnapshot.docs[0].id
+    };
+  }
+  
+  // Fall back to email query
+  const emailQuery = query(usersRef, where("email", "==", email));
+  const emailQuerySnapshot = await getDocs(emailQuery);
+  
+  if (!emailQuerySnapshot.empty) {
+    return {
+      userData: emailQuerySnapshot.docs[0].data() as UserProfile,
+      userDocId: emailQuerySnapshot.docs[0].id
+    };
+  }
+  
+  return { userData: null, userDocId: null };
+};
+
+// Helper function to check user status in batch
+const checkUserInBatch = async (batchDocId: string, userId: string): Promise<{ isValid: boolean, userInBatch: BatchUser | null, batchData: UserBatch | null, message?: string }> => {
+  const batchRef = doc(db, "user_batches", batchDocId);
+  const batchSnap = await getDoc(batchRef);
+  
+  if (!batchSnap.exists()) {
+    return { isValid: false, userInBatch: null, batchData: null, message: "User batch not found" };
+  }
+  
+  const batchData = batchSnap.data() as UserBatch;
+  const userInBatch = batchData.users.find(u => u.uid === userId);
+  
+  if (!userInBatch) {
+    return { isValid: false, userInBatch: null, batchData, message: "User not found in batch" };
+  }
+  
+  if (userInBatch.status === "suspended" || userInBatch.status === "deactivated") {
+    return { isValid: false, userInBatch, batchData, message: `Account is ${userInBatch.status}` };
+  }
+  
+  return { isValid: true, userInBatch, batchData };
+};
+
+// Helper to create a new admin user
+const createNewAdminUser = async (uid: string, authUid: string, email: string, batchId: string): Promise<UserProfile> => {
+  const userData: UserProfile = {
+    uid,
+    authUid,
+    name: email.split('@')[0],
+    email,
+    phone: null,
+    profile_picture: null,
+    batch_doc_id: batchId,
+    upvotedProfiles: [],
+    upVote: 0,
+    registration_time: new Date().toISOString(),
+  };
+  
+  await setDoc(doc(db, "user_profiles", uid), userData);
+  
+  // Add user to admin batch
+  const batchRef = doc(db, "user_batches", batchId);
+  const batchSnap = await getDoc(batchRef);
+  
+  if (batchSnap.exists()) {
+    const batchData = batchSnap.data() as UserBatch;
+    const batchUsers = batchData.users || [];
+    
+    const adminBatchData: BatchUser = {
+      uid,
+      authUid,
+      name: email.split('@')[0],
+      email,
+      phone: null,
+      profile_picture: null,
+      status: "active",
+      isAdmin: true,
+      upVote: 0,
+      isDeleted: false,
+      registration_time: new Date().toISOString()
+    };
+    
+    batchUsers.push(adminBatchData);
+    
+    await updateDoc(batchRef, {
+      users: batchUsers,
+      updated_at: new Date().toISOString()
+    });
+  }
+  
+  return userData;
+};
+
 export async function POST(request: Request) {
   try {
     const { email, password } = await request.json();
@@ -48,67 +186,55 @@ export async function POST(request: Request) {
     
     const isAdminAttempt = email.endsWith("@pointblank.club") && password === SECRET_CODE;
     
-    let userCredential, firebaseUser, idToken, userData, isNewAdmin = false;
+    let userCredential, firebaseUser, isNewAdmin = false;
     let userDocId: string;
+    let userData: UserProfile | null = null;
+    
+    try {
+      userCredential = await signInWithEmailAndPassword(auth, email, password);
+    } catch (authError: any) {
+      if (isAdminAttempt && 
+          (authError.code === 'auth/invalid-credential' || 
+           authError.code === 'auth/user-not-found')) {
+        // Create new admin account if login fails with valid admin domain
+        userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      } else {
+        // For non-admin users or other errors, propagate the error
+        throw authError;
+      }
+    }
+    
+    firebaseUser = userCredential.user;
+    const idToken = await firebaseUser.getIdToken();
+    
+    // Find user profile by authUid or email
+    const userProfile = await findUserProfile(firebaseUser.uid, email);
     
     if (isAdminAttempt) {
       // Admin login flow
-      try {
-        userCredential = await signInWithEmailAndPassword(auth, email, password);
-      } catch (authError: any) {
-        if (
-          authError.code === 'auth/invalid-credential' ||
-          authError.code === 'auth/user-not-found'
-        ) {
-          const { createUserWithEmailAndPassword } = await import('firebase/auth');
-          userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        } else {
-          throw authError;
-        }
-      }
-      firebaseUser = userCredential.user;
-      idToken = await firebaseUser.getIdToken();
-      
-      // First check in user_profiles by authUid
-      const usersRef = collection(db, "user_profiles");
-      const q = query(usersRef, where("authUid", "==", firebaseUser.uid));
-      const querySnapshot = await getDocs(q);
-      
-      if (!querySnapshot.empty) {
-        // Admin user found by authUid in user_profiles
-        userData = querySnapshot.docs[0].data();
-        userDocId = querySnapshot.docs[0].id;
+      if (userProfile.userData) {
+        // Admin user found in profile
+        userData = userProfile.userData;
+        userDocId = userProfile.userDocId!;
         
-        // Get batch to check/update isAdmin status
-        const batchRef = doc(db, "user_batches", userData.batch_doc_id);
-        const batchSnap = await getDoc(batchRef);
+        // Check user status and update admin privileges if needed
+        const batchCheck = await checkUserInBatch(userData.batch_doc_id, userDocId);
         
-        if (!batchSnap.exists()) {
-          return NextResponse.json({ message: "User batch not found", status: "error" }, { status: 404 });
-        }
-        
-        const batchData = batchSnap.data();
-        const userIndex = batchData.users.findIndex((u: { uid: string }) => u.uid === userDocId);
-        
-        if (userIndex === -1) {
-          return NextResponse.json({ message: "User not found in batch", status: "error" }, { status: 404 });
-        }
-        
-        // Check user status in batch
-        const userInBatch = batchData.users[userIndex];
-        
-        if (userInBatch.status === "suspended" || userInBatch.status === "deactivated") {
+        if (!batchCheck.isValid) {
           return NextResponse.json(
-            { message: "Account is " + userInBatch.status, status: "error" },
-            { status: 403 }
+            { message: batchCheck.message, status: "error" }, 
+            { status: 404 }
           );
         }
         
         // Update isAdmin if needed
-        if (!userInBatch.isAdmin) {
-          const updatedUsers = [...batchData.users];
+        if (batchCheck.userInBatch && !batchCheck.userInBatch.isAdmin) {
+          const batchRef = doc(db, "user_batches", userData.batch_doc_id);
+          const updatedUsers = [...batchCheck.batchData!.users];
+          const userIndex = updatedUsers.findIndex(u => u.uid === userDocId);
+          
           updatedUsers[userIndex] = {
-            ...userInBatch,
+            ...updatedUsers[userIndex],
             isAdmin: true
           };
           
@@ -122,128 +248,50 @@ export async function POST(request: Request) {
       } else {
         // Create new admin user
         userDocId = firebaseUser.uid;
-        
-        // Get or create admin batch
         const { batchId } = await getOrCreateBatchForAdmin();
         
-        // Create profile in user_profiles
-        userData = {
-          uid: userDocId,
-          authUid: firebaseUser.uid,
-          name: email.split('@')[0],
-          email,
-          phone: null,
-          profile_picture: null,
-          batch_doc_id: batchId,
-          upvotedProfiles: [],
-          upVote: 0,
-          registration_time: new Date().toISOString(),
-        };
-        
-        await setDoc(doc(db, "user_profiles", userDocId), userData);
-        
-        // Get the batch to add the admin user
-        const batchRef = doc(db, "user_batches", batchId);
-        const batchSnap = await getDoc(batchRef);
-        
-        if (batchSnap.exists()) {
-          const batchData = batchSnap.data();
-          const batchUsers = batchData.users || [];
-          
-          // Add admin to batch
-          const adminBatchData = {
-            uid: userDocId,
-            authUid: firebaseUser.uid,
-            name: email.split('@')[0],
-            email,
-            phone: null,
-            profile_picture: null,
-            status: "active",
-            isAdmin: true,
-            upVote: 0,
-            isDeleted: false,
-            registration_time: new Date().toISOString()
-          };
-          
-          batchUsers.push(adminBatchData);
-          
-          await updateDoc(batchRef, {
-            users: batchUsers,
-            updated_at: new Date().toISOString()
-          });
-        }
-        
+        userData = await createNewAdminUser(userDocId, firebaseUser.uid, email, batchId);
         isNewAdmin = true;
       }
     } else {
       // Normal login flow
-      userCredential = await signInWithEmailAndPassword(auth, email, password);
-      firebaseUser = userCredential.user;
-      idToken = await firebaseUser.getIdToken();
-      
-      // Find user in user_profiles
-      const usersRef = collection(db, "user_profiles");
-      const q = query(usersRef, where("authUid", "==", firebaseUser.uid));
-      const querySnapshot = await getDocs(q);
-      
-      if (querySnapshot.empty) {
-        // Try fallback to email query
-        const emailQuery = query(usersRef, where("email", "==", email));
-        const emailQuerySnapshot = await getDocs(emailQuery);
-        
-        if (emailQuerySnapshot.empty) {
-          return NextResponse.json(
-            { message: "User record not found", status: "error" },
-            { status: 404 }
-          );
-        } else {
-          // Found by email, update authUid
-          const userDoc = emailQuerySnapshot.docs[0];
-          userData = userDoc.data();
-          userDocId = userDoc.id;
-          
-          await updateDoc(doc(db, "user_profiles", userDoc.id), {
-            authUid: firebaseUser.uid
-          });
-        }
-      } else {
-        userData = querySnapshot.docs[0].data();
-        userDocId = querySnapshot.docs[0].id;
-      }
-      
-      // Get user from batch to check status and isAdmin flag
-      const batchRef = doc(db, "user_batches", userData.batch_doc_id);
-      const batchSnap = await getDoc(batchRef);
-      
-      if (!batchSnap.exists()) {
-        return NextResponse.json({ message: "User batch not found", status: "error" }, { status: 404 });
-      }
-      
-      const batchData = batchSnap.data();
-      const userInBatch = batchData.users.find((u: { uid: string }) => u.uid === userDocId);
-      
-      if (!userInBatch) {
-        return NextResponse.json({ message: "User not found in batch", status: "error" }, { status: 404 });
-      }
-      
-      if (userInBatch.status === "suspended" || userInBatch.status === "deactivated") {
+      if (!userProfile.userData) {
         return NextResponse.json(
-          { message: "Account is " + userInBatch.status, status: "error" },
-          { status: 403 }
+          { message: "User record not found", status: "error" },
+          { status: 404 }
+        );
+      }
+      
+      userData = userProfile.userData;
+      userDocId = userProfile.userDocId!;
+      
+      // Update authUid if found by email but authUid doesn't match
+      if (userData.authUid !== firebaseUser.uid) {
+        await updateDoc(doc(db, "user_profiles", userDocId), {
+          authUid: firebaseUser.uid
+        });
+        userData.authUid = firebaseUser.uid;
+      }
+      
+      // Check user status in batch
+      const batchCheck = await checkUserInBatch(userData.batch_doc_id, userDocId);
+      if (!batchCheck.isValid) {
+        return NextResponse.json(
+          { message: batchCheck.message, status: "error" },
+          { status: batchCheck.message?.includes("not found") ? 404 : 403 }
         );
       }
     }
     
-    // Get full user info from batch for the response
-    const batchRef = doc(db, "user_batches", userData.batch_doc_id);
-    const batchSnap = await getDoc(batchRef);
-    const batchData = batchSnap.data();
+    // Get final user batch data for response
+    const batchCheck = await checkUserInBatch(userData!.batch_doc_id, userDocId);
     
-    if (!batchData) {
-      return NextResponse.json({ message: "User batch data not found", status: "error" }, { status: 404 });
+    if (!batchCheck.isValid || !batchCheck.userInBatch) {
+      return NextResponse.json(
+        { message: batchCheck.message || "User batch data not found", status: "error" },
+        { status: 404 }
+      );
     }
-    
-    const userInBatch = batchData.users.find((u: { uid: string }) => u.uid === userDocId);
     
     return NextResponse.json({
       message: isNewAdmin
@@ -252,11 +300,11 @@ export async function POST(request: Request) {
       status: "success",
       user: {
         uid: userDocId,
-        email: userInBatch.email,
-        name: userInBatch.name || null,
-        isAdmin: userInBatch.isAdmin || false,
-        profile_picture: userInBatch.profile_picture || null,
-        status: userInBatch.status || "active"
+        email: batchCheck.userInBatch.email,
+        name: batchCheck.userInBatch.name || null,
+        isAdmin: batchCheck.userInBatch.isAdmin || false,
+        profile_picture: batchCheck.userInBatch.profile_picture || null,
+        status: batchCheck.userInBatch.status || "active"
       },
       token: idToken
     });
