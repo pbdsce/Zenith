@@ -1,5 +1,5 @@
 import { db, auth } from "@/Firebase";
-import { addDoc, collection, getDocs, query, where, runTransaction, doc, setDoc, updateDoc } from "firebase/firestore";
+import { addDoc, collection, getDocs, query, where, runTransaction, doc, setDoc, updateDoc, getDoc, limit } from "firebase/firestore";
 import { createUserWithEmailAndPassword, sendEmailVerification } from "firebase/auth";
 import { NextResponse } from "next/server";
 import { cloudinary } from "@/Cloudinary";
@@ -188,6 +188,49 @@ const createAuthUser = async (email: string, password: string): Promise<string> 
     
     throw error;
   }
+};
+
+// Helper function to get or create a batch document
+const getOrCreateBatchDocument = async () => {
+  const batchesRef = collection(db, "user_batches");
+  
+  // Get the most recent batch that has less than 400 users
+  const q = query(batchesRef, limit(1));
+  const querySnapshot = await getDocs(q);
+  
+  let batchDoc;
+  let batchId;
+  
+  // If no batches exist or all batches are full, create a new batch
+  if (querySnapshot.empty) {
+    batchId = doc(collection(db, "user_batches")).id;
+    batchDoc = {
+      id: batchId,
+      users: [],
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    
+    await setDoc(doc(db, "user_batches", batchId), batchDoc);
+  } else {
+    batchDoc = querySnapshot.docs[0].data();
+    batchId = querySnapshot.docs[0].id;
+    
+    // If the batch already has 400 users, create a new batch
+    if (batchDoc.users && batchDoc.users.length >= 400) {
+      batchId = doc(collection(db, "user_batches")).id;
+      batchDoc = {
+        id: batchId,
+        users: [],
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      
+      await setDoc(doc(db, "user_batches", batchId), batchDoc);
+    }
+  }
+  
+  return { batchId, batchDoc };
 };
 
 export async function POST(request: Request) {
@@ -456,7 +499,7 @@ export async function POST(request: Request) {
 
     // Check for duplicate email registration
     const emailQuery = query(
-      collection(db, "registrations"),
+      collection(db, "user_profiles"),
       where("email", "==", data.email)
     );
     const emailQuerySnapshot = await getDocs(emailQuery);
@@ -473,7 +516,7 @@ export async function POST(request: Request) {
 
     // Check for duplicate phone registration
     const phoneQuery = query(
-      collection(db, "registrations"),
+      collection(db, "user_profiles"),
       where("phone", "==", data.phone)
     );
     const phoneQuerySnapshot = await getDocs(phoneQuery);
@@ -530,17 +573,20 @@ export async function POST(request: Request) {
     }
 
     // Use transaction to ensure data consistency
-    let registrationId = '';
+    let profileId = '';
     
     await runTransaction(db, async (transaction) => {
-      
-      // Create a new registration document
-      const registrationRef = doc(collection(db, "registrations"));
-      registrationId = registrationRef.id;
+      // Create a new user profile document
+      const profileRef = doc(collection(db, "user_profiles"));
+      profileId = profileRef.id;
 
-      const registrationData = {
-        uid: registrationId,
-        authUid: authUid, // Store the Firebase Auth UID
+      // Get or create a batch document
+      const { batchId, batchDoc } = await getOrCreateBatchDocument();
+
+      // Prepare user data for batch document
+      const batchUserData = {
+        uid: profileId,
+        authUid: authUid,
         name: data.name,
         email: data.email,
         phone: data.phone,
@@ -561,22 +607,58 @@ export async function POST(request: Request) {
         registration_time: new Date().toISOString(),
         status: "pending", 
         isAdmin: false,
-        upVote: 0 // Add upVote field with default value 0
+        upVote: 0,
+        isDeleted: false
+      };
+
+      // Prepare user data for personal profile document
+      const profileData = {
+        uid: profileId,
+        authUid: authUid,
+        name: data.name,
+        email: data.email,
+        phone: data.phone,
+        profile_picture: profilePictureUrl,
+        batch_doc_id: batchId,
+        upvotedProfiles: [],
+        upVote: 0,
+        registration_time: new Date().toISOString(),
       };
       
-      // Set the registration data in the transaction
-      transaction.set(registrationRef, registrationData);
+      // Update the batch document
+      const batchRef = doc(db, "user_batches", batchId);
+      const currentBatch = await transaction.get(batchRef);
+      if (currentBatch.exists()) {
+        const currentUsers = currentBatch.data().users || [];
+        currentUsers.push(batchUserData);
+        
+        transaction.update(batchRef, { 
+          users: currentUsers,
+          updated_at: new Date().toISOString()
+        });
+      } else {
+        // In case the batch was deleted between our check and transaction
+        transaction.set(batchRef, { 
+          id: batchId,
+          users: [batchUserData],
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        });
+      }
+      
+      // Set the user profile data
+      transaction.set(profileRef, profileData);
     });
 
     return NextResponse.json({ 
       message: "Registration successful", 
-      id: registrationId,
+      id: profileId,
       authUid: authUid,
       status: "success",
       // Include any token or auth information needed for subsequent requests
-      token: authUid, // You may want to use a proper JWT token system
+      token: authUid,
       user: {
-        uid: registrationId,
+        uid: profileId,
         authUid: authUid,
         email: data.email,
         name: data.name,
@@ -616,7 +698,7 @@ export async function GET(request: Request) {
   try {
     if (email) {
       const emailQuery = query(
-        collection(db, "registrations"),
+        collection(db, "user_profiles"),
         where("email", "==", email)
       );
       const querySnapshot = await getDocs(emailQuery);
@@ -629,7 +711,7 @@ export async function GET(request: Request) {
     
     if (phone) {
       const phoneQuery = query(
-        collection(db, "registrations"),
+        collection(db, "user_profiles"),
         where("phone", "==", phone)
       );
       const querySnapshot = await getDocs(phoneQuery);

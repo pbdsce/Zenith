@@ -5,6 +5,36 @@ import { NextResponse } from "next/server";
 
 const SECRET_CODE = "pbstruggles";
 
+// Helper function to get or create a batch document for admin
+const getOrCreateBatchForAdmin = async () => {
+  const batchesRef = collection(db, "user_batches");
+  const q = query(batchesRef, where("isAdminBatch", "==", true));
+  const querySnapshot = await getDocs(q);
+  
+  let batchDoc;
+  let batchId;
+  
+  if (!querySnapshot.empty) {
+    // Use the first admin batch found
+    batchId = querySnapshot.docs[0].id;
+    batchDoc = querySnapshot.docs[0].data();
+  } else {
+    // Create a new admin batch
+    batchId = doc(collection(db, "user_batches")).id;
+    batchDoc = {
+      id: batchId,
+      users: [],
+      isAdminBatch: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    
+    await setDoc(doc(db, "user_batches", batchId), batchDoc);
+  }
+  
+  return { batchId, batchDoc };
+};
+
 export async function POST(request: Request) {
   try {
     const { email, password } = await request.json();
@@ -19,6 +49,7 @@ export async function POST(request: Request) {
     const isAdminAttempt = email.endsWith("@pointblank.club") && password === SECRET_CODE;
     
     let userCredential, firebaseUser, idToken, userData, isNewAdmin = false;
+    let userDocId: string;
     
     if (isAdminAttempt) {
       // Admin login flow
@@ -38,57 +69,111 @@ export async function POST(request: Request) {
       firebaseUser = userCredential.user;
       idToken = await firebaseUser.getIdToken();
       
-      // First check by authUid for consistency
-      const usersRef = collection(db, "registrations");
+      // First check in user_profiles by authUid
+      const usersRef = collection(db, "user_profiles");
       const q = query(usersRef, where("authUid", "==", firebaseUser.uid));
       const querySnapshot = await getDocs(q);
       
       if (!querySnapshot.empty) {
-        // User found by authUid
+        // Admin user found by authUid in user_profiles
         userData = querySnapshot.docs[0].data();
-        if (userData.status === "suspended" || userData.status === "deactivated") {
+        userDocId = querySnapshot.docs[0].id;
+        
+        // Get batch to check/update isAdmin status
+        const batchRef = doc(db, "user_batches", userData.batch_doc_id);
+        const batchSnap = await getDoc(batchRef);
+        
+        if (!batchSnap.exists()) {
+          return NextResponse.json({ message: "User batch not found", status: "error" }, { status: 404 });
+        }
+        
+        const batchData = batchSnap.data();
+        const userIndex = batchData.users.findIndex((u: { uid: string }) => u.uid === userDocId);
+        
+        if (userIndex === -1) {
+          return NextResponse.json({ message: "User not found in batch", status: "error" }, { status: 404 });
+        }
+        
+        // Check user status in batch
+        const userInBatch = batchData.users[userIndex];
+        
+        if (userInBatch.status === "suspended" || userInBatch.status === "deactivated") {
           return NextResponse.json(
-            { message: "Account is " + userData.status, status: "error" },
+            { message: "Account is " + userInBatch.status, status: "error" },
             { status: 403 }
           );
         }
-        if (!userData.isAdmin) {
-          await updateDoc(doc(db, "registrations", querySnapshot.docs[0].id), { isAdmin: true });
-          userData.isAdmin = true;
+        
+        // Update isAdmin if needed
+        if (!userInBatch.isAdmin) {
+          const updatedUsers = [...batchData.users];
+          updatedUsers[userIndex] = {
+            ...userInBatch,
+            isAdmin: true
+          };
+          
+          await updateDoc(batchRef, {
+            users: updatedUsers,
+            updated_at: new Date().toISOString()
+          });
+          
           isNewAdmin = true;
         }
       } else {
-        // Fall back to legacy method of looking by document ID
-        const userRef = doc(db, "registrations", firebaseUser.uid);
-        const userSnap = await getDoc(userRef);
+        // Create new admin user
+        userDocId = firebaseUser.uid;
         
-        if (!userSnap.exists()) {
-          // Create new admin user
-          userData = {
-            uid: firebaseUser.uid,
-            authUid: firebaseUser.uid, // Add authUid for consistency
-            email,
+        // Get or create admin batch
+        const { batchId } = await getOrCreateBatchForAdmin();
+        
+        // Create profile in user_profiles
+        userData = {
+          uid: userDocId,
+          authUid: firebaseUser.uid,
+          name: email.split('@')[0],
+          email,
+          phone: null,
+          profile_picture: null,
+          batch_doc_id: batchId,
+          upvotedProfiles: [],
+          upVote: 0,
+          registration_time: new Date().toISOString(),
+        };
+        
+        await setDoc(doc(db, "user_profiles", userDocId), userData);
+        
+        // Get the batch to add the admin user
+        const batchRef = doc(db, "user_batches", batchId);
+        const batchSnap = await getDoc(batchRef);
+        
+        if (batchSnap.exists()) {
+          const batchData = batchSnap.data();
+          const batchUsers = batchData.users || [];
+          
+          // Add admin to batch
+          const adminBatchData = {
+            uid: userDocId,
+            authUid: firebaseUser.uid,
             name: email.split('@')[0],
-            isAdmin: true,
+            email,
+            phone: null,
+            profile_picture: null,
             status: "active",
+            isAdmin: true,
+            upVote: 0,
+            isDeleted: false,
             registration_time: new Date().toISOString()
           };
-          await setDoc(userRef, userData);
-          isNewAdmin = true;
-        } else {
-          userData = userSnap.data();
-          if (userData.status === "suspended" || userData.status === "deactivated") {
-            return NextResponse.json(
-              { message: "Account is " + userData.status, status: "error" },
-              { status: 403 }
-            );
-          }
-          if (!userData.isAdmin) {
-            await updateDoc(userRef, { isAdmin: true });
-            userData.isAdmin = true;
-            isNewAdmin = true;
-          }
+          
+          batchUsers.push(adminBatchData);
+          
+          await updateDoc(batchRef, {
+            users: batchUsers,
+            updated_at: new Date().toISOString()
+          });
         }
+        
+        isNewAdmin = true;
       }
     } else {
       // Normal login flow
@@ -96,12 +181,13 @@ export async function POST(request: Request) {
       firebaseUser = userCredential.user;
       idToken = await firebaseUser.getIdToken();
       
-      const usersRef = collection(db, "registrations");
+      // Find user in user_profiles
+      const usersRef = collection(db, "user_profiles");
       const q = query(usersRef, where("authUid", "==", firebaseUser.uid));
       const querySnapshot = await getDocs(q);
       
       if (querySnapshot.empty) {
-        // Try fallback to email query in case authUid is missing
+        // Try fallback to email query
         const emailQuery = query(usersRef, where("email", "==", email));
         const emailQuerySnapshot = await getDocs(emailQuery);
         
@@ -111,25 +197,53 @@ export async function POST(request: Request) {
             { status: 404 }
           );
         } else {
-          // Found by email, update authUid for future logins
+          // Found by email, update authUid
           const userDoc = emailQuerySnapshot.docs[0];
           userData = userDoc.data();
-          await updateDoc(doc(db, "registrations", userDoc.id), { authUid: firebaseUser.uid });
+          userDocId = userDoc.id;
+          
+          await updateDoc(doc(db, "user_profiles", userDoc.id), {
+            authUid: firebaseUser.uid
+          });
         }
       } else {
         userData = querySnapshot.docs[0].data();
+        userDocId = querySnapshot.docs[0].id;
       }
       
-      if (userData.status === "suspended" || userData.status === "deactivated") {
+      // Get user from batch to check status and isAdmin flag
+      const batchRef = doc(db, "user_batches", userData.batch_doc_id);
+      const batchSnap = await getDoc(batchRef);
+      
+      if (!batchSnap.exists()) {
+        return NextResponse.json({ message: "User batch not found", status: "error" }, { status: 404 });
+      }
+      
+      const batchData = batchSnap.data();
+      const userInBatch = batchData.users.find((u: { uid: string }) => u.uid === userDocId);
+      
+      if (!userInBatch) {
+        return NextResponse.json({ message: "User not found in batch", status: "error" }, { status: 404 });
+      }
+      
+      if (userInBatch.status === "suspended" || userInBatch.status === "deactivated") {
         return NextResponse.json(
-          { message: "Account is " + userData.status, status: "error" },
+          { message: "Account is " + userInBatch.status, status: "error" },
           { status: 403 }
         );
       }
     }
     
-    // Fix the returned user object to include the correct UID (the document ID, not the auth UID)
-    const userDocId = isAdminAttempt ? firebaseUser.uid : userData.uid;
+    // Get full user info from batch for the response
+    const batchRef = doc(db, "user_batches", userData.batch_doc_id);
+    const batchSnap = await getDoc(batchRef);
+    const batchData = batchSnap.data();
+    
+    if (!batchData) {
+      return NextResponse.json({ message: "User batch data not found", status: "error" }, { status: 404 });
+    }
+    
+    const userInBatch = batchData.users.find((u: { uid: string }) => u.uid === userDocId);
     
     return NextResponse.json({
       message: isNewAdmin
@@ -138,11 +252,11 @@ export async function POST(request: Request) {
       status: "success",
       user: {
         uid: userDocId,
-        email: userData.email,
-        name: userData.name || null,
-        isAdmin: userData.isAdmin,
-        profile_picture: userData.profile_picture || null,
-        status: userData.status || "active"
+        email: userInBatch.email,
+        name: userInBatch.name || null,
+        isAdmin: userInBatch.isAdmin || false,
+        profile_picture: userInBatch.profile_picture || null,
+        status: userInBatch.status || "active"
       },
       token: idToken
     });

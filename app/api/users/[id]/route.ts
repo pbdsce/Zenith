@@ -6,6 +6,56 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 
+// Define types to prevent 'any' type errors
+interface BatchUser {
+  uid: string;
+  authUid?: string;
+  name: string;
+  email: string;
+  phone: string | null;
+  resume_link?: string;
+  profile_picture?: string | null;
+  leetcode_profile?: string | null;
+  github_link?: string | null;
+  linkedin_link?: string | null;
+  competitive_profile?: string | null;
+  ctf_profile?: string | null;
+  kaggle_link?: string | null;
+  devfolio_link?: string | null;
+  portfolio_link?: string | null;
+  bio?: string | null;
+  age?: number | null;
+  college_name?: string | null;
+  referral_code?: string | null;
+  registration_time?: string;
+  status?: string;
+  isAdmin?: boolean;
+  upVote?: number;
+  isDeleted?: boolean;
+}
+
+interface BatchDocument {
+  id: string;
+  users: BatchUser[];
+  isAdminBatch?: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+interface UserProfile {
+  uid: string;
+  authUid: string;
+  name: string;
+  email: string;
+  phone: string | null;
+  profile_picture: string | null;
+  batch_doc_id: string;
+  upvotedProfiles: string[];
+  upVote: number;
+  registration_time: string;
+  resume_link?: string; // Add this optional property
+}
+
 // Disable Next.js body parsing for file uploads
 export const config = {
   api: {
@@ -118,10 +168,10 @@ const uploadToCloudinary = async (filePath: string, folder: string, mimeType: st
 };
 
 // Parse multipart form data
-const parseForm = async (req: Request): Promise<{ fields: any, files: any }> => {
+const parseForm = async (req: Request): Promise<{ fields: Record<string, any>, files: Record<string, any> }> => {
   const formData = await req.formData();
-  const fields: any = {};
-  const files: any = {};
+  const fields: Record<string, any> = {};
+  const files: Record<string, any> = {};
   
   // Get system temp directory
   const tempDir = os.tmpdir();
@@ -157,7 +207,7 @@ const parseForm = async (req: Request): Promise<{ fields: any, files: any }> => 
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
   try {
-    // Extract authorization header from request but make it optional for development
+    // Extract authorization header from request
     const authHeader = req.headers.get('Authorization');
     
     // For development, log but don't require the token
@@ -165,23 +215,56 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       console.warn("Authorization header missing or invalid, proceeding anyway for development");
     }
     
-    // Try finding user by document ID first
-    const userRef = doc(db, "registrations", params.id);
+    // Try finding user in user_profiles by ID
+    const userRef = doc(db, "user_profiles", params.id);
     const userSnap = await getDoc(userRef);
 
-    let userData;
-    let userId = params.id;
-
     if (userSnap.exists()) {
-      userData = userSnap.data();
+      const userData = userSnap.data() as UserProfile;
+      
+      // Get batch document to get full user details
+      const batchRef = doc(db, "user_batches", userData.batch_doc_id);
+      const batchSnap = await getDoc(batchRef);
+      
+      if (!batchSnap.exists()) {
+        return NextResponse.json({ message: "User batch not found", status: "error" }, { status: 404 });
+      }
+      
+      const batchData = batchSnap.data() as BatchDocument;
+      const userInBatch = batchData.users.find((u: BatchUser) => u.uid === params.id);
+      
+      if (!userInBatch) {
+        return NextResponse.json({ message: "User data not found in batch", status: "error" }, { status: 404 });
+      }
+      
+      // Combine data from both collections
+      const user = {
+        uid: params.id,
+        authUid: userData.authUid,
+        email: userInBatch.email,
+        name: userInBatch.name,
+        isAdmin: userInBatch.isAdmin || false,
+        profile_picture: userInBatch.profile_picture || null,
+        status: userInBatch.status || "active",
+        college_name: userInBatch.college_name || null,
+        bio: userInBatch.bio || null,
+        github_link: userInBatch.github_link || null,
+        linkedin_link: userInBatch.linkedin_link || null,
+        portfolio_link: userInBatch.portfolio_link || null,
+        resume_link: userInBatch.resume_link || null,
+        upVote: userInBatch.upVote || 0,
+        upvotedProfiles: userData.upvotedProfiles || [],
+      };
+
+      return NextResponse.json({ user, status: "success" });
     } else {
-      // If not found, try finding by authUid
-      const usersRef = collection(db, "registrations");
+      // Try finding by authUid in user_profiles
+      const usersRef = collection(db, "user_profiles");
       const q = query(usersRef, where("authUid", "==", params.id));
       const querySnapshot = await getDocs(q);
       
       if (querySnapshot.empty) {
-        // Last resort: try by email (in case the ID is actually an email)
+        // Try finding by email
         if (params.id.includes('@')) {
           const emailQuery = query(usersRef, where("email", "==", params.id));
           const emailSnapshot = await getDocs(emailQuery);
@@ -190,37 +273,88 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
             return NextResponse.json({ message: "User not found", status: "error" }, { status: 404 });
           }
           
-          userData = emailSnapshot.docs[0].data();
-          userId = emailSnapshot.docs[0].id;
+          const userData = emailSnapshot.docs[0].data() as UserProfile;
+          const userId = emailSnapshot.docs[0].id;
+          
+          // Get batch document for user details
+          const batchRef = doc(db, "user_batches", userData.batch_doc_id);
+          const batchSnap = await getDoc(batchRef);
+          
+          if (!batchSnap.exists()) {
+            return NextResponse.json({ message: "User batch not found", status: "error" }, { status: 404 });
+          }
+          
+          const batchData = batchSnap.data() as BatchDocument;
+          const userInBatch = batchData.users.find((u: BatchUser) => u.uid === userId);
+          
+          if (!userInBatch) {
+            return NextResponse.json({ message: "User data not found in batch", status: "error" }, { status: 404 });
+          }
+          
+          // Combine data
+          const user = {
+            uid: userId,
+            authUid: userData.authUid,
+            email: userInBatch.email,
+            name: userInBatch.name,
+            isAdmin: userInBatch.isAdmin || false,
+            profile_picture: userInBatch.profile_picture || null,
+            status: userInBatch.status || "active",
+            college_name: userInBatch.college_name || null,
+            bio: userInBatch.bio || null,
+            github_link: userInBatch.github_link || null,
+            linkedin_link: userInBatch.linkedin_link || null,
+            portfolio_link: userInBatch.portfolio_link || null,
+            resume_link: userInBatch.resume_link || null,
+            upVote: userInBatch.upVote || 0,
+            upvotedProfiles: userData.upvotedProfiles || [],
+          };
+          
+          return NextResponse.json({ user, status: "success" });
         } else {
           return NextResponse.json({ message: "User not found", status: "error" }, { status: 404 });
         }
       } else {
-        userData = querySnapshot.docs[0].data();
-        userId = querySnapshot.docs[0].id; // Use the document ID, not authUid
+        const userData = querySnapshot.docs[0].data() as UserProfile;
+        const userId = querySnapshot.docs[0].id;
+        
+        // Get batch document
+        const batchRef = doc(db, "user_batches", userData.batch_doc_id);
+        const batchSnap = await getDoc(batchRef);
+        
+        if (!batchSnap.exists()) {
+          return NextResponse.json({ message: "User batch not found", status: "error" }, { status: 404 });
+        }
+        
+        const batchData = batchSnap.data() as BatchDocument;
+        const userInBatch = batchData.users.find((u: BatchUser) => u.uid === userId);
+        
+        if (!userInBatch) {
+          return NextResponse.json({ message: "User data not found in batch", status: "error" }, { status: 404 });
+        }
+        
+        // Combine data
+        const user = {
+          uid: userId,
+          authUid: userData.authUid,
+          email: userInBatch.email,
+          name: userInBatch.name,
+          isAdmin: userInBatch.isAdmin || false,
+          profile_picture: userInBatch.profile_picture || null,
+          status: userInBatch.status || "active",
+          college_name: userInBatch.college_name || null,
+          bio: userInBatch.bio || null,
+          github_link: userInBatch.github_link || null,
+          linkedin_link: userInBatch.linkedin_link || null,
+          portfolio_link: userInBatch.portfolio_link || null,
+          resume_link: userInBatch.resume_link || null,
+          upVote: userInBatch.upVote || 0,
+          upvotedProfiles: userData.upvotedProfiles || [],
+        };
+        
+        return NextResponse.json({ user, status: "success" });
       }
     }
-
-    // Construct the response object with only necessary fields
-    const user = {
-      uid: userId,
-      authUid: userData.authUid || null,
-      email: userData.email,
-      name: userData.name,
-      isAdmin: userData.isAdmin || false,
-      profile_picture: userData.profile_picture || null,
-      status: userData.status || "active",
-      college_name: userData.college_name,
-      bio: userData.bio,
-      github_link: userData.github_link,
-      linkedin_link: userData.linkedin_link,
-      portfolio_link: userData.portfolio_link,
-      resume_link: userData.resume_link,
-      upVote: userData.upVote || 0,
-      upvotedProfiles: userData.upvotedProfiles || [],
-    };
-
-    return NextResponse.json({ user, status: "success" });
   } catch (error) {
     console.error("Error fetching user:", error);
     return NextResponse.json({ message: "Failed to fetch user", error: String(error), status: "error" }, { status: 500 });
@@ -299,50 +433,38 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
       return NextResponse.json({ message: "Name cannot be updated", status: "error" }, { status: 400 });
     }
     
-    // Find the user document by document ID or authUid
-    let userRef;
-    let userData;
-    let userDocId = params.id;
+    // Find the user in user_profiles
+    const userRef = doc(db, "user_profiles", params.id);
+    const userSnap = await getDoc(userRef);
     
-    // First try by document ID
-    const directRef = doc(db, "registrations", params.id);
-    const directSnap = await getDoc(directRef);
-    
-    if (directSnap.exists()) {
-      userRef = directRef;
-      userData = directSnap.data();
-    } else {
-      // If not found, try finding by authUid
-      const usersRef = collection(db, "registrations");
-      const q = query(usersRef, where("authUid", "==", params.id));
-      const querySnapshot = await getDocs(q);
-      
-      if (querySnapshot.empty) {
-        // Last resort: try by email (in case the ID is actually an email)
-        if (params.id.includes('@')) {
-          const emailQuery = query(usersRef, where("email", "==", params.id));
-          const emailSnapshot = await getDocs(emailQuery);
-          
-          if (emailSnapshot.empty) {
-            return NextResponse.json({ message: "User not found", status: "error" }, { status: 404 });
-          }
-          
-          userDocId = emailSnapshot.docs[0].id;
-          userRef = doc(db, "registrations", userDocId);
-          userData = emailSnapshot.docs[0].data();
-        } else {
-          return NextResponse.json({ message: "User not found", status: "error" }, { status: 404 });
-        }
-      } else {
-        userDocId = querySnapshot.docs[0].id;
-        userRef = doc(db, "registrations", userDocId);
-        userData = querySnapshot.docs[0].data();
-      }
+    if (!userSnap.exists()) {
+      return NextResponse.json({ message: "User not found", status: "error" }, { status: 404 });
     }
     
+    const userData = userSnap.data() as UserProfile;
+    const batchDocId = userData.batch_doc_id;
+    
+    // Get the batch document
+    const batchRef = doc(db, "user_batches", batchDocId);
+    const batchSnap = await getDoc(batchRef);
+    
+    if (!batchSnap.exists()) {
+      return NextResponse.json({ message: "User batch not found", status: "error" }, { status: 404 });
+    }
+    
+    const batchData = batchSnap.data() as BatchDocument;
+    const userIndex = batchData.users.findIndex((u: BatchUser) => u.uid === params.id);
+    
+    if (userIndex === -1) {
+      return NextResponse.json({ message: "User not found in batch", status: "error" }, { status: 404 });
+    }
+    
+    // Get the user data from the batch
+    const userInBatch = batchData.users[userIndex];
+    
     // Handle college name update if provided
-    if (updates.college_name && updates.college_name !== userData.college_name) {
-      await handleCollegeChange(userData.college_name, updates.college_name);
+    if (updates.college_name && updates.college_name !== userInBatch.college_name) {
+      await handleCollegeChange(userInBatch.college_name || null, updates.college_name.toString());
     }
     
     // Handle resume update if provided
@@ -372,8 +494,10 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
       }
       
       // Delete old resume from Cloudinary if it exists
-      if (userData.resume_link) {
-        await deleteFromCloudinary(userData.resume_link, 'raw');
+      // We need to get the resume_link from the batch since it might not be in the user profile
+      const userInBatchResumeLink = userInBatch.resume_link;
+      if (userInBatchResumeLink) {
+        await deleteFromCloudinary(userInBatchResumeLink, 'raw');
       }
       
       // Upload new resume to Cloudinary
@@ -451,12 +575,44 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
       }
     }
     
-    // Apply all updates to the user document
-    await updateDoc(userRef, updates);
+    // Update both user_profiles and user_batches collections
+    const userProfileUpdates: Record<string, any> = {};
+    const userBatchUpdates: Record<string, any> = {};
+    
+    // Process updates for user_profiles
+    if (updates.profile_picture) {
+      userProfileUpdates['profile_picture'] = updates.profile_picture;
+    }
+    
+    // Process updates for user_batches
+    Object.keys(updates).forEach(key => {
+      if (key !== 'upvotedProfiles') { // Don't update upvotedProfiles in batch
+        userBatchUpdates[key] = updates[key];
+      }
+    });
+    
+    // Update the user_profiles collection
+    if (Object.keys(userProfileUpdates).length > 0) {
+      await updateDoc(userRef, userProfileUpdates);
+    }
+    
+    // Update the user in the batch
+    if (Object.keys(userBatchUpdates).length > 0) {
+      const updatedUsers = [...batchData.users];
+      updatedUsers[userIndex] = {
+        ...userInBatch,
+        ...userBatchUpdates
+      };
+      
+      await updateDoc(batchRef, {
+        users: updatedUsers,
+        updated_at: new Date().toISOString()
+      });
+    }
     
     return NextResponse.json({ 
       message: "User updated successfully",
-      userId: userDocId,
+      userId: params.id,
       status: "success" 
     });
   } catch (error) {
@@ -477,21 +633,21 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
       return NextResponse.json({ message: "Unauthorized: Missing UID", status: "error" }, { status: 401 });
     }
     
-    // Verify admin permissions - allow checking by either document ID or authUid
-    const adminRef = doc(db, "registrations", uid);
-    let adminSnap = await getDoc(adminRef);
+    // Verify admin permissions
+    const adminRef = doc(db, "user_profiles", uid);
+    const adminSnap = await getDoc(adminRef);
     let isAdmin = false;
     
     if (adminSnap.exists()) {
-      isAdmin = adminSnap.data().isAdmin || false;
-    } else {
-      // Try finding admin by authUid
-      const adminsRef = collection(db, "registrations");
-      const q = query(adminsRef, where("authUid", "==", uid));
-      const querySnapshot = await getDocs(q);
+      // We need to get admin status from the batch
+      const adminData = adminSnap.data() as UserProfile;
+      const adminBatchRef = doc(db, "user_batches", adminData.batch_doc_id);
+      const adminBatchSnap = await getDoc(adminBatchRef);
       
-      if (!querySnapshot.empty) {
-        isAdmin = querySnapshot.docs[0].data().isAdmin || false;
+      if (adminBatchSnap.exists()) {
+        const adminBatchData = adminBatchSnap.data() as BatchDocument;
+        const adminInBatch = adminBatchData.users.find((u: BatchUser) => u.uid === uid);
+        isAdmin = adminInBatch?.isAdmin || false;
       }
     }
     
@@ -499,50 +655,45 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
       return NextResponse.json({ message: "Unauthorized: Not an admin", status: "error" }, { status: 403 });
     }
     
-    // Find the user to delete by document ID or authUid
-    let userRef;
-    let userExists = false;
+    // Find the user to delete
+    const userRef = doc(db, "user_profiles", params.id);
+    const userSnap = await getDoc(userRef);
     
-    // First try by document ID
-    const directRef = doc(db, "registrations", params.id);
-    const directSnap = await getDoc(directRef);
-    
-    if (directSnap.exists()) {
-      userRef = directRef;
-      userExists = true;
-    } else {
-      // If not found, try finding by authUid
-      const usersRef = collection(db, "registrations");
-      const q = query(usersRef, where("authUid", "==", params.id));
-      const querySnapshot = await getDocs(q);
-      
-      if (querySnapshot.empty) {
-        // Last resort: try by email (in case the ID is actually an email)
-        if (params.id.includes('@')) {
-          const emailQuery = query(usersRef, where("email", "==", params.id));
-          const emailSnapshot = await getDocs(emailQuery);
-          
-          if (emailSnapshot.empty) {
-            return NextResponse.json({ message: "User not found", status: "error" }, { status: 404 });
-          }
-          
-          userRef = doc(db, "registrations", emailSnapshot.docs[0].id);
-          userExists = true;
-        } else {
-          return NextResponse.json({ message: "User not found", status: "error" }, { status: 404 });
-        }
-      } else {
-        userRef = doc(db, "registrations", querySnapshot.docs[0].id);
-        userExists = true;
-      }
-    }
-    
-    if (!userExists) {
+    if (!userSnap.exists()) {
       return NextResponse.json({ message: "User not found", status: "error" }, { status: 404 });
     }
     
-    // Delete the user document
-    await deleteDoc(userRef);
+    const userData = userSnap.data() as UserProfile;
+    const batchDocId = userData.batch_doc_id;
+    
+    // Get the batch document
+    const batchRef = doc(db, "user_batches", batchDocId);
+    const batchSnap = await getDoc(batchRef);
+    
+    if (!batchSnap.exists()) {
+      return NextResponse.json({ message: "User batch not found", status: "error" }, { status: 404 });
+    }
+    
+    const batchData = batchSnap.data() as BatchDocument;
+    const userIndex = batchData.users.findIndex((u: BatchUser) => u.uid === params.id);
+    
+    if (userIndex === -1) {
+      return NextResponse.json({ message: "User not found in batch", status: "error" }, { status: 404 });
+    }
+    
+    // Soft delete: set isDeleted flag in the batch
+    const updatedUsers = [...batchData.users];
+    updatedUsers[userIndex] = {
+      ...updatedUsers[userIndex],
+      isDeleted: true
+    };
+    
+    await updateDoc(batchRef, {
+      users: updatedUsers,
+      updated_at: new Date().toISOString()
+    });
+    
+    // We don't delete the user_profiles document, just to maintain references
     
     return NextResponse.json({ message: "User deleted successfully", status: "success" });
   } catch (error) {

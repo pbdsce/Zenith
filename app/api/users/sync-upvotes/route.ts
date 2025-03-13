@@ -20,8 +20,8 @@ export async function POST(req: Request) {
       );
     }
     
-    // Get the upvoter's document
-    const userRef = doc(db, "registrations", userId);
+    // Get the upvoter's document from user_profiles
+    const userRef = doc(db, "user_profiles", userId);
     const userSnap = await getDoc(userRef);
     
     if (!userSnap.exists()) {
@@ -45,15 +45,42 @@ export async function POST(req: Request) {
         // Skip if already upvoted
         if (currentUpvotedProfiles.includes(profileId)) continue;
         
-        // Update the target profile's upvote count
-        const profileRef = doc(db, "registrations", profileId);
+        // Get the target profile from user_profiles
+        const profileRef = doc(db, "user_profiles", profileId);
         const profileSnap = await getDoc(profileRef);
         
         if (!profileSnap.exists()) continue;
         
-        // Increment the upvote count
+        const profileData = profileSnap.data();
+        const batchDocId = profileData.batch_doc_id;
+        
+        // Get the batch document
+        const batchRef = doc(db, "user_batches", batchDocId);
+        const batchSnap = await getDoc(batchRef);
+        
+        if (!batchSnap.exists()) continue;
+        
+        const batchData = batchSnap.data();
+        const profileIndex = batchData.users.findIndex((u: { uid: string }) => u.uid === profileId);
+        
+        if (profileIndex === -1) continue;
+        
+        // Increment the upvote count in both collections
+        // 1. Update in user_profiles
         await updateDoc(profileRef, {
-          upVote: increment(1)
+          upVote: (profileData.upVote || 0) + 1
+        });
+        
+        // 2. Update in user_batches
+        const updatedUsers = [...batchData.users];
+        updatedUsers[profileIndex] = {
+          ...updatedUsers[profileIndex],
+          upVote: (updatedUsers[profileIndex].upVote || 0) + 1
+        };
+        
+        await updateDoc(batchRef, {
+          users: updatedUsers,
+          updated_at: new Date().toISOString()
         });
         
         processedUpvotes.push(profileId);
@@ -66,18 +93,47 @@ export async function POST(req: Request) {
         // Skip if not currently upvoted
         if (!currentUpvotedProfiles.includes(profileId)) continue;
         
-        // Update the target profile's upvote count
-        const profileRef = doc(db, "registrations", profileId);
+        // Get the target profile from user_profiles
+        const profileRef = doc(db, "user_profiles", profileId);
         const profileSnap = await getDoc(profileRef);
         
         if (!profileSnap.exists()) continue;
         
-        // Decrement the upvote count, but ensure it doesn't go below 0
         const profileData = profileSnap.data();
+        const batchDocId = profileData.batch_doc_id;
+        
+        // Get the batch document
+        const batchRef = doc(db, "user_batches", batchDocId);
+        const batchSnap = await getDoc(batchRef);
+        
+        if (!batchSnap.exists()) continue;
+        
+        const batchData = batchSnap.data();
+        const profileIndex = batchData.users.findIndex((u: { uid: string }) => u.uid === profileId);
+        
+        if (profileIndex === -1) continue;
+        
+        // Get current upvotes
         const currentUpvotes = profileData.upVote || 0;
         
+        // Decrement the upvote count in both collections, but ensure it doesn't go below 0
+        const newUpvoteCount = Math.max(0, currentUpvotes - 1);
+        
+        // 1. Update in user_profiles
         await updateDoc(profileRef, {
-          upVote: Math.max(0, currentUpvotes - 1)
+          upVote: newUpvoteCount
+        });
+        
+        // 2. Update in user_batches
+        const updatedUsers = [...batchData.users];
+        updatedUsers[profileIndex] = {
+          ...updatedUsers[profileIndex],
+          upVote: newUpvoteCount
+        };
+        
+        await updateDoc(batchRef, {
+          users: updatedUsers,
+          updated_at: new Date().toISOString()
         });
         
         processedDownvotes.push(profileId);

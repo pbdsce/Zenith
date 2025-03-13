@@ -21,8 +21,8 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       // In production, you might want to return an error instead
     }
     
-    // Get the target user document (the one being upvoted)
-    const targetUserRef = doc(db, "registrations", params.id);
+    // Get the target user document (the one being upvoted) from user_profiles
+    const targetUserRef = doc(db, "user_profiles", params.id);
     const targetUserSnap = await getDoc(targetUserRef);
     
     if (!targetUserSnap.exists()) {
@@ -33,13 +33,10 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     }
     
     const targetUserData = targetUserSnap.data();
+    const targetBatchId = targetUserData.batch_doc_id;
     
-    // Initialize arrays if they don't exist
-    const upVotedBy = targetUserData.upVotedBy || [];
-    let upVote = targetUserData.upVote || 0;
-    
-    // Get the upvoter's user document
-    const upvoterRef = doc(db, "registrations", userId);
+    // Get the upvoter's user document from user_profiles
+    const upvoterRef = doc(db, "user_profiles", userId);
     const upvoterSnap = await getDoc(upvoterRef);
     
     if (!upvoterSnap.exists()) {
@@ -49,36 +46,102 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       );
     }
     
+    const upvoterData = upvoterSnap.data();
+    const upvotedProfiles = upvoterData.upvotedProfiles || [];
+    
     // Check if the user has already upvoted this profile
-    const hasUpvoted = upVotedBy.includes(userId);
+    const hasUpvoted = upvotedProfiles.includes(params.id);
+    
+    // Get the target batch document
+    const targetBatchRef = doc(db, "user_batches", targetBatchId);
+    const targetBatchSnap = await getDoc(targetBatchRef);
+    
+    if (!targetBatchSnap.exists()) {
+      return NextResponse.json(
+        { message: "User batch not found", status: "error" }, 
+        { status: 404 }
+      );
+    }
+    
+    const batchData = targetBatchSnap.data();
+    const userIndex = batchData.users.findIndex((u: { uid: string }) => u.uid === params.id);
+    
+    if (userIndex === -1) {
+      return NextResponse.json(
+        { message: "User not found in batch", status: "error" }, 
+        { status: 404 }
+      );
+    }
+    
+    const userInBatch = batchData.users[userIndex];
+    let upVote = userInBatch.upVote || 0;
     
     // Update the upvote count and list
     if (hasUpvoted) {
       // Remove the upvote
-      await updateDoc(targetUserRef, {
-        upVote: upVote - 1,
-        upVotedBy: arrayRemove(userId)
+      upVote = Math.max(0, upVote - 1);
+      
+      // Update the target user in the batch
+      const updatedUsers = [...batchData.users];
+      updatedUsers[userIndex] = {
+        ...userInBatch,
+        upVote
+      };
+      
+      await updateDoc(targetBatchRef, {
+        users: updatedUsers,
+        updated_at: new Date().toISOString()
       });
+      
+      // Update the upvoter's upvotedProfiles list in user_profiles
+      await updateDoc(upvoterRef, {
+        upvotedProfiles: arrayRemove(params.id)
+      });
+      
+      // Update the target user's upVote in user_profiles
+      await updateDoc(targetUserRef, {
+        upVote
+      });
+      
       return NextResponse.json({
         message: "Upvote removed successfully",
         hasUpvoted: false,
-        upvotes: upVote - 1,
+        upvotes: upVote,
         status: "success"
       });
     } else {
       // Add the upvote
-      await updateDoc(targetUserRef, {
-        upVote: upVote + 1,
-        upVotedBy: arrayUnion(userId)
+      upVote++;
+      
+      // Update the target user in the batch
+      const updatedUsers = [...batchData.users];
+      updatedUsers[userIndex] = {
+        ...userInBatch,
+        upVote
+      };
+      
+      await updateDoc(targetBatchRef, {
+        users: updatedUsers,
+        updated_at: new Date().toISOString()
       });
+      
+      // Update the upvoter's upvotedProfiles list in user_profiles
+      await updateDoc(upvoterRef, {
+        upvotedProfiles: arrayUnion(params.id)
+      });
+      
+      // Update the target user's upVote in user_profiles
+      await updateDoc(targetUserRef, {
+        upVote
+      });
+      
       return NextResponse.json({
         message: "Upvote added successfully",
         hasUpvoted: true,
-        upvotes: upVote + 1,
+        upvotes: upVote,
         status: "success"
       });
     }
-    
   } catch (error) {
     console.error("Error updating upvote:", error);
     return NextResponse.json(
@@ -101,30 +164,41 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       );
     }
     
-    // Get the target user document
-    const targetUserRef = doc(db, "registrations", params.id);
-    const targetUserSnap = await getDoc(targetUserRef);
+    // Get the upvoter's user document from user_profiles
+    const upvoterRef = doc(db, "user_profiles", userId);
+    const upvoterSnap = await getDoc(upvoterRef);
     
-    if (!targetUserSnap.exists()) {
+    if (!upvoterSnap.exists()) {
       return NextResponse.json(
         { message: "User not found", status: "error" }, 
         { status: 404 }
       );
     }
     
+    const upvoterData = upvoterSnap.data();
+    const upvotedProfiles = upvoterData.upvotedProfiles || [];
+    
+    // Get the target user document from user_profiles
+    const targetUserRef = doc(db, "user_profiles", params.id);
+    const targetUserSnap = await getDoc(targetUserRef);
+    
+    if (!targetUserSnap.exists()) {
+      return NextResponse.json(
+        { message: "Target user not found", status: "error" }, 
+        { status: 404 }
+      );
+    }
+    
     const targetUserData = targetUserSnap.data();
-    const upVotedBy = targetUserData.upVotedBy || [];
-    const upVote = targetUserData.upVote || 0;
     
     // Check if the user has upvoted this profile
-    const hasUpvoted = upVotedBy.includes(userId);
+    const hasUpvoted = upvotedProfiles.includes(params.id);
     
     return NextResponse.json({
       hasUpvoted,
-      upvotes: upVote,
+      upvotes: targetUserData.upVote || 0,
       status: "success"
     });
-    
   } catch (error) {
     console.error("Error checking upvote status:", error);
     return NextResponse.json(
