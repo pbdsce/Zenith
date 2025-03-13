@@ -3,8 +3,9 @@ import { doc, getDoc, updateDoc, setDoc, collection, query, where, getDocs } fro
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
 import { NextResponse } from "next/server";
 
-// Consider moving this to environment variables for better security
+// TODO: Move this to .env file
 const SECRET_CODE = "pbstruggles";
+const ADMIN_EMAIL_DOMAIN = "@pointblank.club";
 
 // Define types for better maintainability
 interface UserBatch {
@@ -41,6 +42,14 @@ interface UserProfile {
   upVote: number;
   registration_time: string;
 }
+
+// Helper function to create error response
+const createErrorResponse = (message: string, status: number, errorCode?: string) => {
+  return NextResponse.json(
+    { message, status: "error", ...(errorCode && { error: errorCode }) },
+    { status }
+  );
+};
 
 // Helper function to get or create a batch document for admin
 const getOrCreateBatchForAdmin = async (): Promise<{ batchId: string, batchDoc: UserBatch }> => {
@@ -173,70 +182,64 @@ const createNewAdminUser = async (uid: string, authUid: string, email: string, b
   return userData;
 };
 
+// Handle authentication with Firebase
+const authenticateUser = async (email: string, password: string, isAdminAttempt: boolean) => {
+  try {
+    return await signInWithEmailAndPassword(auth, email, password);
+  } catch (authError: any) {
+    if (isAdminAttempt && 
+        (authError.code === 'auth/invalid-credential' || 
+         authError.code === 'auth/user-not-found')) {
+      // Create new admin account if login fails with valid admin domain
+      return await createUserWithEmailAndPassword(auth, email, password);
+    }
+    // For non-admin users or other errors, propagate the error
+    throw authError;
+  }
+};
+
 export async function POST(request: Request) {
   try {
     const { email, password } = await request.json();
 
     if (!email || !password) {
-      return NextResponse.json(
-        { message: "Email and password are required", status: "error" },
-        { status: 400 }
-      );
+      return createErrorResponse("Email and password are required", 400);
     }
     
-    const isAdminAttempt = email.endsWith("@pointblank.club") && password === SECRET_CODE;
+    const isAdminAttempt = email.endsWith(ADMIN_EMAIL_DOMAIN) && password === SECRET_CODE;
     
-    let userCredential, firebaseUser, isNewAdmin = false;
-    let userDocId: string;
-    let userData: UserProfile | null = null;
-    
-    try {
-      userCredential = await signInWithEmailAndPassword(auth, email, password);
-    } catch (authError: any) {
-      if (isAdminAttempt && 
-          (authError.code === 'auth/invalid-credential' || 
-           authError.code === 'auth/user-not-found')) {
-        // Create new admin account if login fails with valid admin domain
-        userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      } else {
-        // For non-admin users or other errors, propagate the error
-        throw authError;
-      }
-    }
-    
-    firebaseUser = userCredential.user;
+    // Authentication phase
+    const userCredential = await authenticateUser(email, password, isAdminAttempt);
+    const firebaseUser = userCredential.user;
     const idToken = await firebaseUser.getIdToken();
     
-    // Find user profile by authUid or email
+    // Find user profile
     const userProfile = await findUserProfile(firebaseUser.uid, email);
+    let isNewAdmin = false;
+    let userData: UserProfile | null = null;
+    let userDocId: string;
     
+    // Process based on user type
     if (isAdminAttempt) {
       // Admin login flow
       if (userProfile.userData) {
-        // Admin user found in profile
         userData = userProfile.userData;
         userDocId = userProfile.userDocId!;
         
-        // Check user status and update admin privileges if needed
+        // Validate user's batch status
         const batchCheck = await checkUserInBatch(userData.batch_doc_id, userDocId);
         
         if (!batchCheck.isValid) {
-          return NextResponse.json(
-            { message: batchCheck.message, status: "error" }, 
-            { status: 404 }
-          );
+          return createErrorResponse(batchCheck.message || "Invalid user batch", 404);
         }
         
-        // Update isAdmin if needed
+        // Ensure admin privileges if needed
         if (batchCheck.userInBatch && !batchCheck.userInBatch.isAdmin) {
           const batchRef = doc(db, "user_batches", userData.batch_doc_id);
           const updatedUsers = [...batchCheck.batchData!.users];
           const userIndex = updatedUsers.findIndex(u => u.uid === userDocId);
           
-          updatedUsers[userIndex] = {
-            ...updatedUsers[userIndex],
-            isAdmin: true
-          };
+          updatedUsers[userIndex] = { ...updatedUsers[userIndex], isAdmin: true };
           
           await updateDoc(batchRef, {
             users: updatedUsers,
@@ -249,23 +252,19 @@ export async function POST(request: Request) {
         // Create new admin user
         userDocId = firebaseUser.uid;
         const { batchId } = await getOrCreateBatchForAdmin();
-        
         userData = await createNewAdminUser(userDocId, firebaseUser.uid, email, batchId);
         isNewAdmin = true;
       }
     } else {
-      // Normal login flow
+      // Regular user login flow
       if (!userProfile.userData) {
-        return NextResponse.json(
-          { message: "User record not found", status: "error" },
-          { status: 404 }
-        );
+        return createErrorResponse("User record not found", 404);
       }
       
       userData = userProfile.userData;
       userDocId = userProfile.userDocId!;
       
-      // Update authUid if found by email but authUid doesn't match
+      // Update authUid if it doesn't match
       if (userData.authUid !== firebaseUser.uid) {
         await updateDoc(doc(db, "user_profiles", userDocId), {
           authUid: firebaseUser.uid
@@ -276,27 +275,21 @@ export async function POST(request: Request) {
       // Check user status in batch
       const batchCheck = await checkUserInBatch(userData.batch_doc_id, userDocId);
       if (!batchCheck.isValid) {
-        return NextResponse.json(
-          { message: batchCheck.message, status: "error" },
-          { status: batchCheck.message?.includes("not found") ? 404 : 403 }
-        );
+        const statusCode = batchCheck.message?.includes("not found") ? 404 : 403;
+        return createErrorResponse(batchCheck.message || "User status check failed", statusCode);
       }
     }
     
-    // Get final user batch data for response
+    // Get final user data for response
     const batchCheck = await checkUserInBatch(userData!.batch_doc_id, userDocId);
     
     if (!batchCheck.isValid || !batchCheck.userInBatch) {
-      return NextResponse.json(
-        { message: batchCheck.message || "User batch data not found", status: "error" },
-        { status: 404 }
-      );
+      return createErrorResponse(batchCheck.message || "User batch data not found", 404);
     }
     
+    // Create successful response
     return NextResponse.json({
-      message: isNewAdmin
-        ? "Login successful. Admin privileges granted."
-        : "Login successful",
+      message: isNewAdmin ? "Login successful. Admin privileges granted." : "Login successful",
       status: "success",
       user: {
         uid: userDocId,
@@ -342,9 +335,6 @@ export async function POST(request: Request) {
         break;
     }
 
-    return NextResponse.json(
-      { message: errorMessage, error: errorCode, status: "error" },
-      { status: statusCode }
-    );
+    return createErrorResponse(errorMessage, statusCode, errorCode);
   }
 }
