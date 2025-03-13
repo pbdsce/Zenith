@@ -144,6 +144,7 @@ export default function Signup() {
   const [showConfPassword, setshowConfPassword] = useState(false);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [serverErrors, setServerErrors] = useState<{ [key: string]: string }>({});
   const router = useRouter();
   const { register } = useAuth();
 
@@ -243,8 +244,6 @@ export default function Signup() {
 
   const handleCollegeSelect = (collegeName: string) => {
     setCollegeName(collegeName);
-    setCollegeSearchInput(collegeName);
-    setIsCustomCollege(false);
     setDropdownVisible(false);
   };
 
@@ -538,21 +537,166 @@ export default function Signup() {
     }
   };
 
-  const handleNext = () => {
+  // New state for tracking server-side validation status
+  // New state for tracking server-side validation status
+  const [isValidating, setIsValidating] = useState(false);
+  // Modified function to validate steps with backend
+  const validateStepWithBackend = async (stepNumber: number) => {
+    setIsValidating(true);
+    setError("");
+    setServerErrors({});
+    
+    try {
+      // Collect data for the current step
+      let stepData: Record<string, any> = { step: stepNumber };
+      
+      switch (stepNumber) {
+        case 0:
+          stepData = {
+            ...stepData,
+            name,
+            email,
+            password,
+            confirmPassword
+          };
+          break;
+        case 1:
+          stepData = {
+            ...stepData,
+            stdCode,
+            phone,
+            // We can't send file objects directly, so we'll just let the frontend
+            // validate the resume file presence
+          };
+          break;
+        case 2:
+          stepData = {
+            ...stepData,
+            githubLink,
+            linkedinLink,
+            leetcodeProfile,
+            portfolioLink
+          };
+          break;
+        case 3:
+          stepData = {
+            ...stepData,
+            cpProfiles: JSON.stringify(cpProfiles),
+            ctfProfileLinks: JSON.stringify(ctfProfileLinks),
+            kaggleLink,
+            devfolioLink
+          };
+          break;
+        case 4:
+          stepData = {
+            ...stepData,
+            age,
+            collegeName,
+            shortBio,
+            referralCode
+          };
+          break;
+      }
+      
+      // Call the backend validation API
+      const response = await fetch('/api/validate-step', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(stepData)
+      });
+      
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.message || 'Failed to validate step');
+      }
+      
+      if (!result.valid) {
+        setServerErrors(result.errors);
+        
+        // Set the corresponding frontend error states based on server response
+        if (stepNumber === 0) {
+          if (result.errors.name) setNameError(true);
+          if (result.errors.email) setEmailError(true);
+          if (result.errors.password) setPasswordError(true);
+          if (result.errors.confirmPassword) setConfirmPasswordError(true);
+        } else if (stepNumber === 1) {
+          if (result.errors.phone) setPhoneError(true);
+        } else if (stepNumber === 2) {
+          if (result.errors.githubLink) setGithubError(true);
+          if (result.errors.linkedinLink) setLinkedinError(true);
+          if (result.errors.leetcodeProfile) setLeetcodeError(true);
+          if (result.errors.portfolioLink) setPortfolioError(true);
+        } else if (stepNumber === 3) {
+          if (result.errors.kaggleLink) setKaggleError(true);
+          if (result.errors.devfolioLink) setDevfolioError(true);
+          
+          // Handle array errors for CP and CTF profiles
+          if (result.errors.cpProfiles) {
+            const cpErrors = JSON.parse(result.errors.cpProfiles);
+            const newCpErrors = cpProfilesErrors.map((_, index) => 
+              !!cpErrors[index]
+            );
+            setCpProfilesErrors(newCpErrors);
+          }
+          
+          if (result.errors.ctfProfileLinks) {
+            const ctfErrors = JSON.parse(result.errors.ctfProfileLinks);
+            const newCtfErrors = ctfProfilesErrors.map((_, index) => 
+              !!ctfErrors[index]
+            );
+            setCtfProfilesErrors(newCtfErrors);
+          }
+        } else if (stepNumber === 4) {
+          if (result.errors.age) setAgeError(true);
+        }
+        
+        // Set the main error message to the first error
+        const firstErrorKey = Object.keys(result.errors)[0];
+        if (firstErrorKey) {
+          setError(result.errors[firstErrorKey]);
+        }
+        
+        return false;
+      }
+      
+      return true;
+    } catch (error) {
+      console.error("Backend validation error:", error);
+      setError(error instanceof Error ? error.message : "Validation failed");
+      return false;
+    } finally {
+      setIsValidating(false);
+    }
+  };
+  
+  // Update handleNext to use backend validation
+  const handleNext = async () => {
     setError("");  // Clear any existing errors
     
+    // First do client-side validation
+    let isClientValid = false;
+    
     if (step === 0) {
-      const isValid = validateStep1();
-      if (isValid) setStep(1);
+      isClientValid = validateStep1();
     } else if (step === 1) {
-      const isValid = validateStep2();
-      if (isValid) setStep(2);
+      isClientValid = validateStep2();
     } else if (step === 2) {
-      const isValid = validateStep3();
-      if (isValid) setStep(3);
+      isClientValid = validateStep3();
     } else if (step === 3) {
-      const isValid = validateStep4();
-      if (isValid) setStep(4);
+      isClientValid = validateStep4();
+    }
+    
+    if (!isClientValid) {
+      return; // Stop if client validation fails
+    }
+    
+    // Then proceed with server validation
+    const isServerValid = await validateStepWithBackend(step);
+    
+    // Only proceed to next step if both validations pass
+    if (isServerValid) {
+      setStep(step + 1);
     }
   };
 
@@ -711,11 +855,17 @@ export default function Signup() {
                     onChange={(e) => {
                       setName(e.target.value);
                       if (nameError) setNameError(false);
+                      if (serverErrors.name) {
+                        const newErrors = {...serverErrors};
+                        delete newErrors.name;
+                        setServerErrors(newErrors);
+                      }
                     }}
                     className={`bg-transparent border ${nameError ? 'border-red-500' : 'border-gray-300'}`}
                     required
                   />
                 </motion.div>
+                {serverErrors.name && <p className="text-xs text-red-500 mt-1">{serverErrors.name}</p>}
               </div>
               
               <div className="space-y-2">
@@ -733,11 +883,17 @@ export default function Signup() {
                     onChange={(e) => {
                       setEmail(e.target.value);
                       if (emailError) setEmailError(false);
+                      if (serverErrors.email) {
+                        const newErrors = {...serverErrors};
+                        delete newErrors.email;
+                        setServerErrors(newErrors);
+                      }
                     }}
                     className={`bg-transparent border ${emailError ? 'border-red-500' : 'border-gray-300'}`}
                     required
                   />
                 </motion.div>
+                {serverErrors.email && <p className="text-xs text-red-500 mt-1">{serverErrors.email}</p>}
               </div>
               
               <div className="space-y-2">
@@ -758,6 +914,11 @@ export default function Signup() {
                         setPasswordError(false);
                         setError("");
                       }
+                      if (serverErrors.password) {
+                        const newErrors = {...serverErrors};
+                        delete newErrors.password;
+                        setServerErrors(newErrors);
+                      }
                     }}
                     className={`bg-transparent border ${passwordError ? 'border-red-500' : 'border-gray-300'}`}
                     required
@@ -772,7 +933,7 @@ export default function Signup() {
                     {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                   </motion.button>
                 </motion.div>
-                
+                {serverErrors.password && <p className="text-xs text-red-500 mt-1">{serverErrors.password}</p>}
                 <p className="text-xs text-muted-foreground">Password must be at least 6 characters long</p>
               </div>
               
@@ -794,6 +955,11 @@ export default function Signup() {
                         setConfirmPasswordError(false);
                         setError("");
                       }
+                      if (serverErrors.confirmPassword) {
+                        const newErrors = {...serverErrors};
+                        delete newErrors.confirmPassword;
+                        setServerErrors(newErrors);
+                      }
                     }}
                     className={`bg-transparent border ${confirmPasswordError ? 'border-red-500' : 'border-gray-300'}`}
                     required
@@ -808,10 +974,17 @@ export default function Signup() {
                     {showConfPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                   </motion.button>
                 </motion.div>
+                {serverErrors.confirmPassword && <p className="text-xs text-red-500 mt-1">{serverErrors.confirmPassword}</p>}
               </div>
               
-              <Button type="button" className="w-full my-1" size="lg" onClick={handleNext}>
-                Next
+              <Button 
+                type="button" 
+                className="w-full my-1" 
+                size="lg" 
+                onClick={handleNext}
+                disabled={isValidating}
+              >
+                {isValidating ? 'Validating...' : 'Next'}
               </Button>
             </>
           )}
@@ -864,6 +1037,11 @@ export default function Signup() {
                           const input = e.target.value.replace(/\D/g, '').slice(0, 10);
                           setPhone(input);
                           if (phoneError) setPhoneError(false);
+                          if (serverErrors.phone) {
+                            const newErrors = {...serverErrors};
+                            delete newErrors.phone;
+                            setServerErrors(newErrors);
+                          }
                         }}
                         className={`bg-transparent border tracking-widest ${phoneError ? 'border-red-500' : 'border-gray-300'}`}
                         required
@@ -871,80 +1049,46 @@ export default function Signup() {
                       />
                     </motion.div>
                 </div>
+                {serverErrors.phone && <p className="text-xs text-red-500 mt-1">{serverErrors.phone}</p>}
                 <p className="text-xs text-muted-foreground mt-1">Your phone number will not be visible to the public</p>
               </div>
               
               <div className="space-y-2">
                 <Label htmlFor="resume">Resume <span className="text-red-500">*</span></Label>
                 <motion.div 
-                  whileHover={{ scale: 1.02 }} 
-                  className={`relative border-2 border-dashed rounded-lg p-6 ${
-                    resumeError ? 'border-red-500 bg-red-50/10' : 'border-gray-300 bg-gray-50/10'
-                  } hover:border-heading transition-colors cursor-pointer text-center`}
+                  whileHover={{ scale: 1.05 }} 
+                  className='relative'
                   animate={resumeError ? shakeAnimation : undefined}
-                  onClick={() => resumeInputRef.current?.click()}
                 >
-                  <input 
-                    ref={resumeInputRef}
+                  <Input 
                     id="resume" 
                     type="file"
-                    accept="application/pdf"
+                    accept=".pdf"
                     onChange={handleResumeChange}
-                    className="hidden"
+                    className={`bg-transparent border ${resumeError ? 'border-red-500' : 'border-gray-300'}`}
+                    ref={resumeInputRef}
                     required
                   />
-                  
-                  {!resumeFileName ? (
-                    <div className="flex flex-col items-center justify-center">
-                      <svg 
-                        xmlns="http://www.w3.org/2000/svg" 
-                        className="h-10 w-10 text-gray-400 mb-2"
-                        fill="none" 
-                        viewBox="0 0 24 24" 
-                        stroke="currentColor"
-                      >
-                        <path 
-                          strokeLinecap="round" 
-                          strokeLinejoin="round" 
-                          strokeWidth={1.5} 
-                          d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" 
-                        />
-                      </svg>
-                      <p className="text-sm text-gray-400">Click to upload your resume (PDF only)</p>
-                      <p className="text-xs text-gray-400 mt-1">Maximum size: 500KB</p>
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-center">
-                      <svg 
-                        xmlns="http://www.w3.org/2000/svg" 
-                        className="h-8 w-8 text-green-500 mr-2"
-                        fill="none" 
-                        viewBox="0 0 24 24" 
-                        stroke="currentColor"
-                      >
-                        <path 
-                          strokeLinecap="round" 
-                          strokeLinejoin="round" 
-                          strokeWidth={2} 
-                          d="M5 13l4 4L19 7" 
-                        />
-                      </svg>
-                      <div className="text-left">
-                        <p className="text-sm font-medium truncate max-w-[200px]">{resumeFileName}</p>
-                        <p className="text-xs text-gray-400">Click to change file</p>
-                      </div>
-                    </div>
-                  )}
                 </motion.div>
-                {resumeError && !error && <p className="text-xs text-red-500 mt-1">Please upload your resume in PDF format (max 500KB)</p>}
+                {resumeError && !error && (
+                  <p className="text-xs text-red-500 mt-1">Please upload a valid PDF file (max 500KB)</p>
+                )}
+                {resumeFileName && (
+                  <p className="text-xs text-muted-foreground mt-1">Selected file: {resumeFileName}</p>
+                )}
               </div>
               
               <div className="flex justify-between">
                 <Button type="button" className="w-1/2 mr-2" onClick={handleBack}>
                   Back
                 </Button>
-                <Button type="button" className="w-1/2 ml-2" onClick={handleNext}>
-                  Next
+                <Button 
+                  type="button" 
+                  className="w-1/2 ml-2" 
+                  onClick={handleNext}
+                  disabled={isValidating}
+                >
+                  {isValidating ? 'Validating...' : 'Next'}
                 </Button>
               </div>
             </>
@@ -974,12 +1118,18 @@ export default function Signup() {
                           setGithubError(false);
                           setError("");
                         }
+                        if (serverErrors.githubLink) {
+                          const newErrors = {...serverErrors};
+                          delete newErrors.githubLink;
+                          setServerErrors(newErrors);
+                        }
                       }}
                       className={`bg-transparent border ${githubError ? 'border-red-500' : 'border-gray-300'}`}
                       required
                     />
                   </motion.div>
-                  {githubError && !error && (
+                  {serverErrors.githubLink && <p className="text-xs text-red-500 mt-1">{serverErrors.githubLink}</p>}
+                  {githubError && !error && !serverErrors.githubLink && (
                     <p className="text-xs text-red-500 mt-1">Valid GitHub profile link is required (https://github.com/username)</p>
                   )}
                 </div>
@@ -1002,12 +1152,18 @@ export default function Signup() {
                           setLinkedinError(false);
                           setError("");
                         }
+                        if (serverErrors.linkedinLink) {
+                          const newErrors = {...serverErrors};
+                          delete newErrors.linkedinLink;
+                          setServerErrors(newErrors);
+                        }
                       }}
                       className={`bg-transparent border ${linkedinError ? 'border-red-500' : 'border-gray-300'}`}
                       required
                     />
                   </motion.div>
-                  {linkedinError && !error && (
+                  {serverErrors.linkedinLink && <p className="text-xs text-red-500 mt-1">{serverErrors.linkedinLink}</p>}
+                  {linkedinError && !error && !serverErrors.linkedinLink && (
                     <p className="text-xs text-red-500 mt-1">Valid LinkedIn profile link is required (https://linkedin.com/in/username)</p>
                   )}
                 </div>
@@ -1030,11 +1186,17 @@ export default function Signup() {
                           setLeetcodeError(false);
                           setError("");
                         }
+                        if (serverErrors.leetcodeProfile) {
+                          const newErrors = {...serverErrors};
+                          delete newErrors.leetcodeProfile;
+                          setServerErrors(newErrors);
+                        }
                       }}
                       className={`bg-transparent border ${leetcodeError ? 'border-red-500' : 'border-gray-300'}`}
                     />
                   </motion.div>
-                  {leetcodeError && !error && (
+                  {serverErrors.leetcodeProfile && <p className="text-xs text-red-500 mt-1">{serverErrors.leetcodeProfile}</p>}
+                  {leetcodeError && !error && !serverErrors.leetcodeProfile && (
                     <p className="text-xs text-red-500 mt-1">Please enter a valid LeetCode profile URL</p>
                   )}
                 </div>
@@ -1057,11 +1219,17 @@ export default function Signup() {
                           setPortfolioError(false);
                           setError("");
                         }
+                        if (serverErrors.portfolioLink) {
+                          const newErrors = {...serverErrors};
+                          delete newErrors.portfolioLink;
+                          setServerErrors(newErrors);
+                        }
                       }}
                       className={`bg-transparent border ${portfolioError ? 'border-red-500' : 'border-gray-300'}`}
                     />
                   </motion.div>
-                  {portfolioError && !error && (
+                  {serverErrors.portfolioLink && <p className="text-xs text-red-500 mt-1">{serverErrors.portfolioLink}</p>}
+                  {portfolioError && !error && !serverErrors.portfolioLink && (
                     <p className="text-xs text-red-500 mt-1">Please enter a valid URL</p>
                   )}
                 </div>
@@ -1070,8 +1238,13 @@ export default function Signup() {
                   <Button type="button" className="w-1/2 mr-2" onClick={handleBack}>
                     Back
                   </Button>
-                  <Button type="button" className="w-1/2 ml-2" onClick={handleNext}>
-                    Next
+                  <Button 
+                    type="button" 
+                    className="w-1/2 ml-2" 
+                    onClick={handleNext}
+                    disabled={isValidating}
+                  >
+                    {isValidating ? 'Validating...' : 'Next'}
                   </Button>
                 </div>
               </div>
@@ -1124,11 +1297,17 @@ export default function Signup() {
                           setKaggleError(false);
                           setError("");
                         }
+                        if (serverErrors.kaggleLink) {
+                          const newErrors = {...serverErrors};
+                          delete newErrors.kaggleLink;
+                          setServerErrors(newErrors);
+                        }
                       }}
                       className={`bg-transparent border ${kaggleError ? 'border-red-500' : 'border-gray-300'}`}
                     />
                   </motion.div>
-                  {kaggleError && !error && (
+                  {serverErrors.kaggleLink && <p className="text-xs text-red-500 mt-1">{serverErrors.kaggleLink}</p>}
+                  {kaggleError && !error && !serverErrors.kaggleLink && (
                     <p className="text-xs text-red-500 mt-1">Please enter a valid Kaggle profile URL</p>
                   )}
                 </div>
@@ -1151,11 +1330,17 @@ export default function Signup() {
                           setDevfolioError(false);
                           setError("");
                         }
+                        if (serverErrors.devfolioLink) {
+                          const newErrors = {...serverErrors};
+                          delete newErrors.devfolioLink;
+                          setServerErrors(newErrors);
+                        }
                       }}
                       className={`bg-transparent border ${devfolioError ? 'border-red-500' : 'border-gray-300'}`}
                     />
                   </motion.div>
-                  {devfolioError && !error && (
+                  {serverErrors.devfolioLink && <p className="text-xs text-red-500 mt-1">{serverErrors.devfolioLink}</p>}
+                  {devfolioError && !error && !serverErrors.devfolioLink && (
                     <p className="text-xs text-red-500 mt-1">Please enter a valid Devfolio profile URL</p>
                   )}
                 </div>
@@ -1164,8 +1349,13 @@ export default function Signup() {
                   <Button type="button" className="w-1/2 mr-2" onClick={handleBack}>
                     Back
                   </Button>
-                  <Button type="button" className="w-1/2 ml-2" onClick={handleNext}>
-                    Next
+                  <Button 
+                    type="button" 
+                    className="w-1/2 ml-2" 
+                    onClick={handleNext}
+                    disabled={isValidating}
+                  >
+                    {isValidating ? 'Validating...' : 'Next'}
                   </Button>
                 </div>
               </div>
