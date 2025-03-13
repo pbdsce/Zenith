@@ -222,6 +222,30 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     if (userSnap.exists()) {
       const userData = userSnap.data() as UserProfile;
       
+      // Special handling for admin users (no batch required)
+      if (userData.isAdmin === true && (!userData.batch_doc_id || userData.batch_doc_id.trim() === "")) {
+        const user = {
+          uid: params.id,
+          authUid: userData.authUid,
+          email: userData.email,
+          name: userData.name,
+          isAdmin: true,
+          profile_picture: userData.profile_picture || null,
+          status: "active", // Admin users are always active
+          college_name: null,
+          bio: null,
+          github_link: null,
+          linkedin_link: null,
+          portfolio_link: null,
+          resume_link: null,
+          upVote: userData.upVote || 0,
+          upvotedProfiles: userData.upvotedProfiles || [],
+        };
+        
+        return NextResponse.json({ user, status: "success" });
+      }
+      
+      // For regular users, continue with batch logic
       // Get batch document to get full user details
       const batchRef = doc(db, "user_batches", userData.batch_doc_id);
       const batchSnap = await getDoc(batchRef);

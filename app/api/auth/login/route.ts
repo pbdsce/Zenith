@@ -52,36 +52,6 @@ const createErrorResponse = (message: string, status: number, errorCode?: string
   );
 };
 
-// Helper function to get or create a batch document for admin
-const getOrCreateBatchForAdmin = async (): Promise<{ batchId: string, batchDoc: UserBatch }> => {
-  const batchesRef = collection(db, "user_batches");
-  const q = query(batchesRef, where("isAdminBatch", "==", true));
-  const querySnapshot = await getDocs(q);
-  
-  let batchDoc;
-  let batchId;
-  
-  if (!querySnapshot.empty) {
-    // Use the first admin batch found
-    batchId = querySnapshot.docs[0].id;
-    batchDoc = querySnapshot.docs[0].data() as UserBatch;
-  } else {
-    // Create a new admin batch
-    batchId = doc(collection(db, "user_batches")).id;
-    batchDoc = {
-      id: batchId,
-      users: [],
-      isAdminBatch: true,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
-    
-    await setDoc(doc(db, "user_batches", batchId), batchDoc);
-  }
-  
-  return { batchId, batchDoc };
-};
-
 // Helper function to find user profile by authUid or email
 const findUserProfile = async (authUid: string, email: string): Promise<{ userData: UserProfile | null, userDocId: string | null }> => {
   // Try finding by authUid first
@@ -133,8 +103,8 @@ const checkUserInBatch = async (batchDocId: string, userId: string): Promise<{ i
   return { isValid: true, userInBatch, batchData };
 };
 
-// Helper to create a new admin user
-const createNewAdminUser = async (uid: string, authUid: string, email: string, batchId: string): Promise<UserProfile> => {
+// Helper to create a new admin user (only in user_profiles now)
+const createNewAdminUser = async (uid: string, authUid: string, email: string): Promise<UserProfile> => {
   const userData: UserProfile = {
     uid,
     authUid,
@@ -142,7 +112,7 @@ const createNewAdminUser = async (uid: string, authUid: string, email: string, b
     email,
     phone: null,
     profile_picture: null,
-    batch_doc_id: batchId,
+    batch_doc_id: "", // No batch for admin users
     upvotedProfiles: [],
     upVote: 0,
     registration_time: new Date().toISOString(),
@@ -150,36 +120,6 @@ const createNewAdminUser = async (uid: string, authUid: string, email: string, b
   };
   
   await setDoc(doc(db, "user_profiles", uid), userData);
-  
-  // Add user to admin batch
-  const batchRef = doc(db, "user_batches", batchId);
-  const batchSnap = await getDoc(batchRef);
-  
-  if (batchSnap.exists()) {
-    const batchData = batchSnap.data() as UserBatch;
-    const batchUsers = batchData.users || [];
-    
-    const adminBatchData: BatchUser = {
-      uid,
-      authUid,
-      name: email.split('@')[0],
-      email,
-      phone: null,
-      profile_picture: null,
-      status: "active",
-      isAdmin: true, // Still maintain in batch for backward compatibility
-      upVote: 0,
-      isDeleted: false,
-      registration_time: new Date().toISOString()
-    };
-    
-    batchUsers.push(adminBatchData);
-    
-    await updateDoc(batchRef, {
-      users: batchUsers,
-      updated_at: new Date().toISOString()
-    });
-  }
   
   return userData;
 };
@@ -228,39 +168,15 @@ export async function POST(request: Request) {
         userData = userProfile.userData;
         userDocId = userProfile.userDocId!;
         
-        // Validate user's batch status
-        const batchCheck = await checkUserInBatch(userData.batch_doc_id, userDocId);
-        
-        if (!batchCheck.isValid) {
-          return createErrorResponse(batchCheck.message || "Invalid user batch", 404);
-        }
-        
         // Check if admin status needs to be updated
         const isAdminInProfile = userData.isAdmin === true;
-        const isAdminInBatch = batchCheck.userInBatch?.isAdmin === true;
         
-        // If admin status is not consistent or missing, update it
-        if (!isAdminInProfile || !isAdminInBatch) {
+        // If admin status is missing, update it
+        if (!isAdminInProfile) {
           // Update in user_profiles
           await updateDoc(doc(db, "user_profiles", userDocId), {
             isAdmin: true
           });
-          
-          // Also update in batch for backward compatibility
-          if (!isAdminInBatch) {
-            const batchRef = doc(db, "user_batches", userData.batch_doc_id);
-            const updatedUsers = [...batchCheck.batchData!.users];
-            const userIndex = updatedUsers.findIndex(u => u.uid === userDocId);
-            
-            if (userIndex !== -1) {
-              updatedUsers[userIndex] = { ...updatedUsers[userIndex], isAdmin: true };
-              
-              await updateDoc(batchRef, {
-                users: updatedUsers,
-                updated_at: new Date().toISOString()
-              });
-            }
-          }
           
           isNewAdmin = true;
           
@@ -271,10 +187,9 @@ export async function POST(request: Request) {
           };
         }
       } else {
-        // Create new admin user
+        // Create new admin user - only in user_profiles, no batch needed
         userDocId = firebaseUser.uid;
-        const { batchId } = await getOrCreateBatchForAdmin();
-        userData = await createNewAdminUser(userDocId, firebaseUser.uid, email, batchId);
+        userData = await createNewAdminUser(userDocId, firebaseUser.uid, email);
         isNewAdmin = true;
       }
     } else {
@@ -302,27 +217,44 @@ export async function POST(request: Request) {
       }
     }
     
-    // Get final user data for response
-    const batchCheck = await checkUserInBatch(userData!.batch_doc_id, userDocId);
-    
-    if (!batchCheck.isValid || !batchCheck.userInBatch) {
-      return createErrorResponse(batchCheck.message || "User batch data not found", 404);
+    // Create response based on user type
+    if (isAdminAttempt) {
+      // For admin users, return data directly from user_profiles
+      return NextResponse.json({
+        message: isNewAdmin ? "Login successful. Admin privileges granted." : "Login successful",
+        status: "success",
+        user: {
+          uid: userDocId,
+          email: userData!.email,
+          name: userData!.name || null,
+          isAdmin: true, // Always true for admin users
+          profile_picture: userData!.profile_picture || null,
+          status: "active" // Admin users are always active
+        },
+        token: idToken
+      });
+    } else {
+      // For regular users, use existing logic to get data from batch
+      const batchCheck = await checkUserInBatch(userData!.batch_doc_id, userDocId);
+      
+      if (!batchCheck.isValid || !batchCheck.userInBatch) {
+        return createErrorResponse(batchCheck.message || "User batch data not found", 404);
+      }
+      
+      return NextResponse.json({
+        message: "Login successful",
+        status: "success",
+        user: {
+          uid: userDocId,
+          email: batchCheck.userInBatch.email,
+          name: batchCheck.userInBatch.name || null,
+          isAdmin: userData!.isAdmin || false, // Prioritize user_profiles isAdmin
+          profile_picture: batchCheck.userInBatch.profile_picture || null,
+          status: batchCheck.userInBatch.status || "active"
+        },
+        token: idToken
+      });
     }
-    
-    // Create successful response - prioritize isAdmin from user_profiles
-    return NextResponse.json({
-      message: isNewAdmin ? "Login successful. Admin privileges granted." : "Login successful",
-      status: "success",
-      user: {
-        uid: userDocId,
-        email: batchCheck.userInBatch.email,
-        name: batchCheck.userInBatch.name || null,
-        isAdmin: userData.isAdmin || batchCheck.userInBatch.isAdmin || false, // Prioritize user_profiles isAdmin
-        profile_picture: batchCheck.userInBatch.profile_picture || null,
-        status: batchCheck.userInBatch.status || "active"
-      },
-      token: idToken
-    });
   } catch (error: any) {
     console.error("Login error:", error);
     
