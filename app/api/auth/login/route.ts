@@ -108,7 +108,9 @@ const createNewAdminUser = async (uid: string, authUid: string, email: string): 
   const userData: UserProfile = {
     uid,
     authUid,
-    name: email.split('@')[0],
+    name: email.split('@')[0].split('.')
+      .map((s: string) => s.charAt(0).toUpperCase() + s.slice(1))
+      .join(' '),
     email,
     phone: null,
     profile_picture: null,
