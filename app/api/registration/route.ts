@@ -497,6 +497,54 @@ export async function POST(request: Request) {
       );
     }
 
+    // Validate competitive profiles (array of URLs)
+    try {
+      const competitiveProfiles = JSON.parse(data.competitive_profiles || '[]');
+      for (const cpProfile of competitiveProfiles) {
+        if (cpProfile && !validateURL(cpProfile)) {
+          return NextResponse.json(
+            {
+              message: "Invalid Competitive Programming profile URL format.",
+              error: "Invalid CP profile",
+            },
+            { status: 400 }
+          );
+        }
+      }
+    } catch (error) {
+      return NextResponse.json(
+        {
+          message: "Invalid format for competitive profiles.",
+          error: "Invalid CP profiles format",
+        },
+        { status: 400 }
+      );
+    }
+
+    // Validate CTF profiles (array of URLs)
+    try {
+      const ctfProfiles = JSON.parse(data.ctf_profiles || '[]');
+      for (const ctfProfile of ctfProfiles) {
+        if (ctfProfile && !validateURL(ctfProfile)) {
+          return NextResponse.json(
+            {
+              message: "Invalid CTF profile URL format.",
+              error: "Invalid CTF profile",
+            },
+            { status: 400 }
+          );
+        }
+      }
+    } catch (error) {
+      return NextResponse.json(
+        {
+          message: "Invalid format for CTF profiles.",
+          error: "Invalid CTF profiles format",
+        },
+        { status: 400 }
+      );
+    }
+
     // Check for duplicate email registration
     const emailQuery = query(
       collection(db, "user_profiles"),
@@ -595,8 +643,10 @@ export async function POST(request: Request) {
         leetcode_profile: data.leetcode_profile || null,
         github_link: data.github_link || null,
         linkedin_link: data.linkedin_link || null,
-        competitive_profile: data.competitive_profile || null,
-        ctf_profile: data.ctf_profile || null,
+        competitive_profiles: data.competitive_profiles ? JSON.parse(data.competitive_profiles) : [],
+        ctf_profiles: data.ctf_profiles ? JSON.parse(data.ctf_profiles) : [],
+        competitive_profile: null,
+        ctf_profile: null,
         kaggle_link: data.kaggle_link || null,
         devfolio_link: data.devfolio_link || null,
         portfolio_link: data.portfolio_link || null,
