@@ -636,10 +636,16 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
     // Verify admin permissions
     const adminRef = doc(db, "user_profiles", uid);
     const adminSnap = await getDoc(adminRef);
-    let isAdmin = false;
     
-    if (adminSnap.exists()) {
-      // We need to get admin status from the batch
+    if (!adminSnap.exists()) {
+      return NextResponse.json({ message: "Unauthorized: Admin not found", status: "error" }, { status: 403 });
+    }
+    
+    // Check isAdmin directly in user_profiles
+    let isAdmin = adminSnap.data().isAdmin === true;
+    
+    // If not found in user_profiles, fall back to batch check (for backward compatibility)
+    if (!isAdmin) {
       const adminData = adminSnap.data() as UserProfile;
       const adminBatchRef = doc(db, "user_batches", adminData.batch_doc_id);
       const adminBatchSnap = await getDoc(adminBatchRef);
@@ -648,6 +654,13 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
         const adminBatchData = adminBatchSnap.data() as BatchDocument;
         const adminInBatch = adminBatchData.users.find((u: BatchUser) => u.uid === uid);
         isAdmin = adminInBatch?.isAdmin || false;
+        
+        // If admin in batch but not in profile, update profile for consistency
+        if (isAdmin) {
+          await updateDoc(adminRef, {
+            isAdmin: true
+          });
+        }
       }
     }
     

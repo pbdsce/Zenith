@@ -269,15 +269,15 @@ export async function POST(request: Request) {
     const newCollegeRef = doc(db, COLLEGES_COLLECTION, newCollegeId);
     
     try {
+      // First, check if college was created in the meantime
+      const doubleCheckQuery = query(collegesRef, where("name_lower", "==", nameLower));
+      const doubleCheckSnapshot = await getDocs(doubleCheckQuery);
+      
+      if (!doubleCheckSnapshot.empty) {
+        throw new Error("College was created by another operation");
+      }
+      
       await runTransaction(db, async (transaction) => {
-        // Double-check that no college with the same name was created during our operation
-        const doubleCheckQuery = query(collegesRef, where("name_lower", "==", nameLower));
-        const doubleCheckSnapshot = await transaction.get(doubleCheckQuery);
-        
-        if (!doubleCheckSnapshot.empty) {
-          throw new Error("College was created by another operation");
-        }
-        
         const collegeData = {
           name: collegeName,
           name_lower: nameLower,
@@ -391,27 +391,26 @@ export async function PUT(request: Request) {
     const collegeRef = doc(db, COLLEGES_COLLECTION, id) as DocumentReference<College>;
     
     try {
+      // First check if the name we want to use already exists
+      const collegeLower = collegeName.toLowerCase();
+      const collegesRef = collection(db, COLLEGES_COLLECTION);
+      const nameQuery = query(collegesRef, where("name_lower", "==", collegeLower));
+      const nameQuerySnapshot = await getDocs(nameQuery);
+      
+      // If name exists but for a different college, reject the update
+      if (!nameQuerySnapshot.empty) {
+        const existingDoc = nameQuerySnapshot.docs[0];
+        if (existingDoc.id !== id) {
+          throw new Error("DUPLICATE_NAME");
+        }
+      }
+      
       // Use transaction for atomicity
       const result = await runTransaction(db, async (transaction) => {
         const collegeDoc = await transaction.get(collegeRef);
         
         if (!collegeDoc.exists()) {
           throw new Error("NOT_FOUND");
-        }
-        
-        const collegeLower = collegeName.toLowerCase();
-        
-        // Check if new name already exists (for a different college)
-        const collegesRef = collection(db, COLLEGES_COLLECTION);
-        const nameQuery = query(collegesRef, where("name_lower", "==", collegeLower));
-        const nameQuerySnapshot = await transaction.get(nameQuery);
-        
-        // If name exists but for a different college, reject the update
-        if (!nameQuerySnapshot.empty) {
-          const existingDoc = nameQuerySnapshot.docs[0];
-          if (existingDoc.id !== id) {
-            throw new Error("DUPLICATE_NAME");
-          }
         }
         
         // Update the college data

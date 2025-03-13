@@ -623,6 +623,7 @@ export async function POST(request: Request) {
         upvotedProfiles: [],
         upVote: 0,
         registration_time: new Date().toISOString(),
+        isAdmin: false, // Add isAdmin field in user_profiles
       };
       
       // Update the batch document

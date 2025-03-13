@@ -19,21 +19,29 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     }
 
     const adminData = adminSnap.data();
-    const adminBatchDocId = adminData.batch_doc_id;
-
-    // Get admin batch to check isAdmin flag
-    const adminBatchRef = doc(db, "user_batches", adminBatchDocId);
-    const adminBatchSnap = await getDoc(adminBatchRef);
     
-    if (!adminBatchSnap.exists()) {
-      return NextResponse.json({ message: "Admin batch not found", status: "error" }, { status: 404 });
-    }
+    // Check isAdmin flag directly from user_profiles first
+    if (adminData.isAdmin !== true) {
+      // Fall back to batch check for backward compatibility
+      const adminBatchDocId = adminData.batch_doc_id;
+      const adminBatchRef = doc(db, "user_batches", adminBatchDocId);
+      const adminBatchSnap = await getDoc(adminBatchRef);
+      
+      if (!adminBatchSnap.exists()) {
+        return NextResponse.json({ message: "Admin batch not found", status: "error" }, { status: 404 });
+      }
 
-    const adminBatchData = adminBatchSnap.data();
-    const adminInBatch = adminBatchData.users.find((u: { uid: string }) => u.uid === uid);
+      const adminBatchData = adminBatchSnap.data();
+      const adminInBatch = adminBatchData.users.find((u: { uid: string }) => u.uid === uid);
 
-    if (!adminInBatch || !adminInBatch.isAdmin) {
-      return NextResponse.json({ message: "Unauthorized: Not an admin", status: "error" }, { status: 403 });
+      if (!adminInBatch || !adminInBatch.isAdmin) {
+        return NextResponse.json({ message: "Unauthorized: Not an admin", status: "error" }, { status: 403 });
+      }
+      
+      // Update isAdmin in user_profiles for consistency
+      await updateDoc(adminRef, {
+        isAdmin: true
+      });
     }
 
     // Find target user
