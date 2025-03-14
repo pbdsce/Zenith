@@ -12,7 +12,7 @@ export const metadata: Metadata = {
     template: '%s | Zenith',
     default: 'Zenith - Programming Contest'
   },
-  description: 'A 36-hour programming contest featuring CTF, Kaggle, Hackathon, and CP',
+  description: 'A 36-hour programming contest featuring CTF, Kaggle, Hackathon, and DSA',
   viewport: 'width=device-width, initial-scale=1',
   themeColor: '#000000',
   icons: {

@@ -6,6 +6,8 @@ import EventTimer from "@/components/ui/eventtimer";
 import { Oxanium } from "next/font/google";
 import { motion } from "framer-motion";
 import Loading from "@/app/loading";
+import '@/styles/cybr-btn.css';
+import NavButtons from './navbar';
 
 const oxan = Oxanium ({
     weight: "400",
@@ -18,16 +20,26 @@ export function Hero(){
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
+    // Check if video was previously loaded in this session
+    const videoLoaded = sessionStorage.getItem('zenithVideoLoaded');
+    
+    if (videoLoaded === 'true') {
+      setIsLoading(false);
+      return;
+    }
+    
     const video = videoRef.current;
     
     // If video is already loaded
     if (video && video.readyState >= 3) {
       setIsLoading(false);
+      sessionStorage.setItem('zenithVideoLoaded', 'true');
     }
 
     // Fallback timeout after 5 seconds
     const timeoutId = setTimeout(() => {
       setIsLoading(false);
+      sessionStorage.setItem('zenithVideoLoaded', 'true');
     }, 5000);
 
     return () => clearTimeout(timeoutId);
@@ -35,6 +47,7 @@ export function Hero(){
 
   const handleVideoLoad = () => {
     setIsLoading(false);
+    sessionStorage.setItem('zenithVideoLoaded', 'true');
   };
 
   if (isLoading) {
@@ -43,7 +56,7 @@ export function Hero(){
 
   return (
     <div className="relative h-[63rem] bg-black before:absolute before:bottom-0 before:left-0 before:w-full before:h-1/3 before:bg-gradient-to-b before:from-transparent before:to-black">
-    {/* Video Background */}
+      <NavButtons />
       <video 
         ref={videoRef}
         className="absolute top-0 left-0 w-full h-full object-cover" 
@@ -81,8 +94,8 @@ export function Hero(){
         </div>
         <p className={`${oxan.className} text-xs md:text-xl text-muted-foreground -mt-7 md:-mt-24 max-w-xs sm:max-w-3xl mx-auto`}>
               A 36-hour Point Blank contest featuring CTF, a Kaggle competition,
-              Hackathon, and DSA —where teams compete in a relentless test of skill, strategy, and endurance!
-            </p>
+              Hackathon, and DSA —where teams compete in a relentless test of skill, strategy, and endurance!
+        </p>
         <div className="pt-96">
           <EventTimer targetDate={new Date("2025-04-27T00:00:00").toISOString()} />
         </div>

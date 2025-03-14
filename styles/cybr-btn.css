@@ -1,0 +1,64 @@
+@font-face {
+  font-family: Cyber;
+  src: url("https://assets.codepen.io/605876/Blender-Pro-Bold.otf");
+  font-display: swap;
+}
+
+.cybr-btn {
+  --white-glow: rgba(255, 255, 255, 0.8);
+  --color: hsl(0, 0%, 100%);
+  --font-size: 15px;
+  font-family: 'Cyber', sans-serif;
+  color: var(--color);
+  cursor: pointer;
+  text-transform: uppercase;
+  font-size: var(--font-size);
+  letter-spacing: 1px;
+  position: relative;
+  font-weight: 700;
+  border: none;
+  height: 40px;
+  line-height: 40px;
+  padding: 0 10px;
+  transition: all 0.2s;
+  border-radius: 20px;
+  text-shadow: 0 0 5px var(--white-glow);
+  min-width: 80px;
+}
+
+.cybr-btn:hover {
+  text-shadow: 
+    0 0 5px var(--white-glow),
+    0 0 10px var(--white-glow),
+    0 0 15px var(--white-glow);
+}
+
+/* Position the button in the top right corner */
+.top-right-btn {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 50;
+}
+
+/* Make the button responsive */
+@media (max-width: 768px) {
+  .cybr-btn {
+    --font-size: 13px;
+    min-width: 70px;
+    height: 35px;
+    line-height: 35px;
+    letter-spacing: 0.5px;
+    padding: 0 8px;
+  }
+}
+
+@media (max-width: 360px) {
+  .cybr-btn {
+    --font-size: 12px;
+    min-width: 60px;
+    height: 32px;
+    line-height: 32px;
+    letter-spacing: 0px;
+  }
+}
