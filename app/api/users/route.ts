@@ -1,55 +1,69 @@
 import { db } from "@/Firebase";
-import { collection, getDocs } from "firebase/firestore";
+import { collection, getDocs, doc, getDoc } from "firebase/firestore";
 import { NextResponse } from "next/server";
 
 export async function GET() {
   try {
-    const querySnapshot = await getDocs(collection(db, "registrations"));
-    const users = querySnapshot.docs.map((doc) => {
-      const data = doc.data();
-      const returnObj = {  uid: doc.id, // Always use doc.id for consistency
-        name: data.name,
-        email: data.email,
-        phone: data.phone,
-        resume_link: data.resume_link,
-        college_name: data.college_name,
-        bio: data.bio,
-        profile_picture: data.profile_picture,
-        upVote: data.upVote,
-        leetcode_profile: data.leetcode_profile || null,
-        github_link: data.github_link || null,
-        linkedin_link: data.linkedin_link || null,
-        competitive_profile: data.competitive_profile || null,
-        ctf_profile: data.ctf_profile || null,
-        kaggle_link: data.kaggle_link || null,
-        devfolio_link: data.devfolio_link || null,
-        portfolio_link: data.portfolio_link || null,
-        status: "pending",
+    // Get all batch documents from user_batches
+    const batchesRef = collection(db, "user_batches");
+    const batchesSnapshot = await getDocs(batchesRef);
+    
+    // Collect all users from all batches
+    interface User {
+      uid: string;
+      name: string;
+      email: string;
+      phone: string;
+      resume_link: string;
+      college_name: string | null;
+      bio: string | null;
+      age: number | null;
+      profile_picture: string | null;
+      upVote: number;
+      leetcode_profile: string | null;
+      github_link: string | null;
+      linkedin_link: string | null;
+      competitive_profile: string | null;
+      ctf_profile: string | null;
+      kaggle_link: string | null;
+      devfolio_link: string | null;
+      portfolio_link: string | null;
+      status: string;
+    }
+    
+    let users: User[] = [];
+    
+    for (const batchDoc of batchesSnapshot.docs) {
+      const batchData = batchDoc.data();
+      if (batchData.users && Array.isArray(batchData.users)) {
+        // Filter out deleted users
+        const activeUsers = batchData.users
+          .filter(user => !user.isDeleted)
+          .map(user => ({
+            uid: user.uid,
+            name: user.name,
+            email: user.email,
+            phone: user.phone,
+            resume_link: user.resume_link,
+            college_name: user.college_name || null,
+            bio: user.bio || null,
+            age: user.age || null,
+            profile_picture: user.profile_picture || null,
+            upVote: user.upVote || 0,
+            leetcode_profile: user.leetcode_profile || null,
+            github_link: user.github_link || null,
+            linkedin_link: user.linkedin_link || null,
+            competitive_profile: user.competitive_profile || null,
+            ctf_profile: user.ctf_profile || null,
+            kaggle_link: user.kaggle_link || null,
+            devfolio_link: user.devfolio_link || null,
+            portfolio_link: user.portfolio_link || null,
+            status: user.status || "pending",
+          }));
+        
+        users = [...users, ...activeUsers];
       }
-      console.log("REturned object is : ", returnObj);
-      
-      return {
-        uid: doc.id, // Always use doc.id for consistency
-        name: data.name,
-        email: data.email,
-        phone: data.phone,
-        resume_link: data.resume_link,
-        college_name: data.college_name,
-        bio: data.bio,
-        age: data.age,
-        profile_picture: data.profile_picture,
-        upVote: data.upVote || 0, // Make consistent with upVote elsewhere
-        leetcode_profile: data.leetcode_profile || null,
-        github_link: data.github_link || null,
-        linkedin_link: data.linkedin_link || null,
-        competitive_profile: data.competitive_profile || null,
-        ctf_profile: data.ctf_profile || null,
-        kaggle_link: data.kaggle_link || null,
-        devfolio_link: data.devfolio_link || null,
-        portfolio_link: data.portfolio_link || null,
-        status: "pending",
-      };
-    });
+    }
 
     return NextResponse.json({ users, status: "success" });
   } catch (error) {

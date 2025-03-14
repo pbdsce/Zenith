@@ -12,13 +12,25 @@ import {
   isAdmin as checkIsAdmin
 } from '@/lib/auth-storage';
 
+// Define the expected response type from the registration API
+interface RegisterResponse {
+  message: string;
+  id: string;
+  authUid: string;
+  profile_picture: string;
+  status: "pending_verification" | "success" | "error";
+  user: AuthUser;
+  token?: string; // Optional, if your API returns a token
+  error?: string; // Optional, for error messages
+}
+
 interface UseAuthReturn {
   user: AuthUser | null;
   isAuthenticated: boolean;
   isAdmin: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (formData: FormData) => Promise<string>;
+  register: (formData: FormData) => Promise<RegisterResponse>;
   logout: () => void;
   refreshUser: () => Promise<void>;
 }
@@ -73,7 +85,7 @@ export function useAuth(): UseAuthReturn {
   };
 
   // Register function
-  const register = async (formData: FormData): Promise<string> => {
+  const register = async (formData: FormData): Promise<RegisterResponse> => {
     setIsLoading(true);
     
     try {
@@ -82,7 +94,7 @@ export function useAuth(): UseAuthReturn {
         body: formData
       });
       
-      const data = await response.json();
+      const data: RegisterResponse = await response.json();
       
       if (data.status !== 'success') {
         throw new Error(data.message || 'Registration failed');
@@ -112,7 +124,7 @@ export function useAuth(): UseAuthReturn {
       // Update user state
       setUser(newUser);
       
-      return data.id;
+      return data;
     } catch (error) {
       console.error('Registration failed:', error);
       throw error;
