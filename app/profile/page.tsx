@@ -53,6 +53,7 @@ import { useToast } from "@/hooks/use-toast"
 // Auth hooks and utilities
 import { useAuth } from "@/hooks/useAuth"
 import { getAuthToken } from "@/lib/auth-storage"
+import { analytics, logEvent } from "@/Firebase";
 
 // Define user profile structure based on our API
 interface UserProfile {
@@ -112,8 +113,15 @@ export default function ProfilePage() {
   useEffect(() => {
     if (!isAuthenticated && !isLoading) {
       router.push("/login")
+    } else if (isAuthenticated && user && analytics) {
+      logEvent(analytics, "page_view", {
+        page_title: "Profile",
+        page_path: "/profile",
+        user_id: user.uid,
+        timestamp: new Date().toISOString(),
+      });
     }
-  }, [isAuthenticated, isLoading, router])
+  }, [isAuthenticated, isLoading, router,user])
 
   // Fetch user data on component mount
   useEffect(() => {
@@ -145,6 +153,13 @@ export default function ProfilePage() {
             description: data.message || "Failed to load profile data",
             variant: "destructive"
           })
+          if (analytics) {
+            logEvent(analytics, "fetch_profile_error", {
+              user_id: user.uid,
+              error: data.message || "Unknown error",
+              timestamp: new Date().toISOString(),
+            });
+          }
         }
       } catch (error) {
         console.error("Error fetching user data:", error)
@@ -153,6 +168,13 @@ export default function ProfilePage() {
           description: "Failed to load profile data. Please try again.",
           variant: "destructive"
         })
+        if (analytics) {
+          logEvent(analytics, "fetch_profile_error", {
+            user_id: user.uid,
+            error: error instanceof Error ? error.message : "Unknown error",
+            timestamp: new Date().toISOString(),
+          });
+        }
       } finally {
         setIsLoading(false)
       }
