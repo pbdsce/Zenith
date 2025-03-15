@@ -101,7 +101,7 @@ export async function GET(request: Request) {
     // Validate pageSize to prevent excessive queries
     const validPageSize = Math.min(Math.max(10, pageSize), 500);
     
-    let collegesQuery;
+    let collegesQuery: string | any = null;
     const collegesRef = collection(db, COLLEGES_COLLECTION);
     
     if (lastId) {
@@ -132,11 +132,14 @@ export async function GET(request: Request) {
     
     const querySnapshot = await getDocs(collegesQuery);
     
-    const colleges: CollegeResponse[] = querySnapshot.docs.map(doc => ({
-      id: doc.id,
-      name: doc.data().name,
-      count: doc.data().count || 0
-    }));
+    const colleges: CollegeResponse[] = querySnapshot.docs.map(doc => {
+      const data = doc.data() as College;
+      return {
+        id: doc.id,
+        name: data.name,
+        count: data.count || 0
+      };
+    });
 
     // Get the last document ID for pagination
     const lastVisible = querySnapshot.docs[querySnapshot.docs.length - 1];

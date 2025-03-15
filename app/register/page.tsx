@@ -13,6 +13,7 @@ import Link from "next/link";
 import NavButtons from "@/components/navbar";
 import { useAuth } from "@/hooks/useAuth";
 import { Eye, EyeOff, X, Plus } from "lucide-react";
+import { analytics , logEvent } from "@/Firebase";
 
 // Add CSS for shake animation
 const shakeAnimation = {
@@ -749,6 +750,17 @@ export default function Signup() {
     try {
       // Replace direct fetch with register function from useAuth hook
       const userId = await register(formData);
+
+      if (analytics) {
+        logEvent(analytics,"sign_up", {
+            method: "email", // Since it’s email/password signup
+            user_id: userId, // Returned from register function
+            email: email,
+            registration_time: new Date().toISOString(),
+            college_name: collegeName || "not_provided",
+            has_referral: !!referralCode,
+        });
+    }
       
       toast.success(`Account created successfully for ${email}!`, {
         position: "top-center",
@@ -773,6 +785,16 @@ export default function Signup() {
     } catch (error) {
       console.error('Registration error:', error);
       setError(error instanceof Error ? error.message : 'An error occurred during registration');
+
+      // Log registration failure with Analytics
+      if (analytics) {
+        logEvent(analytics,"registration_failed", {
+            email: email,
+            error: error,
+            step: step, // Which step the user was on
+        });
+      }
+
     } finally {
       setIsSubmitting(false);
     }

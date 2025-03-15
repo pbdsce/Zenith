@@ -2,7 +2,7 @@ import { db, auth } from "@/Firebase";
 import { addDoc, collection, getDocs, query, where, runTransaction, doc, setDoc, updateDoc, getDoc, limit } from "firebase/firestore";
 import { createUserWithEmailAndPassword, sendEmailVerification } from "firebase/auth";
 import { NextResponse } from "next/server";
-import { cloudinary } from "@/Cloudinary";
+import { cloudinaryV2 } from "@/c";
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -38,15 +38,13 @@ const validateReferralCode = (code: string) => {
 };
 const validateBio = (bio: string) => bio.length <= 500; // 100 words ≈ 500 chars
 
-// Disable Next.js body parsing for file uploads
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
+// Configure route to disable body parser for file uploads
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs'; // specify nodejs runtime
+export const preferredRegion = 'auto'; // or specify regions if needed
 
 // Configure Cloudinary
-cloudinary.config({
+cloudinaryV2.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET
@@ -71,7 +69,7 @@ const uploadToCloudinary = async (filePath: string, folder: string, mimeType: st
   }
 
   return new Promise((resolve, reject) => {
-    cloudinary.uploader.upload(
+    cloudinaryV2.uploader.upload(
       filePath,
       uploadOptions,
       (error: any, result: any) => {
@@ -288,7 +286,7 @@ export async function POST(request: Request) {
     }
 
     // Validate profile picture if provided (must be an image)
-    let profilePictureUrl = null;
+    let profilePictureUrl: string | null = null;
     if (files.profile_picture) {
       const profileFile = files.profile_picture;
       if (!profileFile.mimetype.includes('image')) {
@@ -332,7 +330,7 @@ export async function POST(request: Request) {
     }
 
     // Upload resume to Cloudinary
-    let resumeUrl;
+    let resumeUrl: string;
     try {
       resumeUrl = await uploadToCloudinary(
         resumeFile.filepath,
@@ -622,7 +620,7 @@ export async function POST(request: Request) {
     }
 
     // Create user in Firebase Authentication
-    let authUid;
+    let authUid: string;
     try {
       authUid = await createAuthUser(data.email, password);
     } catch (error: any) {

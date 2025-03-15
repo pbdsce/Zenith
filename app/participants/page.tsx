@@ -12,6 +12,7 @@ import type { Profile } from "@/lib/types";
 import CountdownTimer from "@/components/ui/countdown-timer";
 import Link from "next/link";
 import NavButtons from "@/components/navbar";
+import { analytics, logEvent } from "@/Firebase";
 
 export default function Participants() {
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
@@ -69,12 +70,36 @@ export default function Participants() {
           if (isAuthenticated && user) {
             fetchUserUpvotedProfiles();
           }
+
+          // Log page view event
+          if (analytics) {
+            logEvent(analytics, "page_view", {
+              page_title: "Participants",
+              page_path: "/participants",
+              user_id: user?.uid || "anonymous",
+            });
+          }
+
         } else {
           setError(data.message || "Failed to fetch profiles");
+
+          if (analytics) {
+            logEvent(analytics, "fetch_profiles_error", {
+              error: data.message || "Unknown error",
+              timestamp: new Date().toISOString(),
+            });
+          }
         }
       } catch (err) {
         console.error("Error fetching profiles:", err);
         setError("Failed to load profiles. Please try again later.");
+
+        if (analytics) {
+          logEvent(analytics, "fetch_profiles_error", {
+            error: err instanceof Error ? err.message : "Unknown error",
+            timestamp: new Date().toISOString(),
+          });
+        }
       } finally {
         setIsLoading(false);
       }
@@ -115,6 +140,14 @@ export default function Participants() {
       }
     } catch (err) {
       console.error("Error loading user's upvoted profiles:", err);
+
+      if (analytics) {
+        logEvent(analytics, "fetch_upvoted_profiles_error", {
+          user_id: user.uid,
+          error: err instanceof Error ? err.message : "Unknown error",
+          timestamp: new Date().toISOString(),
+        });
+      }
     }
   };
 
@@ -175,6 +208,12 @@ export default function Participants() {
     if (!isAuthenticated || !user) {
       // Show login prompt
       alert("Please log in to upvote profiles");
+      if (analytics) {
+        logEvent(analytics, "upvote_attempt_unauthenticated", {
+          profile_id: id,
+          timestamp: new Date().toISOString(),
+        });
+      }
       return;
     }
 
@@ -210,6 +249,7 @@ export default function Participants() {
           newUpvotes.delete(id);
           return newUpvotes;
         });
+        
       } else {
         // User is adding an upvote
         newSet.add(id);
