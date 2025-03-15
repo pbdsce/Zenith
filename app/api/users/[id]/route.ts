@@ -54,14 +54,13 @@ interface UserProfile {
   upVote: number;
   registration_time: string;
   resume_link?: string; // Add this optional property
+  isAdmin?: boolean; // Add isAdmin property
 }
 
-// Disable Next.js body parsing for file uploads
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
+// Replace the deprecated config
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs'; // specify nodejs runtime
+export const preferredRegion = 'auto'; // or specify regions if needed
 
 // Configure Cloudinary
 cloudinary.config({

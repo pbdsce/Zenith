@@ -25,12 +25,10 @@ const validateURL = (url: string) => {
 const validateReferralCode = (code: string) => code === "APNAADMI";
 const validateBio = (bio: string) => bio.length <= 500; // 100 words ≈ 500 chars
 
-// Disable Next.js body parsing for file uploads
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
+// Configure route to disable body parser for file uploads
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs'; // specify nodejs runtime
+export const preferredRegion = 'auto'; // or specify regions if needed
 
 // Configure Cloudinary
 cloudinary.config({
@@ -275,7 +273,7 @@ export async function POST(request: Request) {
     }
 
     // Validate profile picture if provided (must be an image)
-    let profilePictureUrl = null;
+    let profilePictureUrl: string | null = null;
     if (files.profile_picture) {
       const profileFile = files.profile_picture;
       if (!profileFile.mimetype.includes('image')) {
@@ -319,7 +317,7 @@ export async function POST(request: Request) {
     }
 
     // Upload resume to Cloudinary
-    let resumeUrl;
+    let resumeUrl: string;
     try {
       resumeUrl = await uploadToCloudinary(
         resumeFile.filepath,
@@ -607,7 +605,7 @@ export async function POST(request: Request) {
     }
 
     // Create user in Firebase Authentication
-    let authUid;
+    let authUid: string;
     try {
       authUid = await createAuthUser(data.email, password);
     } catch (error: any) {
