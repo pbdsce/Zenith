@@ -1,7 +1,7 @@
 import { db } from "@/Firebase";
 import { doc, getDoc, updateDoc, deleteDoc, collection, query, where, getDocs, setDoc } from "firebase/firestore";
 import { NextResponse } from "next/server";
-import { cloudinary } from "@/Cloudinary";
+import { cloudinaryV2 } from "@/c";
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -63,7 +63,7 @@ export const runtime = 'nodejs'; // specify nodejs runtime
 export const preferredRegion = 'auto'; // or specify regions if needed
 
 // Configure Cloudinary
-cloudinary.config({
+cloudinaryV2.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET
@@ -100,7 +100,7 @@ const deleteFromCloudinary = async (url: string, resourceType: string = 'image')
   if (!publicId) return false;
   
   return new Promise((resolve) => {
-    cloudinary.uploader.destroy(
+    cloudinaryV2.uploader.destroy(
       publicId,
       { resource_type: resourceType },
       (error: Error | null, result: any) => {
@@ -135,7 +135,7 @@ const uploadToCloudinary = async (filePath: string, folder: string, mimeType: st
   }
 
   return new Promise((resolve, reject) => {
-    cloudinary.uploader.upload(
+    cloudinaryV2.uploader.upload(
       filePath,
       uploadOptions,
       (error: any, result: any) => {
