@@ -222,10 +222,10 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
           // Continue execution but with warning
         }
       } catch (error) {
-        console.warn("Failed to verify Firebase token:", error);
+        // console.warn("Failed to verify Firebase token:", error);
         // Continue execution for development purposes
         // For production, you might want to return an error response:
-        // return NextResponse.json({ message: "Unauthorized", status: "error" }, { status: 401 });
+        return NextResponse.json({ message: "Unauthorized", status: "error" }, { status: 401 });
       }
     } else {
       console.warn("Authorization header missing or invalid, proceeding anyway for development");
@@ -716,7 +716,7 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
       return NextResponse.json({ message: "Unauthorized: Missing UID", status: "error" }, { status: 401 });
     }
     // Verify admin permissions
-    const adminRef = doc(db, "user_profiles", adminUid);
+    const adminRef = doc(db, "user_profiles", uid);
     const adminSnap = await getDoc(adminRef);
     
     if (!adminSnap.exists()) {
