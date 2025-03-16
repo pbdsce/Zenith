@@ -65,6 +65,7 @@ export function Hero(){
         muted 
         playsInline
         onLoadedData={handleVideoLoad}
+        poster='/images/bg2.jpg'
       >
         <source src="/videos/bg2.mp4" type="video/mp4" />
         Your browser does not support the video tag.

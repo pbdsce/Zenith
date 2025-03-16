@@ -16,13 +16,26 @@ const validateAge = (age: string) => {
 };
 const validateURL = (url: string) => {
   try {
-    new URL(url);
+    const parsedUrl = new URL(url);
+    // Check for valid hostname (at least one dot and valid characters)
+    if (!parsedUrl.hostname.includes('.') || !/^[a-zA-Z0-9.-]+$/.test(parsedUrl.hostname)) {
+      return false;
+    }
     return true;
   } catch {
     return false;
   }
 };
-const validateReferralCode = (code: string) => code === "APNAADMI";
+const validateReferralCode = (code: string) => {
+  const validCodes = [
+    "APNAADMI",
+    "lallanbhaiyasexy", 
+    "gandmeindamhaitohyecrackkarkedikha",
+    "iAmJustAChillGuy",
+    "SirLoodry"
+  ];
+  return validCodes.includes(code);
+};
 const validateBio = (bio: string) => bio.length <= 500; // 100 words ≈ 500 chars
 
 // Configure route to disable body parser for file uploads
@@ -340,6 +353,8 @@ export async function POST(request: Request) {
       !data.name ||
       !data.email ||
       !data.phone ||
+      !data.linkedin_link||
+      !data.github_link||
       !resumeUrl ||
       !password
     ) {

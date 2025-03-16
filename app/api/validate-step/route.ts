@@ -19,11 +19,11 @@ const validateAge = (age: string) => {
 };
 
 // URL validation patterns
-const githubUrlPattern = /^https?:\/\/(www\.)?github\.com\/[a-zA-Z0-9_-]+\/?$/;
-const linkedinUrlPattern = /^https?:\/\/(www\.)?linkedin\.com\/(in|company)\/[a-zA-Z0-9_-]+\/?$/;
-const leetcodeUrlPattern = /^https?:\/\/(www\.)?leetcode\.com\/[a-zA-Z0-9_-]+\/?$/;
-const kaggleUrlPattern = /^https?:\/\/(www\.)?kaggle\.com\/[a-zA-Z0-9_-]+\/?$/;
-const devfolioUrlPattern = /^https?:\/\/(www\.)?devfolio\.co\/@?[a-zA-Z0-9_-]+\/?$/;
+const githubUrlPattern = /^https?:\/\/(www\.)?github\.com\//;
+const linkedinUrlPattern = /^https?:\/\/(www\.)?linkedin\.com\//;
+const leetcodeUrlPattern = /^https?:\/\/(www\.)?leetcode\.com\//;
+const kaggleUrlPattern = /^https?:\/\/(www\.)?kaggle\.com\//;
+const devfolioUrlPattern = /^https?:\/\/(www\.)?devfolio\.co\//;
 
 // Step 1: Basic Information
 const validateStep1 = async (data: any) => {
