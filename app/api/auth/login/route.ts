@@ -3,8 +3,7 @@ import { doc, getDoc, updateDoc, setDoc, collection, query, where, getDocs } fro
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
 import { NextResponse } from "next/server";
 
-// TODO: Move this to .env file
-const SECRET_CODE = "pbstruggles";
+const SECRET_CODE = process.env.SECRET_CODE;
 const ADMIN_EMAIL_DOMAIN = "@pointblank.club";
 
 // Define types for better maintainability
