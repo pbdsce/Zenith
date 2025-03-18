@@ -39,6 +39,14 @@ const nextConfig = {
       },
     ];
   },
+  async middleware() {
+    return [
+      {
+        source: '/api/:path*',
+        destination: '/middleware',
+      },
+    ];
+  },
   compress: true,
   poweredByHeader: false,
   reactStrictMode: true,

@@ -5,6 +5,7 @@ import { cloudinaryV2 } from "@/c";
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+import { initializeFirebaseAdmin } from "@/lib/server/firebaseAdmin";
 
 // Define types to prevent 'any' type errors
 interface BatchUser {
@@ -209,8 +210,24 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     // Extract authorization header from request
     const authHeader = req.headers.get('Authorization');
     
-    // For development, log but don't require the token
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    // Verify Firebase token using Firebase Admin SDK
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      try {
+        const token = authHeader.split('Bearer ')[1];
+        const auth = initializeFirebaseAdmin();
+        const decodedToken = await auth.verifyIdToken(token);
+        
+        if (!decodedToken.uid) {
+          console.warn("Invalid Firebase token");
+          // Continue execution but with warning
+        }
+      } catch (error) {
+        // console.warn("Failed to verify Firebase token:", error);
+        // Continue execution for development purposes
+        // For production, you might want to return an error response:
+        return NextResponse.json({ message: "Unauthorized", status: "error" }, { status: 401 });
+      }
+    } else {
       console.warn("Authorization header missing or invalid, proceeding anyway for development");
     }
     
@@ -447,6 +464,33 @@ const handleCollegeChange = async (oldCollege: string | null, newCollege: string
 
 export async function PUT(req: Request, { params }: { params: { id: string } }) {
   try {
+    // Verify Firebase token using Firebase Admin SDK
+    const authHeader = req.headers.get('Authorization');
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json({ message: "Authentication required", status: "error" }, { status: 401 });
+    }
+    
+    try {
+      const token = authHeader.split('Bearer ')[1];
+      const auth = initializeFirebaseAdmin();
+      const decodedToken = await auth.verifyIdToken(token);
+      
+      // Check if the authenticated user is updating their own profile or is an admin
+      if (decodedToken.uid !== params.id) {
+        // Check if the user is an admin
+        const userRef = doc(db, "user_profiles", decodedToken.uid);
+        const userSnap = await getDoc(userRef);
+        
+        if (!userSnap.exists() || !userSnap.data().isAdmin) {
+          return NextResponse.json({ message: "Unauthorized: Cannot modify another user's profile", status: "error" }, { status: 403 });
+        }
+      }
+    } catch (error) {
+      console.error("Token verification failed:", error);
+      return NextResponse.json({ message: "Invalid authentication token", status: "error" }, { status: 401 });
+    }
+    
     // Parse form data with files
     const { fields, files } = await parseForm(req);
     const updates = { ...fields };
@@ -650,12 +694,27 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
 
 export async function DELETE(req: Request, { params }: { params: { id: string } }) {
   try {
-    const { uid } = await req.json(); // The UID of the requester
+    // Verify Firebase token using Firebase Admin SDK
+    const authHeader = req.headers.get('Authorization');
     
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json({ message: "Authentication required", status: "error" }, { status: 401 });
+    }
+    
+    let adminUid;
+    try {
+      const token = authHeader.split('Bearer ')[1];
+      const auth = initializeFirebaseAdmin();
+      const decodedToken = await auth.verifyIdToken(token);
+      adminUid = decodedToken.uid;
+    } catch (error) {
+      console.error("Token verification failed:", error);
+      return NextResponse.json({ message: "Invalid authentication token", status: "error" }, { status: 401 });
+    }
+    const { uid } = await req.json(); // The UID of the requester
     if (!uid) {
       return NextResponse.json({ message: "Unauthorized: Missing UID", status: "error" }, { status: 401 });
     }
-    
     // Verify admin permissions
     const adminRef = doc(db, "user_profiles", uid);
     const adminSnap = await getDoc(adminRef);
