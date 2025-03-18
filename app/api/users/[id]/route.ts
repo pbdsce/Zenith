@@ -211,25 +211,25 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     const authHeader = req.headers.get('Authorization');
     
     // Verify Firebase token using Firebase Admin SDK
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      try {
-        const token = authHeader.split('Bearer ')[1];
-        const auth = initializeFirebaseAdmin();
-        const decodedToken = await auth.verifyIdToken(token);
-        
-        if (!decodedToken.uid) {
-          console.warn("Invalid Firebase token");
-          // Continue execution but with warning
-        }
-      } catch (error) {
-        // console.warn("Failed to verify Firebase token:", error);
-        // Continue execution for development purposes
-        // For production, you might want to return an error response:
-        return NextResponse.json({ message: "Unauthorized", status: "error" }, { status: 401 });
-      }
-    } else {
-      console.warn("Authorization header missing or invalid, proceeding anyway for development");
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      // Return early with a clearer error message
+      return NextResponse.json({ 
+        message: "Authentication required. Please provide a valid Bearer token.", 
+        status: "error" 
+      }, { status: 401 });
     }
+    try{
+      const token = authHeader.split('Bearer ')[1];
+      const auth = initializeFirebaseAdmin();
+      await auth.verifyIdToken(token);
+    }catch (error) {
+      console.error("Failed to verify token:", error);
+      return NextResponse.json({ 
+        message: "Invalid or expired authentication token. Please login again.", 
+        status: "error" 
+      }, { status: 401 });
+    }
+      
     
     // Try finding user in user_profiles by ID
     const userRef = doc(db, "user_profiles", params.id);
@@ -461,36 +461,50 @@ const handleCollegeChange = async (oldCollege: string | null, newCollege: string
     }
   }
 };
-
 export async function PUT(req: Request, { params }: { params: { id: string } }) {
-  try {
-    // Verify Firebase token using Firebase Admin SDK
-    const authHeader = req.headers.get('Authorization');
-    
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ message: "Authentication required", status: "error" }, { status: 401 });
+  try {    
+    // Extract authorization header
+    const authHeader = req.headers.get("Authorization");
+
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return NextResponse.json({ 
+        message: "Authentication required. Please provide a valid Bearer token.", 
+        status: "error" 
+      }, { status: 401 });
     }
-    
+
     try {
-      const token = authHeader.split('Bearer ')[1];
+      // Extract token from header
+      const token = authHeader.split("Bearer ")[1]
+
+      // Initialize Firebase Admin SDK and verify token
       const auth = initializeFirebaseAdmin();
       const decodedToken = await auth.verifyIdToken(token);
-      
-      // Check if the authenticated user is updating their own profile or is an admin
-      if (decodedToken.uid !== params.id) {
-        // Check if the user is an admin
-        const userRef = doc(db, "user_profiles", decodedToken.uid);
-        const userSnap = await getDoc(userRef);
-        
-        if (!userSnap.exists() || !userSnap.data().isAdmin) {
-          return NextResponse.json({ message: "Unauthorized: Cannot modify another user's profile", status: "error" }, { status: 403 });
+      const userRef = doc(db, "user_profiles", params.id);
+      const userSnap = await getDoc(userRef);
+      if (!userSnap.exists()) {
+        return NextResponse.json({ 
+          message: "User not found.", 
+          status: "error" 
+        }, { status: 404 });
+      }
+
+      const userData = userSnap.data();
+      // Authorization: Check if the user is updating their own profile or is an admin
+      if (decodedToken.uid !== userData.authUid) {
+        if (!userData.isAdmin) {
+          return NextResponse.json({ 
+            message: "Unauthorized: Cannot access another user's profile", 
+            status: "error" 
+          }, { status: 403 });
         }
       }
     } catch (error) {
-      console.error("Token verification failed:", error);
-      return NextResponse.json({ message: "Invalid authentication token", status: "error" }, { status: 401 });
+      return NextResponse.json({ 
+        message: "Invalid or expired authentication token. Please login again.", 
+        status: "error" 
+      }, { status: 401 });
     }
-    
     // Parse form data with files
     const { fields, files } = await parseForm(req);
     const updates = { ...fields };
@@ -691,50 +705,57 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     }, { status: 500 });
   }
 }
-
 export async function DELETE(req: Request, { params }: { params: { id: string } }) {
   try {
     // Verify Firebase token using Firebase Admin SDK
     const authHeader = req.headers.get('Authorization');
     
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ message: "Authentication required", status: "error" }, { status: 401 });
+      return NextResponse.json({ 
+        message: "Authentication required. Please provide a valid Bearer token.", 
+        status: "error" 
+      }, { status: 401 });
     }
+
+    // Authenticate the user
+    const token = authHeader.split('Bearer ')[1];
+    const auth = initializeFirebaseAdmin();
+    let decodedToken;
     
-    let adminUid;
     try {
-      const token = authHeader.split('Bearer ')[1];
-      const auth = initializeFirebaseAdmin();
-      const decodedToken = await auth.verifyIdToken(token);
-      adminUid = decodedToken.uid;
+      decodedToken = await auth.verifyIdToken(token);
     } catch (error) {
-      console.error("Token verification failed:", error);
-      return NextResponse.json({ message: "Invalid authentication token", status: "error" }, { status: 401 });
+      return NextResponse.json({ 
+        message: "Invalid or expired authentication token. Please login again.", 
+        status: "error" 
+      }, { status: 401 });
     }
-    const { uid } = await req.json(); // The UID of the requester
-    if (!uid) {
-      return NextResponse.json({ message: "Unauthorized: Missing UID", status: "error" }, { status: 401 });
-    }
-    // Verify admin permissions
-    const adminRef = doc(db, "user_profiles", uid);
+
+    // Get the authenticated user's profile
+    const adminUid = decodedToken.uid;
+    const adminRef = doc(db, "user_profiles", adminUid);
     const adminSnap = await getDoc(adminRef);
     
     if (!adminSnap.exists()) {
-      return NextResponse.json({ message: "Unauthorized: Admin not found", status: "error" }, { status: 403 });
+      return NextResponse.json({ 
+        message: "User not found.", 
+        status: "error" 
+      }, { status: 404 });
     }
     
-    // Check isAdmin directly in user_profiles
-    let isAdmin = adminSnap.data().isAdmin === true;
+    const adminData = adminSnap.data() as UserProfile;
     
-    // If not found in user_profiles, fall back to batch check (for backward compatibility)
-    if (!isAdmin) {
-      const adminData = adminSnap.data() as UserProfile;
+    // Check if user is admin (either directly in profile or in batch)
+    let isAdmin = adminData.isAdmin === true;
+    
+    // If not found in user_profiles, check batch (for backward compatibility)
+    if (!isAdmin && adminData.batch_doc_id) {
       const adminBatchRef = doc(db, "user_batches", adminData.batch_doc_id);
       const adminBatchSnap = await getDoc(adminBatchRef);
       
       if (adminBatchSnap.exists()) {
         const adminBatchData = adminBatchSnap.data() as BatchDocument;
-        const adminInBatch = adminBatchData.users.find((u: BatchUser) => u.uid === uid);
+        const adminInBatch = adminBatchData.users.find((u: BatchUser) => u.uid === adminUid);
         isAdmin = adminInBatch?.isAdmin || false;
         
         // If admin in batch but not in profile, update profile for consistency
@@ -747,7 +768,10 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
     }
     
     if (!isAdmin) {
-      return NextResponse.json({ message: "Unauthorized: Not an admin", status: "error" }, { status: 403 });
+      return NextResponse.json({ 
+        message: "Unauthorized: Admin privileges required", 
+        status: "error" 
+      }, { status: 403 });
     }
     
     // Find the user to delete
@@ -755,7 +779,10 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
     const userSnap = await getDoc(userRef);
     
     if (!userSnap.exists()) {
-      return NextResponse.json({ message: "User not found", status: "error" }, { status: 404 });
+      return NextResponse.json({ 
+        message: "User not found", 
+        status: "error" 
+      }, { status: 404 });
     }
     
     const userData = userSnap.data() as UserProfile;
@@ -766,14 +793,20 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
     const batchSnap = await getDoc(batchRef);
     
     if (!batchSnap.exists()) {
-      return NextResponse.json({ message: "User batch not found", status: "error" }, { status: 404 });
+      return NextResponse.json({ 
+        message: "User batch not found", 
+        status: "error" 
+      }, { status: 404 });
     }
     
     const batchData = batchSnap.data() as BatchDocument;
     const userIndex = batchData.users.findIndex((u: BatchUser) => u.uid === params.id);
     
     if (userIndex === -1) {
-      return NextResponse.json({ message: "User not found in batch", status: "error" }, { status: 404 });
+      return NextResponse.json({ 
+        message: "User not found in batch", 
+        status: "error" 
+      }, { status: 404 });
     }
     
     // Soft delete: set isDeleted flag in the batch
@@ -788,11 +821,16 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
       updated_at: new Date().toISOString()
     });
     
-    // We don't delete the user_profiles document, just to maintain references
-    
-    return NextResponse.json({ message: "User deleted successfully", status: "success" });
+    return NextResponse.json({ 
+      message: "User deleted successfully", 
+      status: "success" 
+    });
   } catch (error) {
     console.error("Error deleting user:", error);
-    return NextResponse.json({ message: "Failed to delete user", error: String(error), status: "error" }, { status: 500 });
+    return NextResponse.json({ 
+      message: "Failed to delete user", 
+      error: String(error), 
+      status: "error" 
+    }, { status: 500 });
   }
 }
