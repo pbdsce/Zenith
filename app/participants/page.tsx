@@ -2,7 +2,7 @@
 
 import SearchBar from "../../components/ui/search-bar";
 import { useAuth } from "@/hooks/useAuth";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { CatIcon, Search } from "lucide-react";
 import ProfileCard from "../../components/ui/profile-card";
@@ -23,94 +23,12 @@ export default function Participants() {
   const [selectedProfile, setSelectedProfile] = useState<Profile | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [upvotedProfiles, setUpvotedProfiles] = useState<Set<string>>(new Set());
-  const [pendingUpvotes, setPendingUpvotes] = useState<Set<string>>(new Set());
-  const [pendingDownvotes, setPendingDownvotes] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  // Fetch profiles from the API
-  useEffect(() => {
-    const fetchProfiles = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
-
-        const response = await fetch("/api/users");
-        const data = await response.json();
-
-        if (data.status === "success") {
-          // Transform user data to match Profile type
-          const transformedProfiles: Profile[] = data.users.map(
-            (user: any) => ({
-              id: user.uid,
-              name: user.name,
-              college: user.college_name || "Unknown",
-              email: user.email,
-              phone: user.phone || "N/A",
-              resumeLink: user.resume_link || "#",
-              shortBio: user.bio, // Default value since it's not in the API
-              upvotes: user.upVote || 0, // Default value
-              profile_picture: user.profile_picture || CatIcon,
-              // Add the additional fields
-              leetcode_profile: user.leetcode_profile || null,
-              github_link: user.github_link || null,
-              linkedin_link: user.linkedin_link || null,
-              competitive_profile: user.competitive_profile || null,
-              ctf_profile: user.ctf_profile || null,
-              kaggle_link: user.kaggle_link || null,
-              devfolio_link: user.devfolio_link || null,
-              portfolio_link: user.portfolio_link || null,
-              status: user.status || "pending"
-            })
-          );
-
-          setProfiles(transformedProfiles);
-          
-          // Load current user's upvoted profiles if authenticated
-          if (isAuthenticated && user) {
-            fetchUserUpvotedProfiles();
-          }
-
-          // Log page view event
-          if (analytics) {
-            logEvent(analytics, "page_view", {
-              page_title: "Participants",
-              page_path: "/participants",
-              user_id: user?.uid || "anonymous",
-            });
-          }
-
-        } else {
-          setError(data.message || "Failed to fetch profiles");
-
-          if (analytics) {
-            logEvent(analytics, "fetch_profiles_error", {
-              error: data.message || "Unknown error",
-              timestamp: new Date().toISOString(),
-            });
-          }
-        }
-      } catch (err) {
-        console.error("Error fetching profiles:", err);
-        setError("Failed to load profiles. Please try again later.");
-
-        if (analytics) {
-          logEvent(analytics, "fetch_profiles_error", {
-            error: err instanceof Error ? err.message : "Unknown error",
-            timestamp: new Date().toISOString(),
-          });
-        }
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchProfiles();
-  }, [isAuthenticated, user]);
   
-  // Fetch the user's previously upvoted profiles
-  const fetchUserUpvotedProfiles = async () => {
-    if (!user || !user.uid) return;
+  // Memoize fetch functions to prevent recreations on each render
+  const fetchUserUpvotedProfiles = useCallback(async () => {
+    if (!user || !user.uid || !isAuthenticated) return;
     
     try {
       // Get token from zenith_auth_data in localStorage
@@ -149,62 +67,92 @@ export default function Participants() {
         });
       }
     }
-  };
+  }, [user, isAuthenticated]);
 
-  // Sync upvotes when leaving the page
+  // Main data fetching - consolidate API calls
   useEffect(() => {
-    // Function to sync upvotes with the server
-    const syncUpvotes = async () => {
-      if (!isAuthenticated || !user || (!pendingUpvotes.size && !pendingDownvotes.size)) {
-        return;
-      }
-      
+    // Skip if auth is still loading
+    if (authLoading) return;
+    
+    const fetchData = async () => {
       try {
-        // Get token from zenith_auth_data in localStorage
-        let token = '';
-        const authDataStr = localStorage.getItem('zenith_auth_data');
-        if (authDataStr) {
-          try {
-            const authData = JSON.parse(authDataStr);
-            token = authData.token || '';
-          } catch (e) {
-            console.error('Failed to parse auth data:', e);
+        setIsLoading(true);
+        setError(null);
+
+        const response = await fetch("/api/users");
+        const data = await response.json();
+
+        if (data.status === "success") {
+          // Transform user data to match Profile type
+          const transformedProfiles: Profile[] = data.users.map(
+            (user: any) => ({
+              id: user.uid,
+              name: user.name,
+              college: user.college_name || "Unknown",
+              email: user.email,
+              phone: user.phone || "N/A",
+              resumeLink: user.resume_link || "#",
+              shortBio: user.bio,
+              upvotes: user.upVote || 0,
+              profile_picture: user.profile_picture || CatIcon,
+              // Additional fields
+              leetcode_profile: user.leetcode_profile || null,
+              github_link: user.github_link || null,
+              linkedin_link: user.linkedin_link || null,
+              competitive_profile: user.competitive_profile || null,
+              ctf_profile: user.ctf_profile || null,
+              kaggle_link: user.kaggle_link || null,
+              devfolio_link: user.devfolio_link || null,
+              portfolio_link: user.portfolio_link || null,
+              status: user.status || "pending"
+            })
+          );
+
+          setProfiles(transformedProfiles);
+          
+          // Also fetch upvoted profiles if authenticated
+          if (isAuthenticated && user) {
+            await fetchUserUpvotedProfiles();
+          }
+
+          // Log page view event
+          if (analytics) {
+            logEvent(analytics, "page_view", {
+              page_title: "Participants",
+              page_path: "/participants",
+              user_id: user?.uid || "anonymous",
+            });
+          }
+        } else {
+          setError(data.message || "Failed to fetch profiles");
+          if (analytics) {
+            logEvent(analytics, "fetch_profiles_error", {
+              error: data.message || "Unknown error",
+              timestamp: new Date().toISOString(),
+            });
           }
         }
-        
-        await fetch('/api/users/sync-upvotes', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({
-            userId: user.uid,
-            upvotes: Array.from(pendingUpvotes),
-            downvotes: Array.from(pendingDownvotes),
-          }),
-        });
-        
-        // Clear pending changes after successful sync
-        setPendingUpvotes(new Set());
-        setPendingDownvotes(new Set());
       } catch (err) {
-        console.error("Failed to sync upvotes:", err);
+        console.error("Error fetching profiles:", err);
+        setError("Failed to load profiles. Please try again later.");
+        if (analytics) {
+          logEvent(analytics, "fetch_profiles_error", {
+            error: err instanceof Error ? err.message : "Unknown error",
+            timestamp: new Date().toISOString(),
+          });
+        }
+      } finally {
+        setIsLoading(false);
       }
     };
 
-    // Sync when component unmounts or on page unload
-    window.addEventListener('beforeunload', syncUpvotes);
-    
-    // Cleanup function that runs when component unmounts
-    return () => {
-      window.removeEventListener('beforeunload', syncUpvotes);
-      syncUpvotes(); // Sync when navigating away within the app
-    };
-  }, [isAuthenticated, user, pendingUpvotes, pendingDownvotes]);
-
-  // Handle upvoting
-  const handleUpvote = (id: string) => {
+    fetchData();
+    // Only re-run when auth state changes or when fetchUserUpvotedProfiles changes
+    // (which only happens when user or isAuthenticated changes)
+  }, [isAuthenticated, user, authLoading, fetchUserUpvotedProfiles]);
+  
+  // Handle upvoting - simplified to make immediate API calls
+  const handleUpvote = async (id: string) => {
     if (!isAuthenticated || !user) {
       // Show login prompt
       alert("Please log in to upvote profiles");
@@ -217,60 +165,124 @@ export default function Participants() {
       return;
     }
 
-    setProfiles((prevProfiles) => {
-      return prevProfiles.map((profile) => {
-        if (profile.id === id) {
-          const newUpvotes = upvotedProfiles.has(id)
-            ? profile.upvotes - 1
-            : profile.upvotes + 1;
-          return { ...profile, upvotes: newUpvotes };
-        }
-        return profile;
-      });
-    });
+    try {
+      // Determine whether this is an upvote or downvote action
+      const isUpvoted = upvotedProfiles.has(id);
 
-    setUpvotedProfiles((prev) => {
-      const newSet = new Set(prev);
+      // Update UI immediately for better user experience
+      setProfiles((prevProfiles) => {
+        return prevProfiles.map((profile) => {
+          if (profile.id === id) {
+            const newUpvotes = isUpvoted
+              ? profile.upvotes - 1
+              : profile.upvotes + 1;
+            return { ...profile, upvotes: newUpvotes };
+          }
+          return profile;
+        });
+      });
+
+      setUpvotedProfiles((prev) => {
+        const newSet = new Set(prev);
+        if (isUpvoted) {
+          newSet.delete(id);
+        } else {
+          newSet.add(id);
+        }
+        return newSet;
+      });
+
+      // Get token from localStorage
+      let token = '';
+      const authDataStr = localStorage.getItem('zenith_auth_data');
+      if (authDataStr) {
+        try {
+          const authData = JSON.parse(authDataStr);
+          token = authData.token || '';
+        } catch (e) {
+          console.error('Failed to parse auth data:', e);
+        }
+      }
+
+      // Make immediate API call to the correct endpoint
+      const response = await fetch(`/api/users/${id}/upvote`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          userId: user.uid
+        }),
+      });
+
+      const data = await response.json();
       
-      if (newSet.has(id)) {
-        // User is removing an upvote
-        newSet.delete(id);
-        
-        // Track for backend sync
-        setPendingDownvotes(prev => {
-          const newDownvotes = new Set(prev);
-          newDownvotes.add(id);
-          return newDownvotes;
+      if (data.status !== "success") {
+        // Revert UI changes if API call fails
+        setProfiles((prevProfiles) => {
+          return prevProfiles.map((profile) => {
+            if (profile.id === id) {
+              const newUpvotes = isUpvoted
+                ? profile.upvotes + 1  // Revert the decrease
+                : profile.upvotes - 1;  // Revert the increase
+              return { ...profile, upvotes: newUpvotes };
+            }
+            return profile;
+          });
         });
-        
-        // Remove from pending upvotes if it was just added
-        setPendingUpvotes(prev => {
-          const newUpvotes = new Set(prev);
-          newUpvotes.delete(id);
-          return newUpvotes;
+
+        setUpvotedProfiles((prev) => {
+          const newSet = new Set(prev);
+          if (isUpvoted) {
+            newSet.add(id);  // Revert the deletion
+          } else {
+            newSet.delete(id);  // Revert the addition
+          }
+          return newSet;
         });
-        
-      } else {
-        // User is adding an upvote
-        newSet.add(id);
-        
-        // Track for backend sync
-        setPendingUpvotes(prev => {
-          const newUpvotes = new Set(prev);
-          newUpvotes.add(id);
-          return newUpvotes;
+
+        console.error("Failed to update upvote:", data.message);
+      }
+
+    } catch (err) {
+      console.error("Error updating upvote:", err);
+      
+      // Revert UI changes on error
+      const isUpvoted = upvotedProfiles.has(id);
+      
+      setProfiles((prevProfiles) => {
+        return prevProfiles.map((profile) => {
+          if (profile.id === id) {
+            const newUpvotes = isUpvoted
+              ? profile.upvotes + 1  // Revert the decrease
+              : profile.upvotes - 1;  // Revert the increase
+            return { ...profile, upvotes: newUpvotes };
+          }
+          return profile;
         });
-        
-        // Remove from pending downvotes if it was previously removed
-        setPendingDownvotes(prev => {
-          const newDownvotes = new Set(prev);
-          newDownvotes.delete(id);
-          return newDownvotes;
+      });
+      
+      // Revert upvoted profiles state
+      setUpvotedProfiles((prev) => {
+        const newSet = new Set(prev);
+        if (isUpvoted) {
+          newSet.add(id);  // Revert the deletion
+        } else {
+          newSet.delete(id);  // Revert the addition
+        }
+        return newSet;
+      });
+
+      if (analytics) {
+        logEvent(analytics, "upvote_error", {
+          profile_id: id,
+          user_id: user.uid,
+          error: err instanceof Error ? err.message : "Unknown error",
+          timestamp: new Date().toISOString(),
         });
       }
-            
-      return newSet;
-    });
+    }
   };
 
   // Filter and sort profiles
