@@ -40,9 +40,9 @@ export function NavButtons({ disableFixedPositioning = false }) {
   return (
     <div className={`${!disableFixedPositioning ? "fixed top-4 w-full px-4" : ""} flex justify-center sm:justify-end sm:px-6 z-50`}>
       <div className="flex flex-wrap justify-center gap-3 sm:gap-8">
-        <Link href="/zenith">
+        <Link href="/">
           <button className="cybr-btn cybr-btn--primary">
-            Zenith
+            Home
           </button>
         </Link>
         
