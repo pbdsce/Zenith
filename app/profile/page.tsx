@@ -28,7 +28,8 @@ import {
   Plus,
   X,
   Flag,
-  Trophy
+  Trophy,
+  Trash
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -621,7 +622,7 @@ export default function ProfilePage() {
             ) : (
               <Button
                 variant="outline"
-                className="border-[#0ff] text-[#0ff] hover:bg-[#0ff]/10 w-full sm:w-auto"
+                className="border-[#0ff] text-[#0ff] hover:bg-[#0ff]/10 hover:text-white w-full sm:w-auto"
                 onClick={() => setIsEditing(true)}
               >
                 <Edit2 className="mr-2 h-4 w-4" />
@@ -633,7 +634,7 @@ export default function ProfilePage() {
               <AlertDialogTrigger asChild>
                 <Button 
                   variant="outline" 
-                  className="border-[#ff00ff] text-[#ff00ff] hover:bg-[#ff00ff]/10 w-full sm:w-auto"
+                  className="border-[#0ff] text-[#0ff] hover:bg-[#0ff]/10 hover:text-white w-full sm:w-auto"
                 >
                   <LogOut className="mr-2 h-4 w-4" />
                   Logout
@@ -648,8 +649,34 @@ export default function ProfilePage() {
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel className="bg-gray-800 text-white hover:bg-gray-700">Cancel</AlertDialogCancel>
-                  <AlertDialogAction className="bg-[#ff00ff] text-white hover:bg-[#ff00ff]/80" onClick={handleLogout}>
+                  <AlertDialogAction className="bg-[#0ff] text-black hover:bg-[#0ff]/80" onClick={handleLogout}>
                     Logout
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  className="border-red-600 text-red-600 hover:bg-red-600/10 hover:text-white w-full sm:w-auto"
+                >
+                  <Trash className="mr-2 h-4 w-4" />
+                  Delete Profile
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent className="bg-gray-900 border border-gray-800 max-w-[90vw] w-[460px] mx-auto">
+                <AlertDialogHeader>
+                  <AlertDialogTitle className="text-white">Are you sure you want to delete your profile?</AlertDialogTitle>
+                  <AlertDialogDescription className="text-red-600 font-bold">
+                    This action is irreversible and you wont be able to recover your profile after this.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel className="bg-gray-800 text-white hover:black/50">Cancel</AlertDialogCancel>
+                  <AlertDialogAction className="bg-red-500 text-white hover:bg-red-500/80">
+                    Delete
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
@@ -1156,46 +1183,6 @@ export default function ProfilePage() {
                   )}
                 </div>
               </CardContent>
-              <CardFooter className="flex flex-wrap justify-end gap-2 px-4 py-4 sm:px-6">
-                {isEditing ? (
-                  <>
-                    <Button
-                      variant="outline"
-                      className="border-gray-700 text-gray-300 hover:bg-gray-800 w-full sm:w-auto"
-                      onClick={() => setIsEditing(false)}
-                      disabled={isSaving}
-                    >
-                      Cancel
-                    </Button>
-                    <Button 
-                      className="bg-[#0ff] hover:bg-[#0ff]/80 text-black w-full sm:w-auto" 
-                      onClick={handleSave}
-                      disabled={isSaving}
-                    >
-                      {isSaving ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Saving...
-                        </>
-                      ) : (
-                        <>
-                          <Save className="mr-2 h-4 w-4" />
-                          Save Changes
-                        </>
-                      )}
-                    </Button>
-                  </>
-                ) : (
-                  <Button
-                    variant="outline"
-                    className="border-[#0ff] text-[#0ff] hover:bg-[#0ff]/10 w-full sm:w-auto"
-                    onClick={() => setIsEditing(true)}
-                  >
-                    <Edit2 className="mr-2 h-4 w-4" />
-                    Edit Profile
-                  </Button>
-                )}
-              </CardFooter>
             </Card>
           </TabsContent>
         </Tabs>
