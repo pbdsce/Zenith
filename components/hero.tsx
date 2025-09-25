@@ -7,7 +7,7 @@ import { Oxanium } from "next/font/google";
 import { motion } from "framer-motion";
 import Loading from "@/app/loading";
 import '@/styles/cybr-btn.css';
-import NavButtons from './navbar';
+// import NavButtons from './navbar';
 
 const oxan = Oxanium ({
     weight: "400",
@@ -56,7 +56,7 @@ export function Hero(){
 
   return (
     <div className="relative h-[63rem] bg-black before:absolute before:bottom-0 before:left-0 before:w-full before:h-1/3 before:bg-gradient-to-b before:from-transparent before:to-black">
-      <NavButtons />
+      {/* <NavButtons /> */}
       <video 
         ref={videoRef}
         className="absolute top-0 left-0 w-full h-full object-cover" 
