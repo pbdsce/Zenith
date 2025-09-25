@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { Monoton } from "next/font/google";
-import EventTimer from "@/components/ui/eventtimer";
+// import EventTimer from "@/components/ui/eventtimer";
 import { Oxanium } from "next/font/google";
 import { motion } from "framer-motion";
 import Loading from "@/app/loading";
@@ -98,7 +98,7 @@ export function Hero(){
               Hackathon, and DSA —where teams compete in a relentless test of skill, strategy, and endurance!
         </p>
         <div className="pt-96">
-          <EventTimer targetDate={new Date("2025-04-27T00:00:00").toISOString()} />
+          {/* <EventTimer targetDate={new Date("2025-04-27T00:00:00").toISOString()} /> */}
         </div>
       </div>
     </div>
