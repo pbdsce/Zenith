@@ -30,10 +30,10 @@ export function Brief() {
           question: "What is Zenith?",
           answer: "Zenith is a flagship 36-hour tech contest organized by Point Blank. It brings together 200+ top programmers for CTF, hackathons, competitive programming, and a Kaggle competition."
         },
-        {
-          question: "When and where is Zenith happening?",
-          answer: "The event is scheduled for April 27-28, 2025, with the venue to be announced soon. Please note that the dates are tentative."
-        },
+        // {
+        //   question: "When and where is Zenith happening?",
+        //   answer: "The event is scheduled for April 27-28, 2025, with the venue to be announced soon. Please note that the dates are tentative."
+        // },
         {
           question: "Who can Participate?",
           answer: "Zenith is open to college students, professionals, and tech enthusiasts from across India. Some competitions may have specific eligibility criteria."
