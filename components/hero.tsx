@@ -70,13 +70,14 @@ export function Hero(){
         <source src="/videos/bg2.mp4" type="video/mp4" />
         Your browser does not support the video tag.
       </video>
+      <div className="absolute top-0 left-0 w-full h-full bg-black/30 z-5"></div>
     <div className="absolute bottom-0 left-0 w-full h-1/3 bg-gradient-to-b from-transparent to-black"></div>
   
     <div className="container mx-auto h-full pt-60 flex flex-col justify-center items-center relative z-10">
       <div className="text-center">
         <div className="glow-wrapper">
             <motion.h1 
-            className={`font-dystopian text-[6rem] md:text-[16rem] text-white relative z-10 select-none`}
+            className={`font-dystopian text-[6rem] md:text-[16rem] text-white relative z-10 select-none drop-shadow-lg`}
             animate={{
               textShadow: [
               "0 0 25px rgba(255, 255, 255, 0.5), 0 0 50px rgba(255, 255, 255, 0.4), 0 0 75px rgba(255, 255, 255, 0.3)",
