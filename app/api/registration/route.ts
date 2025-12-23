@@ -1,5 +1,5 @@
-import { db, auth } from "@/Firebase";
-import { addDoc, collection, getDocs, query, where, runTransaction, doc, setDoc, updateDoc, getDoc, limit } from "firebase/firestore";
+import { auth } from "@/Firebase";
+// add mongodb imports
 import { createUserWithEmailAndPassword, sendEmailVerification } from "firebase/auth";
 import { NextResponse } from "next/server";
 import { cloudinaryV2 } from "@/c";
@@ -139,39 +139,17 @@ const parseForm = async (req: Request): Promise<{ fields: any, files: any }> => 
 };
 
 // Helper function to ensure college exists and increment counter
+// TODO: Replace with MongoDB College collection operations
 const ensureCollegeExists = async (collegeName: string): Promise<void> => {
   if (!collegeName) return;
   
   const collegeNameTrimmed = collegeName.trim();
   if (collegeNameTrimmed.length === 0) return;
   
-  // Check if college already exists
-  const collegesRef = collection(db, "colleges");
-  const collegeQuery = query(
-    collegesRef, 
-    where("name_lower", "==", collegeNameTrimmed.toLowerCase())
-  );
-  
-  const querySnapshot = await getDocs(collegeQuery);
-  
-  if (!querySnapshot.empty) {
-    // College exists, increment count
-    const collegeDoc = querySnapshot.docs[0];
-    const currentCount = collegeDoc.data().count || 0;
-    
-    await updateDoc(doc(db, "colleges", collegeDoc.id), {
-      count: currentCount + 1
-    });
-  } else {
-    // College doesn't exist, add it
-    const newCollegeRef = doc(collection(db, "colleges"));
-    await setDoc(newCollegeRef, {
-      name: collegeNameTrimmed,
-      name_lower: collegeNameTrimmed.toLowerCase(),
-      count: 1,
-      created_at: new Date().toISOString()
-    });
-  }
+  // TODO: Query MongoDB College collection:
+  // - Find by name_lower (case-insensitive)
+  // - If exists: increment count
+  // - If not exists: create new college document
 };
 
 // Create user in Firebase Authentication
@@ -202,46 +180,11 @@ const createAuthUser = async (email: string, password: string): Promise<string> 
 };
 
 // Helper function to get or create a batch document
+// TODO: Remove batch system - MongoDB doesn't need batching, create user directly
 const getOrCreateBatchDocument = async () => {
-  const batchesRef = collection(db, "user_batches");
-  
-  // Get the most recent batch that has less than 400 users
-  const q = query(batchesRef, limit(1));
-  const querySnapshot = await getDocs(q);
-  
-  let batchDoc;
-  let batchId;
-  
-  // If no batches exist or all batches are full, create a new batch
-  if (querySnapshot.empty) {
-    batchId = doc(collection(db, "user_batches")).id;
-    batchDoc = {
-      id: batchId,
-      users: [],
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
-    
-    await setDoc(doc(db, "user_batches", batchId), batchDoc);
-  } else {
-    batchDoc = querySnapshot.docs[0].data();
-    batchId = querySnapshot.docs[0].id;
-    
-    // If the batch already has 400 users, create a new batch
-    if (batchDoc.users && batchDoc.users.length >= 400) {
-      batchId = doc(collection(db, "user_batches")).id;
-      batchDoc = {
-        id: batchId,
-        users: [],
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
-      
-      await setDoc(doc(db, "user_batches", batchId), batchDoc);
-    }
-  }
-  
-  return { batchId, batchDoc };
+  // TODO: With MongoDB, we don't need batches - users are stored directly in User collection
+  // Return empty batchId since it's not needed with MongoDB
+  return { batchId: "", batchDoc: null };
 };
 
 export async function POST(request: Request) {
@@ -559,38 +502,18 @@ export async function POST(request: Request) {
     }
 
     // Check for duplicate email registration
-    const emailQuery = query(
-      collection(db, "user_profiles"),
-      where("email", "==", data.email)
-    );
-    const emailQuerySnapshot = await getDocs(emailQuery);
-
-    if (!emailQuerySnapshot.empty) {
-      return NextResponse.json(
-        {
-          message: "Email is already registered!",
-          error: "Email is already registered!",
-        },
-        { status: 400 }
-      );
-    }
+    // TODO: Query MongoDB User collection to check if email exists
+    // const existingUserByEmail = await User.findOne({ email: data.email });
+    // if (existingUserByEmail) {
+    //   return NextResponse.json({ message: "Email is already registered!", error: "Email is already registered!" }, { status: 400 });
+    // }
 
     // Check for duplicate phone registration
-    const phoneQuery = query(
-      collection(db, "user_profiles"),
-      where("phone", "==", data.phone)
-    );
-    const phoneQuerySnapshot = await getDocs(phoneQuery);
-
-    if (!phoneQuerySnapshot.empty) {
-      return NextResponse.json(
-        {
-          message: "Phone number is already registered!",
-          error: "Phone number is already registered!",
-        },
-        { status: 400 }
-      );
-    }
+    // TODO: Query MongoDB User collection to check if phone exists
+    // const existingUserByPhone = await User.findOne({ phone: data.phone });
+    // if (existingUserByPhone) {
+    //   return NextResponse.json({ message: "Phone number is already registered!", error: "Phone number is already registered!" }, { status: 400 });
+    // }
 
     // Validate reCAPTCHA if token provided
     if (recaptcha_token) {
@@ -633,86 +556,38 @@ export async function POST(request: Request) {
       );
     }
 
-    // Use transaction to ensure data consistency
+    // Create user in MongoDB
+    // TODO: Replace Firestore transaction with MongoDB User.create()
     let profileId = '';
     
-    await runTransaction(db, async (transaction) => {
-      // Create a new user profile document
-      const profileRef = doc(collection(db, "user_profiles"));
-      profileId = profileRef.id;
-
-      // Get or create a batch document
-      const { batchId, batchDoc } = await getOrCreateBatchDocument();
-
-      // Prepare user data for batch document
-      const batchUserData = {
-        uid: profileId,
-        authUid: authUid,
-        name: data.name,
-        email: data.email,
-        phone: data.phone,
-        resume_link: resumeUrl,
-        profile_picture: profilePictureUrl,
-        leetcode_profile: data.leetcode_profile || null,
-        github_link: data.github_link || null,
-        linkedin_link: data.linkedin_link || null,
-        competitive_profiles: data.competitive_profiles ? JSON.parse(data.competitive_profiles) : [],
-        ctf_profiles: data.ctf_profiles ? JSON.parse(data.ctf_profiles) : [],
-        competitive_profile: null,
-        ctf_profile: null,
-        kaggle_link: data.kaggle_link || null,
-        devfolio_link: data.devfolio_link || null,
-        portfolio_link: data.portfolio_link || null,
-        bio: data.bio || null,
-        age: data.age || null,
-        college_name: data.college_name || null,
-        referral_code: data.referral_code || null,
-        registration_time: new Date().toISOString(),
-        status: "pending", 
-        isAdmin: false,
-        upVote: 0,
-        isDeleted: false
-      };
-
-      // Prepare user data for personal profile document
-      const profileData = {
-        uid: profileId,
-        authUid: authUid,
-        name: data.name,
-        email: data.email,
-        phone: data.phone,
-        profile_picture: profilePictureUrl,
-        batch_doc_id: batchId,
-        upvotedProfiles: [],
-        upVote: 0,
-        registration_time: new Date().toISOString(),
-        isAdmin: false, // Add isAdmin field in user_profiles
-      };
-      
-      // Update the batch document
-      const batchRef = doc(db, "user_batches", batchId);
-      const currentBatch = await transaction.get(batchRef);
-      if (currentBatch.exists()) {
-        const currentUsers = currentBatch.data().users || [];
-        currentUsers.push(batchUserData);
-        
-        transaction.update(batchRef, { 
-          users: currentUsers,
-          updated_at: new Date().toISOString()
-        });
-      } else {
-        // In case the batch was deleted between our check and transaction
-        transaction.set(batchRef, { 
-          id: batchId,
-          users: [batchUserData],
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        });
-      }
-      
-      // Set the user profile data
-      transaction.set(profileRef, profileData);
-    });
+    // TODO: Create user document in MongoDB User collection:
+    // const userData = {
+    //   uid: profileId, // Generate or use MongoDB _id
+    //   authUid: authUid,
+    //   name: data.name,
+    //   email: data.email,
+    //   phone: data.phone,
+    //   resume_link: resumeUrl,
+    //   profile_picture: profilePictureUrl,
+    //   leetcode_profile: data.leetcode_profile || null,
+    //   github_link: data.github_link || null,
+    //   linkedin_link: data.linkedin_link || null,
+    //   competitive_profiles: data.competitive_profiles || null,
+    //   ctf_profile: data.ctf_profile || null,
+    //   kaggle_link: data.kaggle_link || null,
+    //   devfolio_link: data.devfolio_link || null,
+    //   portfolio_link: data.portfolio_link || null,
+    //   bio: data.bio || null,
+    //   age: data.age || null,
+    //   college: data.college_name || null, // Note: field name changed from college_name
+    //   isLooking: false, // Add required field
+    //   registration_time: new Date().toISOString(),
+    //   status: "pending",
+    //   isAdmin: false,
+    // };
+    // const newUser = await User.create(userData);
+    // profileId = newUser._id.toString();
+    // });
 
     return NextResponse.json({ 
       message: "Registration successful", 
@@ -761,27 +636,23 @@ export async function GET(request: Request) {
 
   try {
     if (email) {
-      const emailQuery = query(
-        collection(db, "user_profiles"),
-        where("email", "==", email)
-      );
-      const querySnapshot = await getDocs(emailQuery);
+      // TODO: Query MongoDB User collection to check if email exists
+      // const existingUser = await User.findOne({ email });
+      // return NextResponse.json({ exists: !!existingUser, field: "email" });
       
       return NextResponse.json({ 
-        exists: !querySnapshot.empty,
+        exists: false, // TODO: Replace with MongoDB query result
         field: "email"
       });
     }
     
     if (phone) {
-      const phoneQuery = query(
-        collection(db, "user_profiles"),
-        where("phone", "==", phone)
-      );
-      const querySnapshot = await getDocs(phoneQuery);
+      // TODO: Query MongoDB User collection to check if phone exists
+      // const existingUser = await User.findOne({ phone });
+      // return NextResponse.json({ exists: !!existingUser, field: "phone" });
       
       return NextResponse.json({ 
-        exists: !querySnapshot.empty,
+        exists: false, // TODO: Replace with MongoDB query result
         field: "phone"
       });
     }

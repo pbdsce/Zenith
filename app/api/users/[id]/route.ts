@@ -1,5 +1,4 @@
-import { db } from "@/Firebase";
-import { doc, getDoc, updateDoc, deleteDoc, collection, query, where, getDocs, setDoc } from "firebase/firestore";
+// add mongodb imports
 import { NextResponse } from "next/server";
 import { cloudinaryV2 } from "@/c";
 import fs from 'fs';
@@ -30,7 +29,6 @@ interface BatchUser {
   registration_time?: string;
   status?: string;
   isAdmin?: boolean;
-  upVote?: number;
   isDeleted?: boolean;
 }
 
@@ -50,8 +48,6 @@ interface UserProfile {
   phone: string | null;
   profile_picture: string | null;
   batch_doc_id: string;
-  upvotedProfiles: string[];
-  upVote: number;
   registration_time: string;
   resume_link?: string; // Add this optional property
   isAdmin?: boolean; // Add isAdmin property
@@ -214,170 +210,14 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       console.warn("Authorization header missing or invalid, proceeding anyway for development");
     }
     
-    // Try finding user in user_profiles by ID
-    const userRef = doc(db, "user_profiles", params.id);
-    const userSnap = await getDoc(userRef);
-
-    if (userSnap.exists()) {
-      const userData = userSnap.data() as UserProfile;
-      
-      // Special handling for admin users (no batch required)
-      if (userData.isAdmin === true && (!userData.batch_doc_id || userData.batch_doc_id.trim() === "")) {
-        const user = {
-          uid: params.id,
-          authUid: userData.authUid,
-          email: userData.email,
-          name: userData.name,
-          isAdmin: true,
-          profile_picture: userData.profile_picture || null,
-          status: "active", // Admin users are always active
-          college_name: null,
-          bio: null,
-          github_link: null,
-          linkedin_link: null,
-          portfolio_link: null,
-          resume_link: null,
-          upVote: userData.upVote || 0,
-          upvotedProfiles: userData.upvotedProfiles || [],
-        };
-        
-        return NextResponse.json({ user, status: "success" });
-      }
-      
-      // For regular users, continue with batch logic
-      // Get batch document to get full user details
-      const batchRef = doc(db, "user_batches", userData.batch_doc_id);
-      const batchSnap = await getDoc(batchRef);
-      
-      if (!batchSnap.exists()) {
-        return NextResponse.json({ message: "User batch not found", status: "error" }, { status: 404 });
-      }
-      
-      const batchData = batchSnap.data() as BatchDocument;
-      const userInBatch = batchData.users.find((u: BatchUser) => u.uid === params.id);
-      
-      if (!userInBatch) {
-        return NextResponse.json({ message: "User data not found in batch", status: "error" }, { status: 404 });
-      }
-      
-      // Combine data from both collections
-      const user = {
-        uid: params.id,
-        authUid: userData.authUid,
-        email: userInBatch.email,
-        name: userInBatch.name,
-        isAdmin: userInBatch.isAdmin || false,
-        profile_picture: userInBatch.profile_picture || null,
-        status: userInBatch.status || "active",
-        college_name: userInBatch.college_name || null,
-        bio: userInBatch.bio || null,
-        github_link: userInBatch.github_link || null,
-        linkedin_link: userInBatch.linkedin_link || null,
-        portfolio_link: userInBatch.portfolio_link || null,
-        resume_link: userInBatch.resume_link || null,
-        upVote: userInBatch.upVote || 0,
-        upvotedProfiles: userData.upvotedProfiles || [],
-      };
-
-      return NextResponse.json({ user, status: "success" });
-    } else {
-      // Try finding by authUid in user_profiles
-      const usersRef = collection(db, "user_profiles");
-      const q = query(usersRef, where("authUid", "==", params.id));
-      const querySnapshot = await getDocs(q);
-      
-      if (querySnapshot.empty) {
-        // Try finding by email
-        if (params.id.includes('@')) {
-          const emailQuery = query(usersRef, where("email", "==", params.id));
-          const emailSnapshot = await getDocs(emailQuery);
-          
-          if (emailSnapshot.empty) {
-            return NextResponse.json({ message: "User not found", status: "error" }, { status: 404 });
-          }
-          
-          const userData = emailSnapshot.docs[0].data() as UserProfile;
-          const userId = emailSnapshot.docs[0].id;
-          
-          // Get batch document for user details
-          const batchRef = doc(db, "user_batches", userData.batch_doc_id);
-          const batchSnap = await getDoc(batchRef);
-          
-          if (!batchSnap.exists()) {
-            return NextResponse.json({ message: "User batch not found", status: "error" }, { status: 404 });
-          }
-          
-          const batchData = batchSnap.data() as BatchDocument;
-          const userInBatch = batchData.users.find((u: BatchUser) => u.uid === userId);
-          
-          if (!userInBatch) {
-            return NextResponse.json({ message: "User data not found in batch", status: "error" }, { status: 404 });
-          }
-          
-          // Combine data
-          const user = {
-            uid: userId,
-            authUid: userData.authUid,
-            email: userInBatch.email,
-            name: userInBatch.name,
-            isAdmin: userInBatch.isAdmin || false,
-            profile_picture: userInBatch.profile_picture || null,
-            status: userInBatch.status || "active",
-            college_name: userInBatch.college_name || null,
-            bio: userInBatch.bio || null,
-            github_link: userInBatch.github_link || null,
-            linkedin_link: userInBatch.linkedin_link || null,
-            portfolio_link: userInBatch.portfolio_link || null,
-            resume_link: userInBatch.resume_link || null,
-            upVote: userInBatch.upVote || 0,
-            upvotedProfiles: userData.upvotedProfiles || [],
-          };
-          
-          return NextResponse.json({ user, status: "success" });
-        } else {
-          return NextResponse.json({ message: "User not found", status: "error" }, { status: 404 });
-        }
-      } else {
-        const userData = querySnapshot.docs[0].data() as UserProfile;
-        const userId = querySnapshot.docs[0].id;
-        
-        // Get batch document
-        const batchRef = doc(db, "user_batches", userData.batch_doc_id);
-        const batchSnap = await getDoc(batchRef);
-        
-        if (!batchSnap.exists()) {
-          return NextResponse.json({ message: "User batch not found", status: "error" }, { status: 404 });
-        }
-        
-        const batchData = batchSnap.data() as BatchDocument;
-        const userInBatch = batchData.users.find((u: BatchUser) => u.uid === userId);
-        
-        if (!userInBatch) {
-          return NextResponse.json({ message: "User data not found in batch", status: "error" }, { status: 404 });
-        }
-        
-        // Combine data
-        const user = {
-          uid: userId,
-          authUid: userData.authUid,
-          email: userInBatch.email,
-          name: userInBatch.name,
-          isAdmin: userInBatch.isAdmin || false,
-          profile_picture: userInBatch.profile_picture || null,
-          status: userInBatch.status || "active",
-          college_name: userInBatch.college_name || null,
-          bio: userInBatch.bio || null,
-          github_link: userInBatch.github_link || null,
-          linkedin_link: userInBatch.linkedin_link || null,
-          portfolio_link: userInBatch.portfolio_link || null,
-          resume_link: userInBatch.resume_link || null,
-          upVote: userInBatch.upVote || 0,
-          upvotedProfiles: userData.upvotedProfiles || [],
-        };
-        
-        return NextResponse.json({ user, status: "success" });
-      }
-    }
+    // TODO: Query MongoDB User collection by ID, authUid, or email
+    // Try finding user by ID first:
+    // let user = await User.findById(params.id);
+    // If not found, try by authUid:
+    // if (!user) user = await User.findOne({ authUid: params.id });
+    // If still not found and params.id contains '@', try by email:
+    // if (!user && params.id.includes('@')) user = await User.findOne({ email: params.id });  
+    return NextResponse.json({ message: "User fetch not implemented - MongoDB migration pending", status: "error" }, { status: 501 });
   } catch (error) {
     console.error("Error fetching user:", error);
     return NextResponse.json({ message: "Failed to fetch user", error: String(error), status: "error" }, { status: 500 });
@@ -385,6 +225,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 }
 
 // Helper function to manage college changes
+// TODO: Replace with MongoDB College collection operations
 const handleCollegeChange = async (oldCollege: string | null, newCollege: string): Promise<void> => {
   if (!newCollege || (oldCollege && oldCollege.toLowerCase() === newCollege.toLowerCase())) {
     // No change or no college provided
@@ -394,55 +235,11 @@ const handleCollegeChange = async (oldCollege: string | null, newCollege: string
   const newCollegeTrimmed = newCollege.trim();
   if (newCollegeTrimmed.length === 0) return;
 
-  // Check if the new college exists
-  const collegesRef = collection(db, "colleges");
-  const collegeQuery = query(
-    collegesRef, 
-    where("name_lower", "==", newCollegeTrimmed.toLowerCase())
-  );
-  
-  const querySnapshot = await getDocs(collegeQuery);
-  
-  if (!querySnapshot.empty) {
-    // College exists, increment count
-    const collegeDoc = querySnapshot.docs[0];
-    const currentCount = collegeDoc.data().count || 0;
-    
-    await updateDoc(doc(db, "colleges", collegeDoc.id), {
-      count: currentCount + 1
-    });
-  } else {
-    // College doesn't exist, add it
-    const newCollegeRef = doc(collection(db, "colleges"));
-    await setDoc(newCollegeRef, {
-      name: newCollegeTrimmed,
-      name_lower: newCollegeTrimmed.toLowerCase(),
-      count: 1,
-      created_at: new Date().toISOString()
-    });
-  }
-
-  // If there was an old college, decrement its count
-  if (oldCollege) {
-    const oldCollegeQuery = query(
-      collegesRef, 
-      where("name_lower", "==", oldCollege.toLowerCase())
-    );
-    
-    const oldCollegeSnapshot = await getDocs(oldCollegeQuery);
-    
-    if (!oldCollegeSnapshot.empty) {
-      const oldCollegeDoc = oldCollegeSnapshot.docs[0];
-      const currentCount = oldCollegeDoc.data().count || 0;
-      
-      // Only decrement if count is greater than 0
-      if (currentCount > 0) {
-        await updateDoc(doc(db, "colleges", oldCollegeDoc.id), {
-          count: currentCount - 1
-        });
-      }
-    }
-  }
+  // TODO: Query MongoDB College collection:
+  // - Find by name_lower (case-insensitive)
+  // - If exists: increment count
+  // - If not exists: create new college document
+  // - If oldCollege exists: decrement its count
 };
 
 export async function PUT(req: Request, { params }: { params: { id: string } }) {
@@ -456,40 +253,17 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
       return NextResponse.json({ message: "Name cannot be updated", status: "error" }, { status: 400 });
     }
     
-    // Find the user in user_profiles
-    const userRef = doc(db, "user_profiles", params.id);
-    const userSnap = await getDoc(userRef);
-    
-    if (!userSnap.exists()) {
-      return NextResponse.json({ message: "User not found", status: "error" }, { status: 404 });
-    }
-    
-    const userData = userSnap.data() as UserProfile;
-    const batchDocId = userData.batch_doc_id;
-    
-    // Get the batch document
-    const batchRef = doc(db, "user_batches", batchDocId);
-    const batchSnap = await getDoc(batchRef);
-    
-    if (!batchSnap.exists()) {
-      return NextResponse.json({ message: "User batch not found", status: "error" }, { status: 404 });
-    }
-    
-    const batchData = batchSnap.data() as BatchDocument;
-    const userIndex = batchData.users.findIndex((u: BatchUser) => u.uid === params.id);
-    
-    if (userIndex === -1) {
-      return NextResponse.json({ message: "User not found in batch", status: "error" }, { status: 404 });
-    }
-    
-    // Get the user data from the batch
-    const userInBatch = batchData.users[userIndex];
+    // TODO: Find user in MongoDB User collection
+    // const user = await User.findById(params.id);
+    // if (!user) {
+    //   return NextResponse.json({ message: "User not found", status: "error" }, { status: 404 });
+    // }
     
     // Handle college name update if provided
-    if (updates.college_name && updates.college_name !== userInBatch.college_name) {
-      await handleCollegeChange(userInBatch.college_name || null, updates.college_name.toString());
-    }
-    
+    // TODO: Get current college from user document
+    // if (updates.college_name && updates.college_name !== user.college) {
+    //   await handleCollegeChange(user.college || null, updates.college_name.toString());
+    // }    
     // Handle resume update if provided
     if (files.resume) {
       const resumeFile = files.resume;
@@ -517,11 +291,10 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
       }
       
       // Delete old resume from Cloudinary if it exists
-      // We need to get the resume_link from the batch since it might not be in the user profile
-      const userInBatchResumeLink = userInBatch.resume_link;
-      if (userInBatchResumeLink) {
-        await deleteFromCloudinary(userInBatchResumeLink, 'raw');
-      }
+      // TODO: Get resume_link from MongoDB user document
+      // if (user.resume_link) {
+      //   await deleteFromCloudinary(user.resume_link, 'raw');
+      // }
       
       // Upload new resume to Cloudinary
       try {
@@ -572,9 +345,10 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
       }
 
       // Delete old profile picture from Cloudinary if it exists
-      if (userData.profile_picture) {
-        await deleteFromCloudinary(userData.profile_picture, 'image');
-      }
+      // TODO: Get profile_picture from MongoDB user document
+      // if (user.profile_picture) {
+      //   await deleteFromCloudinary(user.profile_picture, 'image');
+      // }
 
       // Upload new profile picture to Cloudinary
       try {
@@ -609,29 +383,12 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     
     // Process updates for user_batches
     Object.keys(updates).forEach(key => {
-      if (key !== 'upvotedProfiles') { // Don't update upvotedProfiles in batch
-        userBatchUpdates[key] = updates[key];
-      }
+      userBatchUpdates[key] = updates[key];
     });
     
-    // Update the user_profiles collection
-    if (Object.keys(userProfileUpdates).length > 0) {
-      await updateDoc(userRef, userProfileUpdates);
-    }
-    
-    // Update the user in the batch
-    if (Object.keys(userBatchUpdates).length > 0) {
-      const updatedUsers = [...batchData.users];
-      updatedUsers[userIndex] = {
-        ...userInBatch,
-        ...userBatchUpdates
-      };
-      
-      await updateDoc(batchRef, {
-        users: updatedUsers,
-        updated_at: new Date().toISOString()
-      });
-    }
+    // TODO: Update user in MongoDB User collection
+    // Object.assign(user, updates);
+    // await user.save();
     
     return NextResponse.json({ 
       message: "User updated successfully",
@@ -656,81 +413,18 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
       return NextResponse.json({ message: "Unauthorized: Missing UID", status: "error" }, { status: 401 });
     }
     
-    // Verify admin permissions
-    const adminRef = doc(db, "user_profiles", uid);
-    const adminSnap = await getDoc(adminRef);
+    // TODO: Verify admin permissions using MongoDB User collection
+    // const adminUser = await User.findById(uid);
+    // if (!adminUser || !adminUser.isAdmin) {
+    //   return NextResponse.json({ message: "Unauthorized: Not an admin", status: "error" }, { status: 403 });
+    // }
     
-    if (!adminSnap.exists()) {
-      return NextResponse.json({ message: "Unauthorized: Admin not found", status: "error" }, { status: 403 });
-    }
-    
-    // Check isAdmin directly in user_profiles
-    let isAdmin = adminSnap.data().isAdmin === true;
-    
-    // If not found in user_profiles, fall back to batch check (for backward compatibility)
-    if (!isAdmin) {
-      const adminData = adminSnap.data() as UserProfile;
-      const adminBatchRef = doc(db, "user_batches", adminData.batch_doc_id);
-      const adminBatchSnap = await getDoc(adminBatchRef);
-      
-      if (adminBatchSnap.exists()) {
-        const adminBatchData = adminBatchSnap.data() as BatchDocument;
-        const adminInBatch = adminBatchData.users.find((u: BatchUser) => u.uid === uid);
-        isAdmin = adminInBatch?.isAdmin || false;
-        
-        // If admin in batch but not in profile, update profile for consistency
-        if (isAdmin) {
-          await updateDoc(adminRef, {
-            isAdmin: true
-          });
-        }
-      }
-    }
-    
-    if (!isAdmin) {
-      return NextResponse.json({ message: "Unauthorized: Not an admin", status: "error" }, { status: 403 });
-    }
-    
-    // Find the user to delete
-    const userRef = doc(db, "user_profiles", params.id);
-    const userSnap = await getDoc(userRef);
-    
-    if (!userSnap.exists()) {
-      return NextResponse.json({ message: "User not found", status: "error" }, { status: 404 });
-    }
-    
-    const userData = userSnap.data() as UserProfile;
-    const batchDocId = userData.batch_doc_id;
-    
-    // Get the batch document
-    const batchRef = doc(db, "user_batches", batchDocId);
-    const batchSnap = await getDoc(batchRef);
-    
-    if (!batchSnap.exists()) {
-      return NextResponse.json({ message: "User batch not found", status: "error" }, { status: 404 });
-    }
-    
-    const batchData = batchSnap.data() as BatchDocument;
-    const userIndex = batchData.users.findIndex((u: BatchUser) => u.uid === params.id);
-    
-    if (userIndex === -1) {
-      return NextResponse.json({ message: "User not found in batch", status: "error" }, { status: 404 });
-    }
-    
-    // Soft delete: set isDeleted flag in the batch
-    const updatedUsers = [...batchData.users];
-    updatedUsers[userIndex] = {
-      ...updatedUsers[userIndex],
-      isDeleted: true
-    };
-    
-    await updateDoc(batchRef, {
-      users: updatedUsers,
-      updated_at: new Date().toISOString()
-    });
-    
-    // We don't delete the user_profiles document, just to maintain references
-    
+    // TODO: Delete user from MongoDB User collection (soft delete or hard delete)
+    // const targetUser = await User.findById(params.id);
+    // if (!targetUser) {
+    //   return NextResponse.json({ message: "User not found", status: "error" }, { status: 404 });
+    // }
+    // await User.findByIdAndDelete(params.id); // or soft delete: targetUser.isDeleted = true; await targetUser.save();    
     return NextResponse.json({ message: "User deleted successfully", status: "success" });
   } catch (error) {
     console.error("Error deleting user:", error);

@@ -1,5 +1,5 @@
-import { db, auth } from "@/Firebase";
-import { doc, getDoc, updateDoc, setDoc, collection, query, where, getDocs } from "firebase/firestore";
+import { auth } from "@/Firebase";
+// add mongodb imports
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
 import { NextResponse } from "next/server";
 
@@ -25,7 +25,6 @@ interface BatchUser {
   profile_picture: string | null;
   status: 'active' | 'suspended' | 'deactivated';
   isAdmin: boolean;
-  upVote: number;
   isDeleted: boolean;
   registration_time: string;
 }
@@ -38,8 +37,6 @@ interface UserProfile {
   phone: string | null;
   profile_picture: string | null;
   batch_doc_id: string;
-  upvotedProfiles: string[];
-  upVote: number;
   registration_time: string;
   isAdmin: boolean; // Added isAdmin field to UserProfile
 }
@@ -53,57 +50,29 @@ const createErrorResponse = (message: string, status: number, errorCode?: string
 };
 
 // Helper function to find user profile by authUid or email
+// ADD Replace with MongoDB query - find user by authUid or email
 const findUserProfile = async (authUid: string, email: string): Promise<{ userData: UserProfile | null, userDocId: string | null }> => {
-  // Try finding by authUid first
-  const usersRef = collection(db, "user_profiles");
-  const authQuery = query(usersRef, where("authUid", "==", authUid));
-  const authQuerySnapshot = await getDocs(authQuery);
-  
-  if (!authQuerySnapshot.empty) {
-    return {
-      userData: authQuerySnapshot.docs[0].data() as UserProfile,
-      userDocId: authQuerySnapshot.docs[0].id
-    };
-  }
-  
-  // Fall back to email query
-  const emailQuery = query(usersRef, where("email", "==", email));
-  const emailQuerySnapshot = await getDocs(emailQuery);
-  
-  if (!emailQuerySnapshot.empty) {
-    return {
-      userData: emailQuerySnapshot.docs[0].data() as UserProfile,
-      userDocId: emailQuerySnapshot.docs[0].id
-    };
-  }
+  // TODO: Query MongoDB User collection:
+  // - Try finding by authUid first
+  // - Fall back to email query
+  // - Return userData and userDocId (MongoDB _id)
+
   
   return { userData: null, userDocId: null };
 };
 
 // Helper function to check user status in batch
+// Replace with MongoDB query - check user status directly from User collection
 const checkUserInBatch = async (batchDocId: string, userId: string): Promise<{ isValid: boolean, userInBatch: BatchUser | null, batchData: UserBatch | null, message?: string }> => {
-  const batchRef = doc(db, "user_batches", batchDocId);
-  const batchSnap = await getDoc(batchRef);
-  
-  if (!batchSnap.exists()) {
-    return { isValid: false, userInBatch: null, batchData: null, message: "User batch not found" };
-  }
-  
-  const batchData = batchSnap.data() as UserBatch;
-  const userInBatch = batchData.users.find(u => u.uid === userId);
-  
-  if (!userInBatch) {
-    return { isValid: false, userInBatch: null, batchData, message: "User not found in batch" };
-  }
-  
-  if (userInBatch.status === "suspended" || userInBatch.status === "deactivated") {
-    return { isValid: false, userInBatch, batchData, message: `Account is ${userInBatch.status}` };
-  }
-  
-  return { isValid: true, userInBatch, batchData };
+  // TODO: Query MongoDB User collection by userId
+  // - Check if user exists
+  // - Check user status field (should not be "suspended" or "deactivated")
+  // - Return isValid, userInBatch (mapped from User doc), and message if invalid
+  return { isValid: false, userInBatch: null, batchData: null, message: "User status check not implemented - MongoDB migration pending" };
 };
 
-// Helper to create a new admin user (only in user_profiles now)
+// Helper to create a new admin user
+// TODO: Replace with MongoDB User.create() - create admin user in MongoDB
 const createNewAdminUser = async (uid: string, authUid: string, email: string): Promise<UserProfile> => {
   const userData: UserProfile = {
     uid,
@@ -114,14 +83,13 @@ const createNewAdminUser = async (uid: string, authUid: string, email: string): 
     email,
     phone: null,
     profile_picture: null,
-    batch_doc_id: "", // No batch for admin users
-    upvotedProfiles: [],
-    upVote: 0,
+    batch_doc_id: "", // No longer needed with MongoDB
     registration_time: new Date().toISOString(),
-    isAdmin: true, // Set isAdmin flag in user_profiles
+    isAdmin: true,
   };
   
-  await setDoc(doc(db, "user_profiles", uid), userData);
+  // TODO: Create user in MongoDB User collection
+  // await User.create(userData);
   
   return userData;
 };
@@ -175,10 +143,8 @@ export async function POST(request: Request) {
         
         // If admin status is missing, update it
         if (!isAdminInProfile) {
-          // Update in user_profiles
-          await updateDoc(doc(db, "user_profiles", userDocId), {
-            isAdmin: true
-          });
+          // TODO: Update user in MongoDB User collection
+          // await User.findByIdAndUpdate(userDocId, { isAdmin: true });
           
           isNewAdmin = true;
           
@@ -205,9 +171,8 @@ export async function POST(request: Request) {
       
       // Update authUid if it doesn't match
       if (userData.authUid !== firebaseUser.uid) {
-        await updateDoc(doc(db, "user_profiles", userDocId), {
-          authUid: firebaseUser.uid
-        });
+        // TODO: Update user in MongoDB User collection
+        // await User.findByIdAndUpdate(userDocId, { authUid: firebaseUser.uid });
         userData.authUid = firebaseUser.uid;
       }
       

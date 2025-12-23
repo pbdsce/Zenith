@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { db } from "@/Firebase";
-import { collection, getDocs, query, where } from "firebase/firestore";
+// add mongodb
 
 // Validation functions
 const validateEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -40,15 +39,11 @@ const validateStep1 = async (data: any) => {
   } else if (!validateEmail(data.email)) {
     errors.email = "Invalid email format";
   } else {
-    // Check for duplicate email in database
-    const emailQuery = query(
-      collection(db, "user_profiles"),
-      where("email", "==", data.email)
-    );
-    const emailQuerySnapshot = await getDocs(emailQuery);
-    if (!emailQuerySnapshot.empty) {
-      errors.email = "Email is already registered";
-    }
+    // TODO: Check for duplicate email in MongoDB User collection
+    // const existingUser = await User.findOne({ email: data.email });
+    // if (existingUser) {
+    //   errors.email = "Email is already registered";
+    // }
   }
 
   // Validate password
@@ -78,15 +73,11 @@ const validateStep2 = async (data: any) => {
   } else if (data.phone.length !== 10) {
     errors.phone = "Phone number must be 10 digits";
   } else {
-    // Check if phone is already registered
-    const phoneQuery = query(
-      collection(db, "user_profiles"),
-      where("phone", "==", data.stdCode + data.phone)
-    );
-    const phoneQuerySnapshot = await getDocs(phoneQuery);
-    if (!phoneQuerySnapshot.empty) {
-      errors.phone = "Phone number is already registered";
-    }
+    // TODO: Check if phone is already registered in MongoDB User collection
+    // const existingUser = await User.findOne({ phone: data.stdCode + data.phone });
+    // if (existingUser) {
+    //   errors.phone = "Phone number is already registered";
+    // }
   }
 
   // Resume is required but we can't validate it here since we don't have file access
