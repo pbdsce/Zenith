@@ -1,5 +1,4 @@
-import { db } from "@/Firebase";
-import { doc, getDoc, updateDoc, arrayUnion, arrayRemove } from "firebase/firestore";
+//  add mongodb imports
 import { NextResponse } from "next/server";
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
@@ -21,127 +20,41 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       // In production, you might want to return an error instead
     }
     
-    // Get the target user document (the one being upvoted) from user_profiles
-    const targetUserRef = doc(db, "user_profiles", params.id);
-    const targetUserSnap = await getDoc(targetUserRef);
+    // TODO: Query MongoDB User collection for target user
+    // const targetUser = await User.findById(params.id);
+    // if (!targetUser) {
+    //   return NextResponse.json({ message: "User not found", status: "error" }, { status: 404 });
+    // }
     
-    if (!targetUserSnap.exists()) {
-      return NextResponse.json(
-        { message: "User not found", status: "error" }, 
-        { status: 404 }
-      );
-    }
+    // TODO: Query MongoDB User collection for upvoter
+    // const upvoter = await User.findById(userId);
+    // if (!upvoter) {
+    //   return NextResponse.json({ message: "Upvoter account not found", status: "error" }, { status: 404 });
+    // }
     
-    const targetUserData = targetUserSnap.data();
-    const targetBatchId = targetUserData.batch_doc_id;
+    // TODO: Check if user has already upvoted
+    // const hasUpvoted = upvoter.upvotedProfiles?.includes(params.id) || false;
     
-    // Get the upvoter's user document from user_profiles
-    const upvoterRef = doc(db, "user_profiles", userId);
-    const upvoterSnap = await getDoc(upvoterRef);
+    // TODO: Update upvote logic:
+    // if (hasUpvoted) {
+    //   // Remove upvote
+    //   targetUser.upVote = Math.max(0, targetUser.upVote - 1);
+    //   upvoter.upvotedProfiles = upvoter.upvotedProfiles.filter(id => id !== params.id);
+    // } else {
+    //   // Add upvote
+    //   targetUser.upVote = (targetUser.upVote || 0) + 1;
+    //   if (!upvoter.upvotedProfiles) upvoter.upvotedProfiles = [];
+    //   upvoter.upvotedProfiles.push(params.id);
+    // }
+    // await targetUser.save();
+    // await upvoter.save();
     
-    if (!upvoterSnap.exists()) {
-      return NextResponse.json(
-        { message: "Upvoter account not found", status: "error" }, 
-        { status: 404 }
-      );
-    }
-    
-    const upvoterData = upvoterSnap.data();
-    const upvotedProfiles = upvoterData.upvotedProfiles || [];
-    
-    // Check if the user has already upvoted this profile
-    const hasUpvoted = upvotedProfiles.includes(params.id);
-    
-    // Get the target batch document
-    const targetBatchRef = doc(db, "user_batches", targetBatchId);
-    const targetBatchSnap = await getDoc(targetBatchRef);
-    
-    if (!targetBatchSnap.exists()) {
-      return NextResponse.json(
-        { message: "User batch not found", status: "error" }, 
-        { status: 404 }
-      );
-    }
-    
-    const batchData = targetBatchSnap.data();
-    const userIndex = batchData.users.findIndex((u: { uid: string }) => u.uid === params.id);
-    
-    if (userIndex === -1) {
-      return NextResponse.json(
-        { message: "User not found in batch", status: "error" }, 
-        { status: 404 }
-      );
-    }
-    
-    const userInBatch = batchData.users[userIndex];
-    let upVote = userInBatch.upVote || 0;
-    
-    // Update the upvote count and list
-    if (hasUpvoted) {
-      // Remove the upvote
-      upVote = Math.max(0, upVote - 1);
-      
-      // Update the target user in the batch
-      const updatedUsers = [...batchData.users];
-      updatedUsers[userIndex] = {
-        ...userInBatch,
-        upVote
-      };
-      
-      await updateDoc(targetBatchRef, {
-        users: updatedUsers,
-        updated_at: new Date().toISOString()
-      });
-      
-      // Update the upvoter's upvotedProfiles list in user_profiles
-      await updateDoc(upvoterRef, {
-        upvotedProfiles: arrayRemove(params.id)
-      });
-      
-      // Update the target user's upVote in user_profiles
-      await updateDoc(targetUserRef, {
-        upVote
-      });
-      
-      return NextResponse.json({
-        message: "Upvote removed successfully",
-        hasUpvoted: false,
-        upvotes: upVote,
-        status: "success"
-      });
-    } else {
-      // Add the upvote
-      upVote++;
-      
-      // Update the target user in the batch
-      const updatedUsers = [...batchData.users];
-      updatedUsers[userIndex] = {
-        ...userInBatch,
-        upVote
-      };
-      
-      await updateDoc(targetBatchRef, {
-        users: updatedUsers,
-        updated_at: new Date().toISOString()
-      });
-      
-      // Update the upvoter's upvotedProfiles list in user_profiles
-      await updateDoc(upvoterRef, {
-        upvotedProfiles: arrayUnion(params.id)
-      });
-      
-      // Update the target user's upVote in user_profiles
-      await updateDoc(targetUserRef, {
-        upVote
-      });
-      
-      return NextResponse.json({
-        message: "Upvote added successfully",
-        hasUpvoted: true,
-        upvotes: upVote,
-        status: "success"
-      });
-    }
+    return NextResponse.json({
+      message: "Upvote gged",
+      hasUpvoted: false,
+      upvotes: 0,
+      status: "error"
+    }, { status: 501 });
   } catch (error) {
     console.error("Error updating upvote:", error);
     return NextResponse.json(
@@ -164,39 +77,18 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       );
     }
     
-    // Get the upvoter's user document from user_profiles
-    const upvoterRef = doc(db, "user_profiles", userId);
-    const upvoterSnap = await getDoc(upvoterRef);
+    // TODO: Query MongoDB User collection for upvoter and target user
+    // const upvoter = await User.findById(userId);
+    // const targetUser = await User.findById(params.id);
+    // if (!upvoter || !targetUser) {
+    //   return NextResponse.json({ message: "User not found", status: "error" }, { status: 404 });
+    // }
+    // const hasUpvoted = upvoter.upvotedProfiles?.includes(params.id) || false;
     
-    if (!upvoterSnap.exists()) {
-      return NextResponse.json(
-        { message: "User not found", status: "error" }, 
-        { status: 404 }
-      );
-    }
-    
-    const upvoterData = upvoterSnap.data();
-    const upvotedProfiles = upvoterData.upvotedProfiles || [];
-    
-    // Get the target user document from user_profiles
-    const targetUserRef = doc(db, "user_profiles", params.id);
-    const targetUserSnap = await getDoc(targetUserRef);
-    
-    if (!targetUserSnap.exists()) {
-      return NextResponse.json(
-        { message: "Target user not found", status: "error" }, 
-        { status: 404 }
-      );
-    }
-    
-    const targetUserData = targetUserSnap.data();
-    
-    // Check if the user has upvoted this profile
-    const hasUpvoted = upvotedProfiles.includes(params.id);
     
     return NextResponse.json({
-      hasUpvoted,
-      upvotes: targetUserData.upVote || 0,
+      hasUpvoted: false, // TODO: Replace with MongoDB query result
+      upvotes: 0, // TODO: Replace with MongoDB query result
       status: "success"
     });
   } catch (error) {
