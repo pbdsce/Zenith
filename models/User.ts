@@ -1,7 +1,7 @@
 import mongoose, { Schema, Document, Model } from 'mongoose';
 
-export interface IUser extends Document {
-    uid: string;
+export interface IUser extends Document<string> {
+    _id: string;
     name: string;
     email: string;
     phone?: string;
@@ -23,7 +23,7 @@ export interface IUser extends Document {
 }
 
 const UserSchema: Schema = new Schema({
-    uid: { type: String, required: true, unique: true }, // Firebase UID
+    _id: String,
     name: { type: String, required: true },
     email: { type: String, required: true, unique: true },
     phone: { type: String }, // Optional - required for regular users during registration
@@ -46,7 +46,9 @@ const UserSchema: Schema = new Schema({
     timestamps: true,
 });
 
-// Prevent overwrite compilation error
-const User: Model<IUser> = mongoose.models.User || mongoose.model<IUser>('User', UserSchema);
+if (mongoose.models.User) {
+  delete mongoose.models.User;
+}
+const User: Model<IUser> = mongoose.model<IUser>('User', UserSchema);
 
 export default User;

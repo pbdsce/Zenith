@@ -510,9 +510,8 @@ export async function POST(request: Request) {
       );
     }
 
-    // Create user in MongoDB
     const userData: any = {
-      uid: authUid, 
+      _id: authUid,
       name: data.name,
       email: data.email,
       phone: String(data.phone), // Store phone as string
@@ -552,22 +551,20 @@ export async function POST(request: Request) {
     }
 
     const newUser = await new User(userData).save();
-    const profileId = newUser._id.toString();
+    const userId = newUser._id;
 
     return NextResponse.json({ 
       message: "Registration successful", 
-      id: profileId,
-      authUid: authUid,
+      id: userId,
       status: "pending_verification",
       // Include any token or auth information needed for subsequent requests
       // token: authUid,
       user: {
-        id: profileId,        // MongoDB _id
-        uid: authUid,         // Firebase UID
+        uid: userId,
         email: data.email,
         name: data.name,
         isAdmin: false,
-        profile_picture: profilePictureUrl
+        profile_picture: profilePictureUrl || null
       }
     });
   } catch (error) {

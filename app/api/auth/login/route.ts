@@ -48,7 +48,7 @@ export async function POST(request: Request) {
     const idToken = await firebaseUser.getIdToken();
     
     await dbConnect();
-    let user = await User.findOne({ uid: firebaseUser.uid });
+    let user = await User.findById(firebaseUser.uid);
     if (!user) {
       user = await User.findOne({ email: email });
     }
@@ -66,8 +66,7 @@ export async function POST(request: Request) {
           message: "Login successful",
           status: "success",
           user: {
-            id: user._id.toString(),
-            uid: user.uid,
+            uid: user._id,
             email: user.email,
             name: user.name,
             isAdmin: true,
@@ -82,7 +81,7 @@ export async function POST(request: Request) {
           .join(' ');
         
         const newAdminUser = await new User({
-          uid: firebaseUser.uid,
+          _id: firebaseUser.uid,
           name: adminName,
           email: email,
           role: 'admin',
@@ -93,8 +92,7 @@ export async function POST(request: Request) {
           message: "Login successful. Admin privileges granted.",
           status: "success",
           user: {
-            id: newAdminUser._id.toString(),
-            uid: newAdminUser.uid,
+            uid: newAdminUser._id,
             email: newAdminUser.email,
             name: newAdminUser.name,
             isAdmin: true,
@@ -109,17 +107,12 @@ export async function POST(request: Request) {
         return createErrorResponse("User record not found", 404);
       }
       
-      if (user.uid !== firebaseUser.uid) {
-        await User.findByIdAndUpdate(user._id, { uid: firebaseUser.uid });
-        user.uid = firebaseUser.uid;
-      }
       
       return NextResponse.json({
         message: "Login successful",
         status: "success",
         user: {
-          id: user._id.toString(),
-          uid: user.uid,
+          uid: user._id,
           email: user.email,
           name: user.name,
           isAdmin: user.role === 'admin',
