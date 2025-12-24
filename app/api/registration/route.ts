@@ -1,11 +1,12 @@
 import { auth } from "@/Firebase";
-// add mongodb imports
 import { createUserWithEmailAndPassword, sendEmailVerification } from "firebase/auth";
 import { NextResponse } from "next/server";
 import { cloudinaryV2 } from "@/c";
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+import dbConnect from "@/lib/db";
+import User from "@/models/User";
 
 // Utility functions for format validation
 const validateEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -138,19 +139,6 @@ const parseForm = async (req: Request): Promise<{ fields: any, files: any }> => 
   return { fields, files };
 };
 
-// Helper function to ensure college exists and increment counter
-// TODO: Replace with MongoDB College collection operations
-const ensureCollegeExists = async (collegeName: string): Promise<void> => {
-  if (!collegeName) return;
-  
-  const collegeNameTrimmed = collegeName.trim();
-  if (collegeNameTrimmed.length === 0) return;
-  
-  // TODO: Query MongoDB College collection:
-  // - Find by name_lower (case-insensitive)
-  // - If exists: increment count
-  // - If not exists: create new college document
-};
 
 // Create user in Firebase Authentication
 const createAuthUser = async (email: string, password: string): Promise<string> => {
@@ -299,7 +287,10 @@ export async function POST(request: Request) {
       !data.linkedin_link||
       !data.github_link||
       !resumeUrl ||
-      !password
+      !password ||
+      !data.bio ||
+      !data.age ||
+      !data.organisation
     ) {
       return NextResponse.json(
         {
@@ -373,11 +364,11 @@ export async function POST(request: Request) {
       );
     }
 
-    if (data.competitive_profile && !validateURL(data.competitive_profile)) {
+    if (data.codeforces_link && !validateURL(data.codeforces_link)) {
       return NextResponse.json(
         {
-          message: "Invalid Competitive Programming profile URL format.",
-          error: "Invalid CP profile",
+          message: "Invalid Codeforces profile URL format.",
+          error: "Invalid Codeforces profile",
         },
         { status: 400 }
       );
@@ -423,7 +414,7 @@ export async function POST(request: Request) {
       );
     }
 
-    if (data.bio && !validateBio(data.bio)) {
+    if (!validateBio(data.bio)) {
       return NextResponse.json(
         {
           message: "Bio exceeds maximum length of 500 characters.",
@@ -433,11 +424,21 @@ export async function POST(request: Request) {
       );
     }
 
-    if (data.age && !validateAge(data.age)) {
+    if (!validateAge(data.age)) {
       return NextResponse.json(
         {
           message: "Invalid age value.",
           error: "Invalid age",
+        },
+        { status: 400 }
+      );
+    }
+
+    if (!data.organisation || data.organisation.trim().length === 0) {
+      return NextResponse.json(
+        {
+          message: "Organisation is required.",
+          error: "Invalid organisation",
         },
         { status: 400 }
       );
@@ -453,67 +454,25 @@ export async function POST(request: Request) {
       );
     }
 
-    // Validate competitive profiles (array of URLs)
-    try {
-      const competitiveProfiles = JSON.parse(data.competitive_profiles || '[]');
-      for (const cpProfile of competitiveProfiles) {
-        if (cpProfile && !validateURL(cpProfile)) {
-          return NextResponse.json(
-            {
-              message: "Invalid Competitive Programming profile URL format.",
-              error: "Invalid CP profile",
-            },
-            { status: 400 }
-          );
-        }
-      }
-    } catch (error) {
-      return NextResponse.json(
-        {
-          message: "Invalid format for competitive profiles.",
-          error: "Invalid CP profiles format",
-        },
-        { status: 400 }
-      );
-    }
 
-    // Validate CTF profiles (array of URLs)
-    try {
-      const ctfProfiles = JSON.parse(data.ctf_profiles || '[]');
-      for (const ctfProfile of ctfProfiles) {
-        if (ctfProfile && !validateURL(ctfProfile)) {
-          return NextResponse.json(
-            {
-              message: "Invalid CTF profile URL format.",
-              error: "Invalid CTF profile",
-            },
-            { status: 400 }
-          );
-        }
-      }
-    } catch (error) {
-      return NextResponse.json(
-        {
-          message: "Invalid format for CTF profiles.",
-          error: "Invalid CTF profiles format",
-        },
-        { status: 400 }
-      );
-    }
-
+    await dbConnect();
     // Check for duplicate email registration
-    // TODO: Query MongoDB User collection to check if email exists
-    // const existingUserByEmail = await User.findOne({ email: data.email });
-    // if (existingUserByEmail) {
-    //   return NextResponse.json({ message: "Email is already registered!", error: "Email is already registered!" }, { status: 400 });
-    // }
+    const existingUserByEmail = await User.findOne({ email: data.email });
+    if (existingUserByEmail) {
+      return NextResponse.json({ 
+        message: "Email is already registered!", 
+        error: "Email is already registered!" 
+      }, { status: 400 });
+    }
 
     // Check for duplicate phone registration
-    // TODO: Query MongoDB User collection to check if phone exists
-    // const existingUserByPhone = await User.findOne({ phone: data.phone });
-    // if (existingUserByPhone) {
-    //   return NextResponse.json({ message: "Phone number is already registered!", error: "Phone number is already registered!" }, { status: 400 });
-    // }
+    const existingUserByPhone = await User.findOne({ phone: String(data.phone) });
+    if (existingUserByPhone) {
+      return NextResponse.json({ 
+        message: "Phone number is already registered!", 
+        error: "Phone number is already registered!" 
+      }, { status: 400 });
+    }
 
     // Validate reCAPTCHA if token provided
     if (recaptcha_token) {
@@ -537,11 +496,6 @@ export async function POST(request: Request) {
       }
     }
 
-    // If college name is provided, ensure it exists in the colleges collection
-    if (data.college_name) {
-      await ensureCollegeExists(data.college_name);
-    }
-
     // Create user in Firebase Authentication
     let authUid: string;
     try {
@@ -557,37 +511,48 @@ export async function POST(request: Request) {
     }
 
     // Create user in MongoDB
-    // TODO: Replace Firestore transaction with MongoDB User.create()
-    let profileId = '';
-    
-    // TODO: Create user document in MongoDB User collection:
-    // const userData = {
-    //   uid: profileId, // Generate or use MongoDB _id
-    //   authUid: authUid,
-    //   name: data.name,
-    //   email: data.email,
-    //   phone: data.phone,
-    //   resume_link: resumeUrl,
-    //   profile_picture: profilePictureUrl,
-    //   leetcode_profile: data.leetcode_profile || null,
-    //   github_link: data.github_link || null,
-    //   linkedin_link: data.linkedin_link || null,
-    //   competitive_profiles: data.competitive_profiles || null,
-    //   ctf_profile: data.ctf_profile || null,
-    //   kaggle_link: data.kaggle_link || null,
-    //   devfolio_link: data.devfolio_link || null,
-    //   portfolio_link: data.portfolio_link || null,
-    //   bio: data.bio || null,
-    //   age: data.age || null,
-    //   college: data.college_name || null, // Note: field name changed from college_name
-    //   isLooking: false, // Add required field
-    //   registration_time: new Date().toISOString(),
-    //   status: "pending",
-    //   isAdmin: false,
-    // };
-    // const newUser = await User.create(userData);
-    // profileId = newUser._id.toString();
-    // });
+    const userData: any = {
+      uid: authUid, 
+      name: data.name,
+      email: data.email,
+      phone: String(data.phone), // Store phone as string
+      resume_link: resumeUrl,
+      bio: data.bio,
+      age: parseInt(data.age),
+      organisation: data.organisation, 
+      isLooking: false, // Default value
+    };
+
+    if (profilePictureUrl) {
+      userData.profile_picture = profilePictureUrl;
+    }
+    if (data.leetcode_profile) {
+      userData.leetcode_profile = data.leetcode_profile;
+    }
+    if (data.github_link) {
+      userData.github_link = data.github_link;
+    }
+    if (data.linkedin_link) {
+      userData.linkedin_link = data.linkedin_link;
+    }
+    if (data.codeforces_link) {
+      userData.codeforces_link = data.codeforces_link;
+    }
+    if (data.ctf_profile) {
+      userData.ctf_profile = data.ctf_profile;
+    }
+    if (data.kaggle_link) {
+      userData.kaggle_link = data.kaggle_link;
+    }
+    if (data.devfolio_link) {
+      userData.devfolio_link = data.devfolio_link;
+    }
+    if (data.portfolio_link) {
+      userData.portfolio_link = data.portfolio_link;
+    }
+
+    const newUser = await new User(userData).save();
+    const profileId = newUser._id.toString();
 
     return NextResponse.json({ 
       message: "Registration successful", 
@@ -597,8 +562,8 @@ export async function POST(request: Request) {
       // Include any token or auth information needed for subsequent requests
       // token: authUid,
       user: {
-        uid: profileId,
-        authUid: authUid,
+        id: profileId,        // MongoDB _id
+        uid: authUid,         // Firebase UID
         email: data.email,
         name: data.name,
         isAdmin: false,
@@ -635,24 +600,19 @@ export async function GET(request: Request) {
   }
 
   try {
+    await dbConnect();
     if (email) {
-      // TODO: Query MongoDB User collection to check if email exists
-      // const existingUser = await User.findOne({ email });
-      // return NextResponse.json({ exists: !!existingUser, field: "email" });
-      
+      const existingUser = await User.findOne({ email });
       return NextResponse.json({ 
-        exists: false, // TODO: Replace with MongoDB query result
+        exists: !!existingUser,
         field: "email"
       });
     }
     
     if (phone) {
-      // TODO: Query MongoDB User collection to check if phone exists
-      // const existingUser = await User.findOne({ phone });
-      // return NextResponse.json({ exists: !!existingUser, field: "phone" });
-      
+      const existingUser = await User.findOne({ phone: String(phone) });
       return NextResponse.json({ 
-        exists: false, // TODO: Replace with MongoDB query result
+        exists: !!existingUser,
         field: "phone"
       });
     }
