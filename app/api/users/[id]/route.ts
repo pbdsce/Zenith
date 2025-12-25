@@ -137,15 +137,8 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     
     await dbConnect();
     
-    let user = null;
-    try {
-      user = await User.findById(params.id);
-    } catch (error) {
-      if (params.id.includes('@')) {
-        user = await User.findOne({ email: params.id });
-      }
-    }
-        if (!user && params.id.includes('@')) {
+    let user = await User.findOne({ uid: params.id });
+    if (!user && params.id.includes('@')) {
       user = await User.findOne({ email: params.id });
     }
     
