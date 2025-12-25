@@ -1,12 +1,13 @@
 import { auth } from "@/Firebase";
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
-import { FirebaseError } from "firebase/app";
 import { NextResponse } from "next/server";
 import dbConnect from "@/lib/db";
 import User from "@/models/User";
 
-const ADMIN_EMAIL_DOMAIN = process.env.ADMIN_EMAIL_DOMAIN;
-const SECRET_CODE = process.env.SECRET_CODE;
+// TODO: Move this to .env file
+const SECRET_CODE = "pbstruggles";
+const ADMIN_EMAIL_DOMAIN = "@pointblank.club";
+
 // Helper function to create error response
 const createErrorResponse = (message: string, status: number, errorCode?: string) => {
   return NextResponse.json(
@@ -19,8 +20,8 @@ const createErrorResponse = (message: string, status: number, errorCode?: string
 const authenticateUser = async (email: string, password: string, isAdminAttempt: boolean) => {
   try {
     return await signInWithEmailAndPassword(auth, email, password);
-  } catch (authError: unknown) {
-    if (authError instanceof FirebaseError && isAdminAttempt && 
+  } catch (authError: any) {
+    if (isAdminAttempt && 
         (authError.code === 'auth/invalid-credential' || 
          authError.code === 'auth/user-not-found')) {
       // Create new admin account if login fails with valid admin domain
@@ -47,7 +48,7 @@ export async function POST(request: Request) {
     const idToken = await firebaseUser.getIdToken();
     
     await dbConnect();
-    let user = await User.findById(firebaseUser.uid);
+    let user = await User.findOne({ uid: firebaseUser.uid });
     if (!user) {
       user = await User.findOne({ email: email });
     }
@@ -65,7 +66,8 @@ export async function POST(request: Request) {
           message: "Login successful",
           status: "success",
           user: {
-            uid: user._id,
+            id: user._id.toString(),
+            uid: user.uid,
             email: user.email,
             name: user.name,
             isAdmin: true,
@@ -80,7 +82,7 @@ export async function POST(request: Request) {
           .join(' ');
         
         const newAdminUser = await new User({
-          _id: firebaseUser.uid,
+          uid: firebaseUser.uid,
           name: adminName,
           email: email,
           role: 'admin',
@@ -91,7 +93,8 @@ export async function POST(request: Request) {
           message: "Login successful. Admin privileges granted.",
           status: "success",
           user: {
-            uid: newAdminUser._id,
+            id: newAdminUser._id.toString(), 
+            uid: newAdminUser.uid,
             email: newAdminUser.email,
             name: newAdminUser.name,
             isAdmin: true,
@@ -111,7 +114,8 @@ export async function POST(request: Request) {
         message: "Login successful",
         status: "success",
         user: {
-          uid: user._id,
+          id: user._id.toString(),
+          uid: user.uid,
           email: user.email,
           name: user.name,
           isAdmin: user.role === 'admin',
@@ -121,10 +125,10 @@ export async function POST(request: Request) {
         token: idToken
       });
     }
-  } catch (error: unknown) {
+  } catch (error: any) {
     console.error("Login error:", error);
     
-    const errorCode = error instanceof FirebaseError ? error.code : undefined;
+    const errorCode = error.code;
     let errorMessage = "Login failed";
     let statusCode = 500;
 

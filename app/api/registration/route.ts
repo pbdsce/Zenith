@@ -6,7 +6,7 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import dbConnect from "@/lib/db";
-import User, { IUser } from "@/models/User";
+import User from "@/models/User";
 
 // Utility functions for format validation
 const validateEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -28,11 +28,13 @@ const validateURL = (url: string) => {
   }
 };
 const validateReferralCode = (code: string) => {
-  const referralCodesEnv = process.env.VALID_REFERRAL_CODES || "";
-  const validCodes = referralCodesEnv
-    .split(",")
-    .map(c => c.trim())
-    .filter(c => c.length > 0);
+  const validCodes = [
+    "APNAADMI",
+    "lallanbhaiyasexy", 
+    "gandmeindamhaitohyecrackkarkedikha",
+    "iAmJustAChillGuy",
+    "SirLoodry"
+  ];
   return validCodes.includes(code);
 };
 const validateBio = (bio: string) => bio.length <= 500; // 100 words ≈ 500 chars
@@ -508,8 +510,8 @@ export async function POST(request: Request) {
       );
     }
 
-    const userData: Partial<IUser> = {
-      _id: authUid,
+    const userData: any = {
+      uid: authUid,
       name: data.name,
       email: data.email,
       phone: String(data.phone), // Store phone as string
@@ -520,31 +522,47 @@ export async function POST(request: Request) {
       isLooking: false, // Default value
     };
 
-    const updates = {
-      ...(profilePictureUrl && { profile_picture: profilePictureUrl }),
-      ...(data.leetcode_profile && { leetcode_profile: data.leetcode_profile }),
-      ...(data.github_link && { github_link: data.github_link }),
-      ...(data.linkedin_link && { linkedin_link: data.linkedin_link }),
-      ...(data.codeforces_link && { codeforces_link: data.codeforces_link }),
-      ...(data.ctf_profile && { ctf_profile: data.ctf_profile }),
-      ...(data.kaggle_link && { kaggle_link: data.kaggle_link }),
-      ...(data.devfolio_link && { devfolio_link: data.devfolio_link }),
-      ...(data.portfolio_link && { portfolio_link: data.portfolio_link }),
-    };
-
-    Object.assign(userData, updates);
+    if (profilePictureUrl) {
+      userData.profile_picture = profilePictureUrl;
+    }
+    if (data.leetcode_profile) {
+      userData.leetcode_profile = data.leetcode_profile;
+    }
+    if (data.github_link) {
+      userData.github_link = data.github_link;
+    }
+    if (data.linkedin_link) {
+      userData.linkedin_link = data.linkedin_link;
+    }
+    if (data.codeforces_link) {
+      userData.codeforces_link = data.codeforces_link;
+    }
+    if (data.ctf_profile) {
+      userData.ctf_profile = data.ctf_profile;
+    }
+    if (data.kaggle_link) {
+      userData.kaggle_link = data.kaggle_link;
+    }
+    if (data.devfolio_link) {
+      userData.devfolio_link = data.devfolio_link;
+    }
+    if (data.portfolio_link) {
+      userData.portfolio_link = data.portfolio_link;
+    }
 
     const newUser = await new User(userData).save();
-    const userId = newUser._id;
+    const userId = newUser._id.toString();
 
     return NextResponse.json({ 
       message: "Registration successful", 
-      uid: userId,
+      id: userId, 
+      uid: authUid,
       status: "pending_verification",
       // Include any token or auth information needed for subsequent requests
       // token: authUid,
       user: {
-        uid: userId,
+        id: userId,
+        uid: authUid,
         email: data.email,
         name: data.name,
         isAdmin: false,

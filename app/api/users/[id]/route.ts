@@ -137,8 +137,15 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     
     await dbConnect();
     
-    let user = await User.findById(params.id);
-    if (!user && params.id.includes('@')) {
+    let user = null;
+    try {
+      user = await User.findById(params.id);
+    } catch (error) {
+      if (params.id.includes('@')) {
+        user = await User.findOne({ email: params.id });
+      }
+    }
+        if (!user && params.id.includes('@')) {
       user = await User.findOne({ email: params.id });
     }
     
@@ -153,7 +160,8 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       message: "User found",
       status: "success",
       user: {
-        uid: user._id,
+        id: user._id.toString(),
+        uid: user.uid,
         email: user.email,
         name: user.name,
         phone: user.phone || null,
@@ -200,7 +208,6 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     
     await dbConnect();
     
-    // Find user by MongoDB _id (Firebase UID)
     const user = await User.findById(params.id);
     if (!user) {
       return NextResponse.json({ 
@@ -326,11 +333,12 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
       }
     }
     
-    await User.findByIdAndUpdate(params.id, updateData, { new: true });
+    const updatedUser = await User.findByIdAndUpdate(params.id, updateData, { new: true });
     
     return NextResponse.json({ 
       message: "User updated successfully",
-      userId: params.id,
+      id: updatedUser?._id.toString(),
+      uid: updatedUser?.uid,
       status: "success" 
     });
   } catch (error) {
@@ -356,7 +364,7 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
     
     await dbConnect();
     
-    const adminUser = await User.findById(uid);
+    const adminUser = await User.findOne({ uid: uid });
     if (!adminUser || adminUser.role !== 'admin') {
       return NextResponse.json({ 
         message: "Unauthorized: Not an admin", 

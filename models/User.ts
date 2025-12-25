@@ -1,7 +1,8 @@
-import mongoose, { Schema, Document, Model } from 'mongoose';
+import mongoose, { Schema, Document, Model, Types } from 'mongoose';
 
-export interface IUser extends Document<string> {
-    _id: string;
+export interface IUser extends Document {
+    _id: Types.ObjectId;
+    uid: string;
     name: string;
     email: string;
     phone?: string;
@@ -23,7 +24,7 @@ export interface IUser extends Document<string> {
 }
 
 const UserSchema: Schema = new Schema({
-    _id: String,
+    uid: { type: String, required: true, unique: true },
     name: { type: String, required: true },
     email: { type: String, required: true, unique: true },
     phone: { type: String }, // Optional - required for regular users during registration
