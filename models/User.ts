@@ -20,6 +20,7 @@ export interface IUser extends Document<string> {
     profile_picture?: string;
     isLooking: boolean;
     role: 'user' | 'admin' | 'evaluator';
+    teamCode?: string;
 }
 
 const UserSchema: Schema = new Schema({
@@ -41,7 +42,8 @@ const UserSchema: Schema = new Schema({
     organisation: { type: String }, // Optional - required for regular users during registration
     profile_picture: { type: String },
     isLooking: { type: Boolean, default: false },
-    role: { type: String, enum: ['user', 'admin', 'evaluator'], default: 'user' }
+    role: { type: String, enum: ['user', 'admin', 'evaluator'], default: 'user' },
+    teamCode: { type: String },
 }, {
     timestamps: true,
 });

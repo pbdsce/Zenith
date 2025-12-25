@@ -5,10 +5,10 @@ export interface ITeam extends Document {
     teamLead: string;
     islooking: boolean;
     teamMembers: string[];
-    teamStatus: 'submitted' | 'pending' | 'withdrawn';
-    RSVP: boolean;
+    teamStatus: 'submitted' | 'pending' | 'withdrawn' | 'rsvped';
     appliedFor: string;
     isEvaluated: boolean;
+    EvaluatorID?: string;
     scores?: {
         tech: number;
         ux: number;
@@ -17,6 +17,8 @@ export interface ITeam extends Document {
     };
     comments?: string;
     isShortlisted: boolean;
+    videoURL?: string;
+    anyOtherLinks?: string;
 }
 
 const TeamSchema: Schema = new Schema({
@@ -26,12 +28,12 @@ const TeamSchema: Schema = new Schema({
     teamMembers: [{ type: String }],
     teamStatus: {
         type: String,
-        enum: ['submitted', 'pending', 'withdrawn'],
+        enum: ['submitted', 'pending', 'withdrawn', 'rsvped'],
         default: 'pending'
     },
-    RSVP: { type: Boolean, default: false },
     appliedFor: { type: String },
     isEvaluated: { type: Boolean, default: false },
+    EvaluatorID: { type: String },
     scores: {
         tech: { type: Number },
         ux: { type: Number },
@@ -39,7 +41,9 @@ const TeamSchema: Schema = new Schema({
         total: { type: Number }
     },
     comments: { type: String },
-    isShortlisted: { type: Boolean, default: false }
+    isShortlisted: { type: Boolean, default: false },
+    videoURL: { type: String },
+    anyOtherLinks: { type: String },
 }, {
     timestamps: true,
 });

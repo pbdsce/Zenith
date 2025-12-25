@@ -3,13 +3,13 @@ import mongoose, { Schema, Document, Model } from 'mongoose';
 export interface IEvaluator extends Document {
     uid: string;
     name: string;
-    PS: string[];
+    teams: string[];
 }
 
 const EvaluatorSchema: Schema = new Schema({
     uid: { type: String, required: true, unique: true },
     name: { type: String, required: true },
-    PS: [{ type: String }],
+    teams: [{ type: String }],
 }, {
     timestamps: true,
 });
