@@ -66,7 +66,6 @@ export async function POST(request: Request) {
           message: "Login successful",
           status: "success",
           user: {
-            id: user._id.toString(),
             uid: user.uid,
             email: user.email,
             name: user.name,
@@ -93,7 +92,6 @@ export async function POST(request: Request) {
           message: "Login successful. Admin privileges granted.",
           status: "success",
           user: {
-            id: newAdminUser._id.toString(), 
             uid: newAdminUser.uid,
             email: newAdminUser.email,
             name: newAdminUser.name,
@@ -114,7 +112,6 @@ export async function POST(request: Request) {
         message: "Login successful",
         status: "success",
         user: {
-          id: user._id.toString(),
           uid: user.uid,
           email: user.email,
           name: user.name,

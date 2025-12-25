@@ -112,24 +112,31 @@ const parseForm = async (req: Request): Promise<{ fields: any, files: any }> => 
   
   // Process all form data
   for (const [key, value] of formData.entries()) {
-    if (value instanceof File) {
+    const isFile = typeof value === 'object' && 
+                   value !== null && 
+                   typeof (value as any).name === 'string' && 
+                   typeof (value as any).arrayBuffer === 'function' &&
+                   typeof (value as any).type === 'string';
+    
+    if (isFile) {
+      const file = value as any;
       // Create a safe filename - replace spaces and special chars
-      const safeFilename = value.name.replace(/[^a-zA-Z0-9.]/g, '_');
+      const safeFilename = file.name.replace(/[^a-zA-Z0-9.]/g, '_');
       
       // Save file to system temp directory with a unique name
       const tempFilePath = path.join(tempDir, `${Date.now()}_${safeFilename}`);
       
       // Get file content as ArrayBuffer 
-      const arrayBuffer = await value.arrayBuffer();
+      const arrayBuffer = await file.arrayBuffer();
       
       // Use fs.promises.writeFile which handles Buffer types better
       await fs.promises.writeFile(tempFilePath, new Uint8Array(arrayBuffer));
       
       files[key] = {
         filepath: tempFilePath,
-        originalFilename: value.name,
-        mimetype: value.type,
-        size: value.size
+        originalFilename: file.name,
+        mimetype: file.type,
+        size: file.size
       };
     } else {
       fields[key] = value;
@@ -555,13 +562,11 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ 
       message: "Registration successful", 
-      id: userId, 
       uid: authUid,
       status: "pending_verification",
       // Include any token or auth information needed for subsequent requests
       // token: authUid,
       user: {
-        id: userId,
         uid: authUid,
         email: data.email,
         name: data.name,

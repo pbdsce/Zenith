@@ -160,7 +160,6 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       message: "User found",
       status: "success",
       user: {
-        id: user._id.toString(),
         uid: user.uid,
         email: user.email,
         name: user.name,
