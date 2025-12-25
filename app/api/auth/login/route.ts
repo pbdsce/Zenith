@@ -1,13 +1,12 @@
 import { auth } from "@/Firebase";
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
+import { FirebaseError } from "firebase/app";
 import { NextResponse } from "next/server";
 import dbConnect from "@/lib/db";
 import User from "@/models/User";
 
-// TODO: Move this to .env file
-const SECRET_CODE = "pbstruggles";
-const ADMIN_EMAIL_DOMAIN = "@pointblank.club";
-
+const ADMIN_EMAIL_DOMAIN = process.env.ADMIN_EMAIL_DOMAIN;
+const SECRET_CODE = process.env.SECRET_CODE;
 // Helper function to create error response
 const createErrorResponse = (message: string, status: number, errorCode?: string) => {
   return NextResponse.json(
@@ -20,8 +19,8 @@ const createErrorResponse = (message: string, status: number, errorCode?: string
 const authenticateUser = async (email: string, password: string, isAdminAttempt: boolean) => {
   try {
     return await signInWithEmailAndPassword(auth, email, password);
-  } catch (authError: any) {
-    if (isAdminAttempt && 
+  } catch (authError: unknown) {
+    if (authError instanceof FirebaseError && isAdminAttempt && 
         (authError.code === 'auth/invalid-credential' || 
          authError.code === 'auth/user-not-found')) {
       // Create new admin account if login fails with valid admin domain
@@ -122,10 +121,10 @@ export async function POST(request: Request) {
         token: idToken
       });
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Login error:", error);
     
-    const errorCode = error.code;
+    const errorCode = error instanceof FirebaseError ? error.code : undefined;
     let errorMessage = "Login failed";
     let statusCode = 500;
 
