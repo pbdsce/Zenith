@@ -6,7 +6,7 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import dbConnect from "@/lib/db";
-import User from "@/models/User";
+import User, { IUser } from "@/models/User";
 
 // Utility functions for format validation
 const validateEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -28,13 +28,11 @@ const validateURL = (url: string) => {
   }
 };
 const validateReferralCode = (code: string) => {
-  const validCodes = [
-    "APNAADMI",
-    "lallanbhaiyasexy", 
-    "gandmeindamhaitohyecrackkarkedikha",
-    "iAmJustAChillGuy",
-    "SirLoodry"
-  ];
+  const referralCodesEnv = process.env.VALID_REFERRAL_CODES || "";
+  const validCodes = referralCodesEnv
+    .split(",")
+    .map(c => c.trim())
+    .filter(c => c.length > 0);
   return validCodes.includes(code);
 };
 const validateBio = (bio: string) => bio.length <= 500; // 100 words ≈ 500 chars
@@ -517,7 +515,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const userData: any = {
+    const userData: Partial<IUser> = {
       uid: authUid,
       name: data.name,
       email: data.email,
@@ -529,33 +527,19 @@ export async function POST(request: Request) {
       isLooking: false, // Default value
     };
 
-    if (profilePictureUrl) {
-      userData.profile_picture = profilePictureUrl;
-    }
-    if (data.leetcode_profile) {
-      userData.leetcode_profile = data.leetcode_profile;
-    }
-    if (data.github_link) {
-      userData.github_link = data.github_link;
-    }
-    if (data.linkedin_link) {
-      userData.linkedin_link = data.linkedin_link;
-    }
-    if (data.codeforces_link) {
-      userData.codeforces_link = data.codeforces_link;
-    }
-    if (data.ctf_profile) {
-      userData.ctf_profile = data.ctf_profile;
-    }
-    if (data.kaggle_link) {
-      userData.kaggle_link = data.kaggle_link;
-    }
-    if (data.devfolio_link) {
-      userData.devfolio_link = data.devfolio_link;
-    }
-    if (data.portfolio_link) {
-      userData.portfolio_link = data.portfolio_link;
-    }
+    const updates = {
+      ...(profilePictureUrl && { profile_picture: profilePictureUrl }),
+      ...(data.leetcode_profile && { leetcode_profile: data.leetcode_profile }),
+      ...(data.github_link && { github_link: data.github_link }),
+      ...(data.linkedin_link && { linkedin_link: data.linkedin_link }),
+      ...(data.codeforces_link && { codeforces_link: data.codeforces_link }),
+      ...(data.ctf_profile && { ctf_profile: data.ctf_profile }),
+      ...(data.kaggle_link && { kaggle_link: data.kaggle_link }),
+      ...(data.devfolio_link && { devfolio_link: data.devfolio_link }),
+      ...(data.portfolio_link && { portfolio_link: data.portfolio_link }),
+    };
+
+    Object.assign(userData, updates);
 
     const newUser = await new User(userData).save();
     const userId = newUser._id.toString();
