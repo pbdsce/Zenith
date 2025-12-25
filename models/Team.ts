@@ -8,7 +8,7 @@ export interface ITeam extends Document {
     teamStatus: 'submitted' | 'pending' | 'withdrawn' | 'rsvped';
     appliedFor: string;
     isEvaluated: boolean;
-    EvaluatorID?: string;
+    evaluatorId?: string;
     scores?: {
         tech: number;
         ux: number;
@@ -33,7 +33,7 @@ const TeamSchema: Schema = new Schema({
     },
     appliedFor: { type: String },
     isEvaluated: { type: Boolean, default: false },
-    EvaluatorID: { type: String },
+    evaluatorId: { type: String },
     scores: {
         tech: { type: Number },
         ux: { type: Number },
