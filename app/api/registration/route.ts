@@ -539,7 +539,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ 
       message: "Registration successful", 
-      id: userId,
+      uid: userId,
       status: "pending_verification",
       // Include any token or auth information needed for subsequent requests
       // token: authUid,

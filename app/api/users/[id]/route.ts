@@ -4,6 +4,8 @@ import { cloudinaryV2 } from "@/c";
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+import dbConnect from "@/lib/db";
+import User from "@/models/User";
 
 // Define types to prevent 'any' type errors
 interface BatchUser {
@@ -202,25 +204,49 @@ const parseForm = async (req: Request): Promise<{ fields: Record<string, any>, f
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
   try {
-    // Extract authorization header from request
-    const authHeader = req.headers.get('Authorization');
+    await dbConnect();
+    let user = await User.findById(params.id);
     
-    // For development, log but don't require the token
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      console.warn("Authorization header missing or invalid, proceeding anyway for development");
+    if (!user && params.id.includes('@')) {
+      user = await User.findOne({ email: params.id });
     }
     
-    // TODO: Query MongoDB User collection by ID, authUid, or email
-    // Try finding user by ID first:
-    // let user = await User.findById(params.id);
-    // If not found, try by authUid:
-    // if (!user) user = await User.findOne({ authUid: params.id });
-    // If still not found and params.id contains '@', try by email:
-    // if (!user && params.id.includes('@')) user = await User.findOne({ email: params.id });  
-    return NextResponse.json({ message: "User fetch not implemented - MongoDB migration pending", status: "error" }, { status: 501 });
+    if (!user) {
+      return NextResponse.json({ 
+        message: "User not found", 
+        status: "error" 
+      }, { status: 404 });
+    }
+    
+    return NextResponse.json({ 
+      uid: user._id,
+      name: user.name,
+      email: user.email,
+      phone: user.phone || null,
+      resume_link: user.resume_link || null,
+      profile_picture: user.profile_picture || null,
+      leetcode_profile: user.leetcode_profile || null,
+      github_link: user.github_link || null,
+      linkedin_link: user.linkedin_link || null,
+      codeforces_link: user.codeforces_link || null,
+      kaggle_link: user.kaggle_link || null,
+      devfolio_link: user.devfolio_link || null,
+      portfolio_link: user.portfolio_link || null,
+      ctf_profile: user.ctf_profile || null,
+      bio: user.bio || null,
+      age: user.age || null,
+      organisation: user.organisation || null,
+      isLooking: user.isLooking,
+      role: user.role,
+      status: "success" 
+    });
   } catch (error) {
     console.error("Error fetching user:", error);
-    return NextResponse.json({ message: "Failed to fetch user", error: String(error), status: "error" }, { status: 500 });
+    return NextResponse.json({ 
+      message: "Failed to fetch user", 
+      error: String(error), 
+      status: "error" 
+    }, { status: 500 });
   }
 }
 
@@ -244,20 +270,20 @@ const handleCollegeChange = async (oldCollege: string | null, newCollege: string
 
 export async function PUT(req: Request, { params }: { params: { id: string } }) {
   try {
+    await dbConnect();
     // Parse form data with files
     const { fields, files } = await parseForm(req);
-    const updates = { ...fields };
+    const updates: Record<string, any> = { ...fields };
     
     // Check if name update is attempted (not allowed)
     if (updates.name) {
       return NextResponse.json({ message: "Name cannot be updated", status: "error" }, { status: 400 });
     }
     
-    // TODO: Find user in MongoDB User collection
-    // const user = await User.findById(params.id);
-    // if (!user) {
-    //   return NextResponse.json({ message: "User not found", status: "error" }, { status: 404 });
-    // }
+    const user = await User.findById(params.id);
+    if (!user) {
+      return NextResponse.json({ message: "User not found", status: "error" }, { status: 404 });
+    }
     
     // Handle college name update if provided
     // TODO: Get current college from user document
@@ -291,10 +317,9 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
       }
       
       // Delete old resume from Cloudinary if it exists
-      // TODO: Get resume_link from MongoDB user document
-      // if (user.resume_link) {
-      //   await deleteFromCloudinary(user.resume_link, 'raw');
-      // }
+      if (user.resume_link) {
+        await deleteFromCloudinary(user.resume_link, 'raw');
+      }
       
       // Upload new resume to Cloudinary
       try {
@@ -345,10 +370,9 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
       }
 
       // Delete old profile picture from Cloudinary if it exists
-      // TODO: Get profile_picture from MongoDB user document
-      // if (user.profile_picture) {
-      //   await deleteFromCloudinary(user.profile_picture, 'image');
-      // }
+      if (user.profile_picture) {
+        await deleteFromCloudinary(user.profile_picture, 'image');
+      }
 
       // Upload new profile picture to Cloudinary
       try {
@@ -372,27 +396,12 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
       }
     }
     
-    // Update both user_profiles and user_batches collections
-    const userProfileUpdates: Record<string, any> = {};
-    const userBatchUpdates: Record<string, any> = {};
-    
-    // Process updates for user_profiles
-    if (updates.profile_picture) {
-      userProfileUpdates['profile_picture'] = updates.profile_picture;
-    }
-    
-    // Process updates for user_batches
-    Object.keys(updates).forEach(key => {
-      userBatchUpdates[key] = updates[key];
-    });
-    
-    // TODO: Update user in MongoDB User collection
-    // Object.assign(user, updates);
-    // await user.save();
+    Object.assign(user, updates);
+    const updatedUser = await user.save();
     
     return NextResponse.json({ 
       message: "User updated successfully",
-      userId: params.id,
+      uid: updatedUser._id,
       status: "success" 
     });
   } catch (error) {
@@ -407,27 +416,35 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
 
 export async function DELETE(req: Request, { params }: { params: { id: string } }) {
   try {
-    const { uid } = await req.json(); // The UID of the requester
+    await dbConnect();
+    const { uid } = await req.json();
     
     if (!uid) {
       return NextResponse.json({ message: "Unauthorized: Missing UID", status: "error" }, { status: 401 });
     }
     
-    // TODO: Verify admin permissions using MongoDB User collection
-    // const adminUser = await User.findById(uid);
-    // if (!adminUser || !adminUser.isAdmin) {
-    //   return NextResponse.json({ message: "Unauthorized: Not an admin", status: "error" }, { status: 403 });
-    // }
+    const adminUser = await User.findById(uid);
+    if (!adminUser || adminUser.role !== 'admin') {
+      return NextResponse.json({ message: "Unauthorized: Not an admin", status: "error" }, { status: 403 });
+    }
+    const targetUser = await User.findById(params.id);
+    if (!targetUser) {
+      return NextResponse.json({ message: "User not found", status: "error" }, { status: 404 });
+    }
     
-    // TODO: Delete user from MongoDB User collection (soft delete or hard delete)
-    // const targetUser = await User.findById(params.id);
-    // if (!targetUser) {
-    //   return NextResponse.json({ message: "User not found", status: "error" }, { status: 404 });
-    // }
-    // await User.findByIdAndDelete(params.id); // or soft delete: targetUser.isDeleted = true; await targetUser.save();    
-    return NextResponse.json({ message: "User deleted successfully", status: "success" });
+    await User.findByIdAndDelete(params.id);
+    
+    return NextResponse.json({ 
+      message: "User deleted successfully", 
+      uid: params.id,
+      status: "success" 
+    });
   } catch (error) {
     console.error("Error deleting user:", error);
-    return NextResponse.json({ message: "Failed to delete user", error: String(error), status: "error" }, { status: 500 });
+    return NextResponse.json({ 
+      message: "Failed to delete user", 
+      error: String(error), 
+      status: "error" 
+    }, { status: 500 });
   }
 }
