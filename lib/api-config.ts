@@ -21,11 +21,15 @@ export const API_ENDPOINTS = {
   createTeam: '/api/team/create',                      // POST
   lookingForMembers: '/api/team/looking-for-members',  // GET, PUT
   joinTeam: '/api/team/join',                          // PUT
+  joinRequest: '/api/team/join-request',               // POST, GET
+  respondToJoinRequest: (requestId: string) => `/api/team/join-request/${requestId}`,  // PUT
   leaveTeam: '/api/team/leave',                        // PUT
   removeMember: '/api/team/remove-member',             // PUT
   uploadSubmission: '/api/team/upload-submission',     // POST
   submitApplication: '/api/team/submit-application',   // POST
   updateSubmission: '/api/team/update-submission',     // PUT
+  withdrawSubmission: '/api/team/withdraw-submission', // PUT
+  deleteTeam: '/api/team/delete',                      // DELETE
   getTeam: (teamCode: string) => `/api/team/${teamCode}`,  // GET
   
   // ===== ADMIN ENDPOINTS =====
