@@ -84,7 +84,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // Check if team is full
-    if (team.teamMembers.length >= MAX_TEAM_MEMBERS) {
+    if ((team.teamMembers || []).length >= MAX_TEAM_MEMBERS) {
       return NextResponse.json(
         { message: "Team is full" },
         { status: 409 }

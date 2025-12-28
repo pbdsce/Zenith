@@ -317,7 +317,7 @@ export function DashboardContainer({ onNavigate }: DashboardContainerProps) {
                     Members
                   </span>
                   <span className="text-[14px] text-white" style={{ fontFamily: 'var(--font-body)' }}>
-                    {team?.members.length}
+                    {(team?.members || []).length}
                   </span>
                 </div>
                 <div className="flex justify-between">
