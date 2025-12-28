@@ -117,6 +117,7 @@ export async function GET(request: NextRequest) {
       organisation: user.organisation || null,
       role: user.role,
       isLooking: user.isLooking,
+      teamCode: user.teamCode || null,
     });
   } catch (error: any) {
     console.error("Get profile error:", error);
@@ -143,7 +144,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json();
-    
+
     // Fields that can be updated
     const {
       name,

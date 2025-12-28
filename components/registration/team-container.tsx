@@ -71,31 +71,45 @@ export function TeamContainer({ onNavigate }: TeamContainerProps) {
       return;
     }
 
-    // Fetch team data if user has teamCode
-    const fetchTeam = async () => {
+    const fetchTeamData = async () => {
       try {
-        if (user.teamCode) {
-          const token = await getToken();
-          const response = await fetch(API_ENDPOINTS.getTeam(user.teamCode), {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            }
-          });
+        const token = await getToken();
+        if (!token) return;
 
-          if (response.ok) {
-            const data = await response.json();
-            if (data.success && data.data) {
-              setTeam(data.data);
+        const userResponse = await fetch(API_ENDPOINTS.userProfile, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (userResponse.ok) {
+          const userData = await userResponse.json();
+          // Check for teamCode in the fresh profile data
+          const teamCode = userData.success ? userData.data.teamCode : userData.teamCode;
+
+          if (teamCode) {
+            const teamResponse = await fetch(API_ENDPOINTS.getTeam(teamCode), {
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+              }
+            });
+
+            if (teamResponse.ok) {
+              const teamData = await teamResponse.json();
+              if (teamData.success && teamData.data) {
+                setTeam(teamData.data);
+              }
             }
           }
         }
       } catch (error) {
-        console.error("Error fetching team:", error);
+        console.error("Error fetching team data:", error);
       }
     };
 
-    fetchTeam();
+    fetchTeamData();
   }, [user, isAuthenticated, router, getToken]);
 
   const handleCreateTeam = async (e: React.FormEvent) => {
