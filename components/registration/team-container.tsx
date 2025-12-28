@@ -23,6 +23,11 @@ interface Team {
   status: "none" | "in-team" | "submitted" | "under-review" | "shortlisted" | "confirmed" | "declined";
 }
 
+interface ProblemStatement {
+  id: string;
+  title: string;
+}
+
 interface TeamContainerProps {
   onNavigate: (view: "dashboard" | "profile" | "team" | "submission") => void;
 }
@@ -39,6 +44,26 @@ export function TeamContainer({ onNavigate }: TeamContainerProps) {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [alert, setAlert] = useState<{ type: "success" | "error" | "warning" | "info"; message: string } | null>(null);
+
+  const [problemStatements, setProblemStatements] = useState<ProblemStatement[]>([]);
+
+  useEffect(() => {
+    // Fetch problem statements
+    const fetchProblemStatements = async () => {
+      try {
+        const response = await fetch('/api/problem-statements');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.data && data.data.problemStatements) {
+            setProblemStatements(data.data.problemStatements);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching problem statements:", error);
+      }
+    };
+    fetchProblemStatements();
+  }, []);
 
   useEffect(() => {
     if (!isAuthenticated || !user) {
@@ -80,19 +105,24 @@ export function TeamContainer({ onNavigate }: TeamContainerProps) {
 
     try {
       const token = await getToken();
-      
+
       // Call API to create team
+      // Build payload
+      const selectedProblem = problemStatements.find(ps => ps.title === teamFormData.problemStatement);
+
+      const payload = {
+        teamName: teamFormData.teamName,
+        appliedFor: selectedProblem ? selectedProblem.id : undefined,
+        isLooking: teamFormData.lookingForMembers
+      };
+
       const response = await fetch(API_ENDPOINTS.createTeam, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          teamName: teamFormData.teamName,
-          appliedFor: teamFormData.problemStatement,
-          isLooking: teamFormData.lookingForMembers
-        })
+        body: JSON.stringify(payload)
       });
 
       const data = await response.json();
@@ -126,7 +156,7 @@ export function TeamContainer({ onNavigate }: TeamContainerProps) {
 
     try {
       const token = await getToken();
-      
+
       // Call API to join team
       const response = await fetch(API_ENDPOINTS.joinTeam, {
         method: 'PUT',
@@ -192,7 +222,7 @@ export function TeamContainer({ onNavigate }: TeamContainerProps) {
               />
               <FormSelect
                 label="Problem Statement"
-                options={["AI/ML Solution", "Web Platform", "Mobile App", "Blockchain", "IoT", "Open Innovation"]}
+                options={problemStatements.map(ps => ps.title)}
                 required
                 value={teamFormData.problemStatement}
                 onChange={(e) => setTeamFormData({ ...teamFormData, problemStatement: e.target.value })}
