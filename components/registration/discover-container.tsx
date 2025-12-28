@@ -32,6 +32,8 @@ export function DiscoverContainer({ onNavigate }: DiscoverContainerProps) {
   const [teamsLookingForMembers, setTeamsLookingForMembers] = useState<TeamLookingForMembers[]>([]);
   const [participantsLookingForTeams, setParticipantsLookingForTeams] = useState<ParticipantLookingForTeam[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [userRequests, setUserRequests] = useState<Record<string, string>>({}); // teamCode -> requestStatus
+  const [sendingRequest, setSendingRequest] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -92,6 +94,30 @@ export function DiscoverContainer({ onNavigate }: DiscoverContainerProps) {
             setParticipantsLookingForTeams([]);
           }
         }
+
+        // Fetch user's join requests
+        const requestsResponse = await fetch(`${API_ENDPOINTS.joinRequest}?type=user`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (requestsResponse.ok) {
+          const requestsData = await requestsResponse.json();
+          if (requestsData.success && requestsData.data && Array.isArray(requestsData.data.requests)) {
+            const requestsMap: Record<string, string> = {};
+            requestsData.data.requests.forEach((req: any) => {
+              // Only track pending and accepted requests
+              // Declined/cancelled requests are ignored so user can send a new request
+              if (req.status === 'pending' || req.status === 'accepted') {
+                requestsMap[req.teamCode] = req.status;
+              }
+            });
+            setUserRequests(requestsMap);
+          }
+        }
       } catch (error) {
         console.error('Failed to fetch discover data:', error);
       } finally {
@@ -102,9 +128,37 @@ export function DiscoverContainer({ onNavigate }: DiscoverContainerProps) {
     fetchData();
   }, [getToken]);
 
-  const handleJoinTeam = (teamCode: string) => {
-    // Navigate to team section with pre-filled join code
-    onNavigate(`team?joinCode=${teamCode}`);
+  const handleSendRequest = async (teamCode: string) => {
+    if (!user) return;
+
+    try {
+      setSendingRequest(teamCode);
+      const token = await getToken();
+      if (!token) return;
+
+      const response = await fetch(API_ENDPOINTS.joinRequest, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ teamCode }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to send request');
+      }
+
+      // Update user requests map
+      setUserRequests(prev => ({ ...prev, [teamCode]: 'pending' }));
+    } catch (error) {
+      console.error('Error sending join request:', error);
+      alert(error instanceof Error ? error.message : 'Failed to send request');
+    } finally {
+      setSendingRequest(null);
+    }
   };
 
   return (
@@ -135,13 +189,41 @@ export function DiscoverContainer({ onNavigate }: DiscoverContainerProps) {
                       </span>
                     </div>
                   </div>
-                  <Button 
-                    variant="secondary"
-                    onClick={() => handleJoinTeam(team.teamCode)}
-                  >
-                    <Users className="w-4 h-4" />
-                    Join
-                  </Button>
+                  {userRequests[team.teamCode] === 'pending' ? (
+                    <Button 
+                      variant="secondary"
+                      disabled
+                    >
+                      <Users className="w-4 h-4" />
+                      Request Sent
+                    </Button>
+                  ) : userRequests[team.teamCode] === 'accepted' ? (
+                    <Button 
+                      variant="secondary"
+                      disabled
+                    >
+                      <Users className="w-4 h-4" />
+                      Accepted
+                    </Button>
+                  ) : userRequests[team.teamCode] === 'declined' ? (
+                    <Button 
+                      variant="secondary"
+                      onClick={() => handleSendRequest(team.teamCode)}
+                      disabled={sendingRequest === team.teamCode}
+                    >
+                      <Users className="w-4 h-4" />
+                      {sendingRequest === team.teamCode ? 'Sending...' : 'Send Request'}
+                    </Button>
+                  ) : (
+                    <Button 
+                      variant="secondary"
+                      onClick={() => handleSendRequest(team.teamCode)}
+                      disabled={sendingRequest === team.teamCode}
+                    >
+                      <Users className="w-4 h-4" />
+                      {sendingRequest === team.teamCode ? 'Sending...' : 'Send Request'}
+                    </Button>
+                  )}
                 </div>
               </Card>
             ))}

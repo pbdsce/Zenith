@@ -18,6 +18,8 @@ import {
   X,
   Check,
   Search,
+  Trash2,
+  LogOut,
 } from "lucide-react";
 import { FormSection } from "./form-section";
 import { Button } from "./button";
@@ -78,6 +80,8 @@ export function DashboardContainer({ onNavigate }: DashboardContainerProps) {
   const [profileCompleteness, setProfileCompleteness] = useState(0);
   const [rsvpStatus, setRsvpStatus] = useState<"pending" | "confirmed" | "declined">("pending");
   const [isLoading, setIsLoading] = useState(true);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [alert, setAlert] = useState<{ type: "success" | "error" | "warning" | "info"; message: string } | null>(null);
 
   useEffect(() => {
     if (!isAuthenticated || !user) {
@@ -139,7 +143,7 @@ export function DashboardContainer({ onNavigate }: DashboardContainerProps) {
             // Fetch team data if user has a teamCode
             if (profileData.teamCode) {
               try {
-                // Try the regular team endpoint first
+                // Fetch team data from the team endpoint
                 const teamResponse = await fetch(API_ENDPOINTS.getTeam(profileData.teamCode), {
                   headers: {
                     'Authorization': `Bearer ${token}`,
@@ -151,27 +155,22 @@ export function DashboardContainer({ onNavigate }: DashboardContainerProps) {
                   const teamData = await teamResponse.json();
                   if (teamData.success && teamData.data) {
                     setTeam(teamData.data);
+                  } else {
+                    // Clear team if response doesn't have expected structure
+                    setTeam(null);
                   }
                 } else {
-                  // If regular endpoint doesn't exist, try admin endpoint (might fail for non-admins)
-                  const adminTeamResponse = await fetch(`/api/admin/teams/${profileData.teamCode}`, {
-                    headers: {
-                      'Authorization': `Bearer ${token}`,
-                      'Content-Type': 'application/json'
-                    }
-                  });
-
-                  if (adminTeamResponse.ok) {
-                    const teamData = await adminTeamResponse.json();
-                    if (teamData.success && teamData.data) {
-                      setTeam(teamData.data);
-                    }
-                  }
+                  // Team fetch failed (not found, unauthorized, etc.), clear team state
+                  setTeam(null);
                 }
               } catch (error) {
                 console.error('Error fetching team data:', error);
-                // Team fetch failed, but we'll continue without team data
+                // Team fetch failed, clear team state
+                setTeam(null);
               }
+            } else {
+              // User doesn't have a teamCode, clear team state
+              setTeam(null);
             }
           } else {
             // If API doesn't return expected format, calculate from context user
@@ -216,10 +215,10 @@ export function DashboardContainer({ onNavigate }: DashboardContainerProps) {
     };
 
     fetchData();
-  }, [user, isAuthenticated, router]);
+  }, [user, isAuthenticated, router, refreshTrigger]);
 
   const getTeamStatus = (): "none" | "in-team" | "submitted" | "under-review" | "shortlisted" | "confirmed" | "declined" => {
-    if (!team) return "none";
+    if (!team || !team.teamStatus) return "none";
     // Map teamStatus from API to component status
     const statusMap: Record<string, "none" | "in-team" | "submitted" | "under-review" | "shortlisted" | "confirmed" | "declined"> = {
       'pending': 'in-team',
@@ -244,6 +243,228 @@ export function DashboardContainer({ onNavigate }: DashboardContainerProps) {
     // TODO: Call API to update RSVP status
   };
 
+  const handleDeleteTeam = async () => {
+    if (!team || !user) return;
+
+    const confirmed = window.confirm(
+      `Are you sure you want to delete the team "${team.teamName}"? This action cannot be undone. All team members will be removed from the team.`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      const token = await getToken();
+      if (!token) {
+        setAlert({
+          type: "error",
+          message: "Authentication required",
+        });
+        return;
+      }
+
+      const response = await fetch(API_ENDPOINTS.deleteTeam, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          teamCode: team.teamCode,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to delete team');
+      }
+
+      setAlert({
+        type: "success",
+        message: "Team deleted successfully",
+      });
+      setTimeout(() => setAlert(null), 3000);
+
+      // Clear team state and refresh profile
+      setTeam(null);
+      setTimeout(() => {
+        window.location.reload(); // Refresh to update UI
+      }, 1000);
+    } catch (error) {
+      console.error('Error deleting team:', error);
+      setAlert({
+        type: "error",
+        message: error instanceof Error ? error.message : "Failed to delete team",
+      });
+      setTimeout(() => setAlert(null), 3000);
+    }
+  };
+
+  const handleLeaveTeam = async () => {
+    if (!team || !user) return;
+    
+    if (!confirm("Are you sure you want to leave this team?")) {
+      return;
+    }
+
+    try {
+      const token = await getToken();
+      if (!token) return;
+
+      const response = await fetch(API_ENDPOINTS.leaveTeam, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ setLookingStatus: false })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to leave team');
+      }
+
+      // Clear team state and refresh
+      setTeam(null);
+      
+      // Trigger refresh to reload data
+      setRefreshTrigger(prev => prev + 1);
+    } catch (error) {
+      console.error('Error leaving team:', error);
+      setAlert({
+        type: "error",
+        message: error instanceof Error ? error.message : 'Failed to leave team',
+      });
+      setTimeout(() => setAlert(null), 3000);
+    }
+  };
+
+  const handleWithdrawSubmission = async () => {
+    if (!team || !user) return;
+
+    const confirmed = window.confirm(
+      `Are you sure you want to withdraw the submission for "${team.teamName}"? All submission details (video, PDF, links) will be permanently deleted.`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      const token = await getToken();
+      if (!token) {
+        setAlert({
+          type: "error",
+          message: "Authentication required",
+        });
+        return;
+      }
+
+      const response = await fetch(API_ENDPOINTS.withdrawSubmission, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          teamCode: team.teamCode,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to withdraw submission');
+      }
+
+      setAlert({
+        type: "success",
+        message: "Submission withdrawn successfully. You can now submit again.",
+      });
+      setTimeout(() => setAlert(null), 3000);
+
+      // Refresh team data
+      const teamResponse = await fetch(API_ENDPOINTS.getTeam(team.teamCode), {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (teamResponse.ok) {
+        const teamData = await teamResponse.json();
+        if (teamData.success && teamData.data) {
+          setTeam(teamData.data);
+        }
+      }
+    } catch (error) {
+      console.error('Error withdrawing submission:', error);
+      setAlert({
+        type: "error",
+        message: error instanceof Error ? error.message : "Failed to withdraw submission",
+      });
+      setTimeout(() => setAlert(null), 3000);
+    }
+  };
+
+  const handleRemoveMember = async (memberId: string, memberName: string) => {
+    if (!team || !user) return;
+    
+    if (!confirm(`Are you sure you want to remove ${memberName} from the team?`)) {
+      return;
+    }
+
+    try {
+      const token = await getToken();
+      if (!token) return;
+
+      const response = await fetch(API_ENDPOINTS.removeMember, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          teamCode: team.teamCode,
+          memberId,
+          setTheirLookingStatus: true
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to remove member');
+      }
+
+      // Refresh team data
+      const teamResponse = await fetch(API_ENDPOINTS.getTeam(team.teamCode), {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (teamResponse.ok) {
+        const teamData = await teamResponse.json();
+        if (teamData.success && teamData.data) {
+          setTeam(teamData.data);
+        }
+      }
+    } catch (error) {
+      console.error('Error removing member:', error);
+      setAlert({
+        type: "error",
+        message: error instanceof Error ? error.message : 'Failed to remove member',
+      });
+      setTimeout(() => setAlert(null), 3000);
+    }
+  };
+
+  const isAdmin = () => {
+    return user?.role === 'admin';
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -258,6 +479,7 @@ export function DashboardContainer({ onNavigate }: DashboardContainerProps) {
 
   return (
     <div className="flex flex-col gap-[24px] max-w-[900px] w-full">
+      {alert && <AlertBanner type={alert.type} message={alert.message} />}
       <div className="flex flex-col gap-[12px] items-center text-center">
         <h1 className="text-[48px] text-white leading-[52px] tracking-[-1px]" style={{ fontFamily: 'var(--font-heading)' }}>
           Welcome back, {user.name}!
@@ -418,7 +640,15 @@ export function DashboardContainer({ onNavigate }: DashboardContainerProps) {
               )}
 
               {teamStatus === "submitted" && (
-                <AlertBanner type="success" message="Project submitted! Waiting for evaluation." />
+                <div className="flex flex-col gap-[12px]">
+                  <AlertBanner type="success" message="Project submitted! Waiting for evaluation." />
+                  {isTeamLead() && !team.isEvaluated && !team.isShortlisted && team.teamStatus === 'submitted' && (
+                    <Button onClick={handleWithdrawSubmission} variant="danger">
+                      <X className="w-4 h-4" />
+                      Withdraw Submission
+                    </Button>
+                  )}
+                </div>
               )}
 
               {teamStatus === "under-review" && (
@@ -448,9 +678,73 @@ export function DashboardContainer({ onNavigate }: DashboardContainerProps) {
                 <AlertBanner type="success" message="✅ RSVP Confirmed! See you at the event!" />
               )}
 
-              <Button onClick={() => onNavigate("team")} variant="secondary">
-                View Team Details
-              </Button>
+              {/* Team Members List - Admin can edit */}
+              {team.teamMembers && team.teamMembers.length > 0 && (
+                <div className="flex flex-col gap-[12px]">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[14px] text-white opacity-80" style={{ fontFamily: 'var(--font-body)' }}>
+                      Team Members
+                    </span>
+                  </div>
+                  <div className="flex flex-col gap-[8px]">
+                    {team.teamMembers.map((member: any) => (
+                      <div
+                        key={member.uid}
+                        className="flex items-center justify-between p-[12px] bg-[rgba(138,138,138,0.1)] rounded-[8px] border border-[rgba(255,255,255,0.1)]"
+                      >
+                        <div className="flex flex-col gap-[4px]">
+                          <span className="text-[14px] text-white" style={{ fontFamily: 'var(--font-body)' }}>
+                            {member.name}
+                            {member.role === 'Team Lead' && (
+                              <span className="ml-[8px] text-[12px] text-[#ff4d00] opacity-80">
+                                (Lead)
+                              </span>
+                            )}
+                          </span>
+                          {member.email && (
+                            <span className="text-[12px] text-white opacity-60" style={{ fontFamily: 'var(--font-body)' }}>
+                              {member.email}
+                            </span>
+                          )}
+                        </div>
+                        {(isAdmin() || isTeamLead()) && member.uid !== user?.uid && teamStatus !== "submitted" && teamStatus !== "shortlisted" && teamStatus !== "confirmed" && (
+                          <Button
+                            onClick={() => handleRemoveMember(member.uid, member.name)}
+                            variant="danger"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                            Remove
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Leave Team Button for Members */}
+              {!isTeamLead() && teamStatus !== "submitted" && teamStatus !== "shortlisted" && teamStatus !== "confirmed" && (
+                <Button onClick={handleLeaveTeam} variant="danger">
+                  <LogOut className="w-4 h-4" />
+                  Leave Team
+                </Button>
+              )}
+
+              {/* Edit Team Details and Delete Team Buttons - Only for Team Lead */}
+              {isTeamLead() && (
+                <div className="flex gap-[12px]">
+                  <Button onClick={() => onNavigate("team")} variant="secondary">
+                    <Edit className="w-4 h-4" />
+                    Edit Team Details
+                  </Button>
+                  {teamStatus !== "submitted" && teamStatus !== "shortlisted" && teamStatus !== "confirmed" && (
+                    <Button onClick={handleDeleteTeam} variant="danger">
+                      <Trash2 className="w-4 h-4" />
+                      Delete Team
+                    </Button>
+                  )}
+                </div>
+              )}
             </>
           ) : null}
         </div>

@@ -2,7 +2,7 @@ import React from "react";
 import { LucideIcon } from "lucide-react";
 
 interface StatusBadgeProps {
-  status: string;
+  status: string | undefined | null;
   icon: LucideIcon;
 }
 
@@ -11,6 +11,9 @@ export function StatusBadge({
   icon: Icon,
 }: StatusBadgeProps) {
   const getStatusColor = () => {
+    if (!status || typeof status !== 'string') {
+      return "bg-[rgba(138,138,138,0.2)] border-[rgba(255,255,255,0.38)]";
+    }
     switch (status.toLowerCase()) {
       case "completed":
       case "submitted":
@@ -34,7 +37,7 @@ export function StatusBadge({
     >
       <Icon className="w-4 h-4" />
       <span className="text-[13px] text-white capitalize" style={{ fontFamily: 'var(--font-body)' }}>
-        {status}
+        {status || 'Unknown'}
       </span>
     </div>
   );
