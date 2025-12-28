@@ -55,7 +55,7 @@ export async function GET(
     // Get member details
     const memberUids = team.teamMembers.map((m: any) => m.uid);
     const members = await User.find({ uid: { $in: memberUids } })
-      .select('uid name email organisation profile_picture');
+      .select('uid name email organisation profile_picture phone resume_link github_link');
 
     // Get problem statement
     let problemStatement = null;
@@ -71,7 +71,9 @@ export async function GET(
     if (team.evaluator) {
       const evaluator = await Evaluator.findOne({ uid: team.evaluator });
       if (evaluator) {
-        evaluatorInfo = { uid: evaluator.uid, name: evaluator.name };
+        if (evaluator) {
+          evaluatorInfo = { id: evaluator._id.toString(), uid: evaluator.uid, name: evaluator.name, email: evaluator.email };
+        }
       }
     }
 
@@ -90,7 +92,15 @@ export async function GET(
     return createSuccessResponse("Team retrieved successfully", {
       teamCode: team.teamCode,
       teamName: team.teamName,
-      teamLead: team.teamLead,
+      teamLead: {
+        id: members.find(u => u.uid === team.teamLead)?._id.toString(),
+        name: members.find(u => u.uid === team.teamLead)?.name,
+        email: members.find(u => u.uid === team.teamLead)?.email,
+        phone: members.find(u => u.uid === team.teamLead)?.phone,
+        organisation: members.find(u => u.uid === team.teamLead)?.organisation,
+        resume_link: members.find(u => u.uid === team.teamLead)?.resume_link,
+        github_link: members.find(u => u.uid === team.teamLead)?.github_link,
+      },
       teamMembers: formattedMembers,
       memberCount: team.memberCount,
       teamStatus: team.teamStatus,
@@ -100,7 +110,11 @@ export async function GET(
       submissionPDF: team.submissionPDF || null,
       anyOtherLink: team.anyOtherLink || null,
       isEvaluated: team.isEvaluated,
-      evaluator: evaluatorInfo,
+      evaluator: evaluatorInfo ? {
+        id: evaluatorInfo.id,
+        name: evaluatorInfo.name,
+        email: evaluatorInfo.email,
+      } : null,
       scores: team.scores || null,
       comments: team.comments || null,
       isShortlisted: team.isShortlisted,
@@ -137,7 +151,7 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { isShortlisted, teamStatus, comments } = body;
+    const { isShortlisted, teamStatus, comments, adminNotes } = body;
 
     await dbConnect();
 
@@ -165,6 +179,10 @@ export async function PUT(
 
     if (comments !== undefined) {
       updateData.comments = comments;
+    }
+
+    if (adminNotes !== undefined) {
+      updateData.comments = adminNotes;
     }
 
     const updatedTeam = await Team.findOneAndUpdate(

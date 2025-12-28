@@ -23,6 +23,8 @@ function createErrorResponse(message: string, code: string, status: number) {
   }, { status });
 }
 
+import Team from "@/models/Team";
+
 export async function GET(request: NextRequest) {
   try {
     const authResult = await authenticateUser(request);
@@ -39,21 +41,58 @@ export async function GET(request: NextRequest) {
 
     const evaluators = await Evaluator.find().sort({ createdAt: -1 });
 
-    const formatted = evaluators.map(ev => ({
-      uid: ev.uid,
-      name: ev.name,
-      email: ev.email,
-      assignedCount: ev.assignedCount,
-      evaluatedCount: ev.evaluatedCount,
-      pendingCount: ev.assignedCount - ev.evaluatedCount,
-      stats: ev.stats,
-      createdAt: ev.createdAt,
-      lastEvaluationAt: ev.lastEvaluationAt || null,
-    }));
+    // Get all team codes from all evaluators
+    const allTeamCodes = evaluators.flatMap(ev =>
+      ev.assignedTeams.map((t: any) => t.teamCode)
+    );
+
+    // Fetch details for these teams
+    const teams = await Team.find({ teamCode: { $in: allTeamCodes } })
+      .select('teamCode teamName isEvaluated scores');
+
+    const teamsMap = new Map(teams.map(t => [t.teamCode, t]));
+
+    const formatted = evaluators.map(ev => {
+      const assignedTeams = ev.assignedTeams.map((assignment: any) => {
+        const team = teamsMap.get(assignment.teamCode);
+        return {
+          teamCode: assignment.teamCode,
+          teamName: team?.teamName || 'Unknown Team',
+          isEvaluated: team?.isEvaluated || false,
+          totalScore: team?.scores?.total || null,
+        };
+      });
+
+      return {
+        id: ev._id.toString(),
+        uid: ev.uid,
+        name: ev.name,
+        email: ev.email,
+        assignedTeams: assignedTeams,
+        assignedCount: ev.assignedCount,
+        evaluatedCount: ev.evaluatedCount,
+        pendingCount: ev.assignedCount - ev.evaluatedCount,
+        averageScore: ev.stats?.averageScore || 0,
+        stats: ev.stats,
+        createdAt: ev.createdAt,
+        lastEvaluationAt: ev.lastEvaluationAt || null,
+      };
+    });
 
     return createSuccessResponse("Evaluators retrieved successfully", {
       evaluators: formatted,
-      total: formatted.length,
+      pagination: {
+        currentPage: 1,
+        totalPages: 1,
+        totalEvaluators: formatted.length,
+        limit: formatted.length
+      },
+      stats: {
+        totalEvaluators: formatted.length,
+        totalAssignments: formatted.reduce((acc, curr) => acc + curr.assignedCount, 0),
+        totalEvaluated: formatted.reduce((acc, curr) => acc + curr.evaluatedCount, 0),
+        totalPending: formatted.reduce((acc, curr) => acc + curr.pendingCount, 0),
+      }
     });
   } catch (error: any) {
     console.error("Get evaluators error:", error);

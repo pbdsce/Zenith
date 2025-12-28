@@ -104,7 +104,7 @@ export async function GET(request: NextRequest) {
       return {
         teamCode: team.teamCode,
         teamName: team.teamName,
-        teamLead: lead ? { uid: lead.uid, name: lead.name, email: lead.email } : null,
+        teamLead: lead ? { id: lead._id.toString(), uid: lead.uid, name: lead.name, email: lead.email } : null,
         memberCount: team.memberCount,
         teamStatus: team.teamStatus,
         appliedFor: ps ? { id: ps._id.toString(), title: ps.title } : null,
