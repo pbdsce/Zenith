@@ -56,29 +56,47 @@ async function uploadBase64ToCloudinary(base64Data: string, folder: string, reso
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
-    
+    const formData = await request.formData();
+
+    // Helper to convert File to base64
+    const fileToBase64 = async (file: File): Promise<string> => {
+      const arrayBuffer = await file.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+      return `data:${file.type};base64,${buffer.toString('base64')}`;
+    };
+
     // Extract fields
-    const {
-      name,
-      email,
-      password,
-      phone,
-      age,
-      organisation,
-      bio,
-      resume, // base64 encoded PDF
-      profile_picture, // base64 encoded image
-      leetcode_profile,
-      github_link,
-      linkedin_link,
-      codeforces_link,
-      kaggle_link,
-      devfolio_link,
-      portfolio_link,
-      ctf_profile,
-      isLooking = false,
-    } = body;
+    const name = formData.get('name') as string;
+    const email = formData.get('email') as string;
+    const password = formData.get('password') as string;
+    const phone = formData.get('phone') as string;
+    const age = formData.get('age') as string;
+    const organisation = formData.get('organisation') as string;
+    const bio = formData.get('bio') as string;
+
+    // Handle files
+    const resumeFile = formData.get('resume') as File | null;
+    const profilePicFile = formData.get('profile_picture') as File | null;
+
+    let resume: string | undefined;
+    if (resumeFile && resumeFile.size > 0) {
+      resume = await fileToBase64(resumeFile);
+    }
+
+    let profile_picture: string | undefined;
+    if (profilePicFile && profilePicFile.size > 0) {
+      profile_picture = await fileToBase64(profilePicFile);
+    }
+
+    const leetcode_profile = formData.get('leetcode_profile') as string;
+    const github_link = formData.get('github_link') as string;
+    const linkedin_link = formData.get('linkedin_link') as string;
+    const codeforces_link = formData.get('codeforces_link') as string;
+    const kaggle_link = formData.get('kaggle_link') as string;
+    const devfolio_link = formData.get('devfolio_link') as string;
+    const portfolio_link = formData.get('portfolio_link') as string;
+    const ctf_profile = formData.get('ctf_profile') as string;
+    const isLooking = formData.get('isLooking') === 'true';
 
     // Validation
     const errors: Record<string, string> = {};
@@ -128,6 +146,7 @@ export async function POST(request: Request) {
     }
 
     if (Object.keys(errors).length > 0) {
+      console.error("Registration validation errors:", errors);
       return NextResponse.json(
         { message: "Validation error", errors },
         { status: 400 }

@@ -69,9 +69,9 @@ export function RegistrationContainer({ onSuccess }: RegistrationContainerProps)
     setRegisterData({
       name: `Test User ${randomId}`,
       email: `testuser${randomId}@example.com`,
-      password: "password123",
-      confirmPassword: "password123",
-      phone: `+1 555 ${String(randomId).padStart(4, '0')}`,
+      password: "Password@123",
+      confirmPassword: "Password@123",
+      phone: `+1 555 123 4567`,
       age: "22",
       organisation: "Test University",
       bio: "I'm a passionate developer interested in AI, web development, and hackathons. Looking forward to participating in Zenith!",
@@ -125,9 +125,11 @@ export function RegistrationContainer({ onSuccess }: RegistrationContainerProps)
     if (!registerData.email.trim() || !/\S+@\S+\.\S+/.test(registerData.email)) {
       newErrors.email = "Valid email is required";
     }
-    
-    if (!registerData.password || registerData.password.length < 6) {
-      newErrors.password = "Password must be at least 6 characters";
+
+    //password validation to match backend
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
+    if (!registerData.password || !passwordRegex.test(registerData.password)) {
+      newErrors.password = "Password must be 8+ chars, incl. uppercase, lowercase, number, special char";
     }
     
     if (registerData.password !== registerData.confirmPassword) {
