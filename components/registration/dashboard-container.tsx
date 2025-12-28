@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from '@/hooks/use-auth';
 import { API_ENDPOINTS } from "@/lib/api-config";
 import {
   Home,

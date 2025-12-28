@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from '@/hooks/use-auth';
 import { Home, Upload, CheckCircle } from "lucide-react";
 import { FormSection } from "./form-section";
 import { FormInput } from "./form-input";

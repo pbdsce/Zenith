@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from '@/hooks/use-auth';
 import { LogIn, UserPlus, Zap } from "lucide-react";
 import { FormInput } from "./form-input";
 import { FormTextarea } from "./form-textarea";

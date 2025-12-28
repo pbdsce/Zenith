@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from '@/hooks/use-auth';
 import { NavBar } from "./navbar";
 import { DotPattern } from "./dot-pattern";
 import { AlertBanner } from "./alert-banner";

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/hooks/use-auth";
 import { FormSection } from "@/components/registration/form-section";
 import { FormInput } from "@/components/registration/form-input";
 import { Button } from "@/components/registration/button";

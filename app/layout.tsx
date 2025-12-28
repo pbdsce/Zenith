@@ -1,9 +1,9 @@
 import './globals.css';
 import type { Metadata } from 'next';
 import { Instrument_Serif } from 'next/font/google';
-import { AuthProvider } from '@/hooks/useAuth';
+import { AuthProvider } from '@/components/providers/auth-provider';
 
-const instrumentSerif = Instrument_Serif({ 
+const instrumentSerif = Instrument_Serif({
   subsets: ['latin'],
   weight: ['400'],
   style: ['normal', 'italic'],
@@ -20,7 +20,7 @@ export const metadata: Metadata = {
   viewport: 'width=device-width, initial-scale=1',
   themeColor: '#171717',
   icons: {
-    icon: '/favicon.ico', 
+    icon: '/favicon.ico',
   }
 };
 
@@ -38,7 +38,7 @@ export default function RootLayout({
       </head>
       <body className={instrumentSerif.variable} style={{ fontFamily: 'var(--font-body)', background: '#171717' }}>
         <AuthProvider>
-        {children}
+          {children}
         </AuthProvider>
       </body>
     </html>

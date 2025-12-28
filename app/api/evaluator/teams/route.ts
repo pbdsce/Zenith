@@ -57,13 +57,13 @@ export async function GET(request: NextRequest) {
     const teams = await Team.find({ teamCode: { $in: teamCodes } });
 
     // Get problem statements
-    const problemIds = teams.map(t => t.appliedFor).filter(Boolean);
+    const problemIds = teams.map(t => t.appliedFor).filter((id): id is string => Boolean(id));
     const problemStatements = await ProblemStatement.find({ _id: { $in: problemIds } });
 
     const formattedTeams = teams.map(team => {
       const assignment = evaluator.assignedTeams.find((a: any) => a.teamCode === team.teamCode);
       const ps = problemStatements.find(p => p._id.toString() === team.appliedFor);
-      
+
       return {
         teamCode: team.teamCode,
         teamName: team.teamName,

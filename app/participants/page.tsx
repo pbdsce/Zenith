@@ -2,21 +2,22 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/hooks/use-auth';
 
 export default function ParticipantsPage() {
   const router = useRouter();
-  const { isAuthenticated, isLoading } = useAuth();
+  const { user, loading } = useAuth();
+  const isAuthenticated = !!user;
 
   useEffect(() => {
-    if (!isLoading) {
+    if (!loading) {
       if (isAuthenticated) {
         router.replace('/dashboard');
       } else {
         router.replace('/login');
       }
     }
-  }, [isAuthenticated, isLoading, router]);
+  }, [isAuthenticated, loading, router]);
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-[#171717]">

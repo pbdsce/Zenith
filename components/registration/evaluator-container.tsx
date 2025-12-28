@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from '@/hooks/use-auth';
 import { API_ENDPOINTS } from "@/lib/api-config";
 import { Eye, Clock, CheckCircle, Settings } from "lucide-react";
 import { FormSection } from "./form-section";

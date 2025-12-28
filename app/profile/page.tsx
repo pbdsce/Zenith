@@ -51,7 +51,7 @@ import {
 import { useToast } from "@/hooks/use-toast"
 
 // Auth hooks and utilities
-import { useAuth } from "@/hooks/useAuth"
+import { useAuth } from "@/hooks/use-auth"
 import { getAuthToken } from "@/lib/auth-storage"
 import { analytics, logEvent } from "@/Firebase";
 
@@ -76,8 +76,9 @@ interface UserProfile {
 export default function ProfilePage() {
   const router = useRouter()
   const { toast } = useToast()
-  const { user, isAuthenticated, logout: authLogout, refreshUser } = useAuth()
-  
+  const { user, loading: authLoading, logout: authLogout, refreshUser } = useAuth()
+  const isAuthenticated = !!user;
+
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
@@ -104,14 +105,14 @@ export default function ProfilePage() {
   };
 
   // New state for handling CTF and CP profiles
-  const [ctfProfiles, setCtfProfiles] = useState<Array<{id?: string, url: string}>>([])
-  const [cpProfiles, setCpProfiles] = useState<Array<{id?: string, url: string}>>([])
+  const [ctfProfiles, setCtfProfiles] = useState<Array<{ id?: string, url: string }>>([])
+  const [cpProfiles, setCpProfiles] = useState<Array<{ id?: string, url: string }>>([])
   const [newCtfUrl, setNewCtfUrl] = useState('')
   const [newCpUrl, setNewCpUrl] = useState('')
 
   // Redirect if not authenticated
   useEffect(() => {
-    if (!isAuthenticated && !isLoading) {
+    if (!isAuthenticated && !authLoading) {
       router.push("/login")
     } else if (isAuthenticated && user && analytics) {
       logEvent(analytics, "page_view", {
@@ -121,7 +122,7 @@ export default function ProfilePage() {
         timestamp: new Date().toISOString(),
       });
     }
-  }, [isAuthenticated, isLoading, router,user])
+  }, [isAuthenticated, authLoading, router, user])
 
   // Fetch user data on component mount
   useEffect(() => {

@@ -47,13 +47,13 @@ export async function GET(request: NextRequest) {
     await dbConnect();
 
     const query: any = { isLooking: true, memberCount: { $lt: 4 } };
-    
+
     if (appliedFor) {
       query.appliedFor = appliedFor;
     }
 
     const skip = (page - 1) * limit;
-    
+
     const [teams, totalTeams] = await Promise.all([
       Team.find(query)
         .select('teamCode teamName teamLead teamMembers memberCount appliedFor isLooking')
@@ -67,8 +67,8 @@ export async function GET(request: NextRequest) {
     const teamLeadUids = teams.map(t => t.teamLead);
     const allMemberUids = teams.flatMap(t => t.teamMembers.map((m: any) => m.uid));
     const uniqueMemberUids = [...new Set(allMemberUids)];
-    const problemStatementIds = teams.map(t => t.appliedFor).filter(Boolean);
-    
+    const problemStatementIds = teams.map(t => t.appliedFor).filter((id): id is string => Boolean(id));
+
     const [teamLeads, teamMembers, problemStatements] = await Promise.all([
       User.find({ uid: { $in: teamLeadUids } }).select('uid name'),
       User.find({ uid: { $in: uniqueMemberUids } }).select('uid name organisation'),
@@ -78,7 +78,7 @@ export async function GET(request: NextRequest) {
     const formattedTeams = teams.map(team => {
       const lead = teamLeads.find(u => u.uid === team.teamLead);
       const ps = problemStatements.find(p => p._id.toString() === team.appliedFor);
-      
+
       const formattedMembers = team.teamMembers.map((m: any) => {
         const member = teamMembers.find(u => u.uid === m.uid);
         return {
@@ -87,7 +87,7 @@ export async function GET(request: NextRequest) {
           organisation: member?.organisation || null,
         };
       });
-      
+
       return {
         teamCode: team.teamCode,
         teamName: team.teamName,

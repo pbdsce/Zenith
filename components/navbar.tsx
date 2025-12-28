@@ -1,41 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import '@/styles/cybr-btn.css';
+import { useAuth } from '@/hooks/use-auth';
 
 export function NavButtons({ disableFixedPositioning = false }) {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [username, setUsername] = useState('');
+  const { user } = useAuth();
+  const isLoggedIn = !!user;
 
-  useEffect(() => {
-    // Check for authentication data in local storage
-    const checkAuthStatus = () => {
-      try {
-        const authData = localStorage.getItem('zenith_auth_data');
-        if (authData) {
-          const parsedData = JSON.parse(authData);
-          if (parsedData?.user?.uid && parsedData?.token) {
-            setIsLoggedIn(true);
-            setUsername(parsedData.user.name || parsedData.user.email || 'User');
-          } else {
-            setIsLoggedIn(false);
-          }
-        } else {
-          setIsLoggedIn(false);
-        }
-      } catch (error) {
-        console.error('Error checking auth status:', error);
-        setIsLoggedIn(false);
-      }
-    };
-
-    checkAuthStatus();
-    
-    // Listen for storage changes in case user logs in/out in another tab
-    window.addEventListener('storage', checkAuthStatus);
-    return () => window.removeEventListener('storage', checkAuthStatus);
-  }, []);
 
   return (
     <div className={`${!disableFixedPositioning ? "fixed top-4 w-full px-4" : ""} flex justify-center sm:justify-end sm:px-6 z-50`}>
