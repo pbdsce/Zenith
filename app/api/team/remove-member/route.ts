@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { authenticateUser, createAuthErrorResponse } from "@/lib/middleware/auth";
+import { authenticateUser, createAuthErrorResponse, requireAdmin } from "@/lib/middleware/auth";
 import dbConnect from "@/lib/db";
 import User from "@/models/User";
 import Team from "@/models/Team";
+import TeamJoinRequest from "@/models/TeamJoinRequest";
 
 export const dynamic = 'force-dynamic';
 
@@ -26,7 +27,7 @@ function createErrorResponse(message: string, code: string, status: number) {
 
 /**
  * PUT /api/team/remove-member
- * Remove a member from team (team lead only)
+ * Remove a member from team (team lead or admin only)
  */
 export async function PUT(request: NextRequest) {
   try {
@@ -58,16 +59,18 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Check if user is team lead
-    if (team.teamLead !== authResult.user.uid) {
+    // Check if user is team lead or admin
+    const isTeamLead = team.teamLead === authResult.user.uid;
+    const isAdmin = authResult.user.role === 'admin';
+    
+    if (!isTeamLead && !isAdmin) {
       return NextResponse.json(
-        { message: "User is not team lead" },
+        { message: "User is not team lead or admin" },
         { status: 403 }
       );
     }
 
-    // Cannot remove self
-    if (memberId === authResult.user.uid) {
+    if (memberId === authResult.user.uid && !isAdmin) {
       return NextResponse.json(
         { message: "Cannot remove yourself. Use leave team instead." },
         { status: 400 }
@@ -103,6 +106,17 @@ export async function PUT(request: NextRequest) {
     await User.findOneAndUpdate(
       { uid: memberId },
       { teamCode: null, isLooking: Boolean(setTheirLookingStatus) }
+    );
+    await TeamJoinRequest.updateMany(
+      {
+        userId: memberId,
+        teamCode: team.teamCode,
+        status: 'pending',
+      },
+      {
+        status: 'cancelled',
+        respondedAt: new Date(),
+      }
     );
 
     return NextResponse.json({

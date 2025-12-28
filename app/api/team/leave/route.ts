@@ -4,6 +4,7 @@ import dbConnect from "@/lib/db";
 import User from "@/models/User";
 import Team from "@/models/Team";
 import ProblemStatement from "@/models/ProblemStatement";
+import TeamJoinRequest from "@/models/TeamJoinRequest";
 
 export const dynamic = 'force-dynamic';
 
@@ -105,6 +106,17 @@ export async function PUT(request: NextRequest) {
       { 
         teamCode: null, 
         isLooking: Boolean(setLookingStatus) 
+      }
+    );
+    await TeamJoinRequest.updateMany(
+      {
+        userId: authResult.user.uid,
+        teamCode: team.teamCode,
+        status: 'pending',
+      },
+      {
+        status: 'cancelled',
+        respondedAt: new Date(),
       }
     );
 
