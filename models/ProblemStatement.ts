@@ -37,6 +37,8 @@ const ProblemStatementSchema: Schema = new Schema({
   timestamps: true,
 });
 
+ProblemStatementSchema.index({ createdAt: -1 });
+
 // Delete the model if it exists to prevent OverwriteModelError
 if (mongoose.models.ProblemStatement) {
   delete mongoose.models.ProblemStatement;

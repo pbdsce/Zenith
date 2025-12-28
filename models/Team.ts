@@ -143,10 +143,11 @@ const TeamSchema: Schema = new Schema({
   timestamps: true,
 });
 
-TeamSchema.index({ 'scores.total': -1 }); 
-TeamSchema.index({ 'memberRSVPs.uid': 1 }); 
+TeamSchema.index({ 'scores.total': -1 });
+TeamSchema.index({ 'memberRSVPs.uid': 1 });
+TeamSchema.index({ createdAt: -1 });
 
-TeamSchema.pre('save', async function() {
+TeamSchema.pre('save', async function (this: ITeam) {
   this.memberCount = this.teamMembers.length;
 });
 

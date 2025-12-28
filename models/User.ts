@@ -44,12 +44,14 @@ const UserSchema: Schema = new Schema({
     age: { type: Number }, // Optional - required for regular users during registration
     organisation: { type: String }, // Optional - required for regular users during registration
     profile_picture: { type: String },
-    isLooking: { type: Boolean, default: false },
+    isLooking: { type: Boolean, default: false, index: true },
     role: { type: String, enum: ['user', 'admin', 'evaluator'], default: 'user' },
-    teamCode: { type: String },
+    teamCode: { type: String, index: true },
 }, {
     timestamps: true,
 });
+
+UserSchema.index({ createdAt: -1 });
 
 if (mongoose.models.User) {
   delete mongoose.models.User;
