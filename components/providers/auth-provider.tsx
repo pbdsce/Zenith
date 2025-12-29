@@ -59,7 +59,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const fetchUserProfile = async (currentUser: FirebaseUser) => {
         try {
-            const token = await currentUser.getIdToken();
+            // Force reload user to get latest emailVerified status
+            await currentUser.reload();
+            const token = await currentUser.getIdToken(true);
             const response = await fetch(API_ENDPOINTS.userProfile, {
                 headers: {
                     Authorization: `Bearer ${token}`,
