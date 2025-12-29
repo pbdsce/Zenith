@@ -666,13 +666,18 @@ export function DashboardContainer() {
                     {isTeamLead() ? "Team Lead" : "Member"}
                   </span>
                 </div>
-                <div className="flex justify-between">
+                <div className="flex justify-between items-center">
                   <span className="text-[14px] text-white opacity-80" style={{ fontFamily: 'var(--font-body)' }}>
                     Team Status
                   </span>
-                  <span className="text-[14px] text-white capitalize" style={{ fontFamily: 'var(--font-body)' }}>
-                    {team.teamStatus}
-                  </span>
+                  <StatusBadge
+                    status={team.teamStatus}
+                    icon={
+                      teamStatus === "shortlisted" || teamStatus === "confirmed"
+                        ? Award
+                        : Users
+                    }
+                  />
                 </div>
               </div>
 

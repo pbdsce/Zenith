@@ -30,7 +30,7 @@ interface Team {
   teamMembers?: TeamMember[];
   problemStatement: string;
   lookingForMembers: boolean;
-  status: "none" | "in-team" | "submitted" | "under-review" | "shortlisted" | "confirmed" | "declined";
+  status: "none" | "in-team" | "submitted" | "under-review" | "shortlisted" | "confirmed" | "declined" | "withdrawn";
 }
 
 interface ProblemStatement {
@@ -145,10 +145,12 @@ export function TeamContainer() {
                   })) || [],
                   problemStatement: teamInfo.appliedFor?.title || 'No problem statement selected',
                   lookingForMembers: teamInfo.isLooking || false,
-                  status: teamInfo.teamStatus === 'pending' ? 'in-team' : 
-                          teamInfo.teamStatus === 'submitted' ? 'submitted' :
-                          teamInfo.teamStatus === 'shortlisted' ? 'shortlisted' :
-                          teamInfo.teamStatus === 'rsvped' ? 'confirmed' : 'in-team',
+                  status: teamInfo.teamStatus === 'pending' ? 'in-team' :
+                    teamInfo.teamStatus === 'submitted' ? 'submitted' :
+                      teamInfo.teamStatus === 'shortlisted' ? 'shortlisted' :
+                        teamInfo.teamStatus === 'rsvped' ? 'confirmed' :
+                          teamInfo.teamStatus === 'rsvp_declined' ? 'declined' :
+                            teamInfo.teamStatus === 'withdrawn' ? 'withdrawn' : 'in-team',
                 });
 
                 // Join requests will be fetched by useEffect when team state is set
@@ -318,10 +320,12 @@ export function TeamContainer() {
             })) || [],
             problemStatement: teamInfo.appliedFor?.title || 'No problem statement selected',
             lookingForMembers: teamInfo.isLooking || false,
-            status: teamInfo.teamStatus === 'pending' ? 'in-team' : 
-                    teamInfo.teamStatus === 'submitted' ? 'submitted' :
-                    teamInfo.teamStatus === 'shortlisted' ? 'shortlisted' :
-                    teamInfo.teamStatus === 'rsvped' ? 'confirmed' : 'in-team',
+            status: teamInfo.teamStatus === 'pending' ? 'in-team' :
+              teamInfo.teamStatus === 'submitted' ? 'submitted' :
+                teamInfo.teamStatus === 'shortlisted' ? 'shortlisted' :
+                  teamInfo.teamStatus === 'rsvped' ? 'confirmed' :
+                    teamInfo.teamStatus === 'rsvp_declined' ? 'declined' :
+                      teamInfo.teamStatus === 'withdrawn' ? 'withdrawn' : 'in-team',
           });
         }
       }
@@ -423,10 +427,12 @@ export function TeamContainer() {
               })) || [],
               problemStatement: teamInfo.appliedFor?.title || 'No problem statement selected',
               lookingForMembers: teamInfo.isLooking || false,
-              status: teamInfo.teamStatus === 'pending' ? 'in-team' : 
-                      teamInfo.teamStatus === 'submitted' ? 'submitted' :
-                      teamInfo.teamStatus === 'shortlisted' ? 'shortlisted' :
-                      teamInfo.teamStatus === 'rsvped' ? 'confirmed' : 'in-team',
+              status: teamInfo.teamStatus === 'pending' ? 'in-team' :
+                teamInfo.teamStatus === 'submitted' ? 'submitted' :
+                  teamInfo.teamStatus === 'shortlisted' ? 'shortlisted' :
+                    teamInfo.teamStatus === 'rsvped' ? 'confirmed' :
+                      teamInfo.teamStatus === 'rsvp_declined' ? 'declined' :
+                        teamInfo.teamStatus === 'withdrawn' ? 'withdrawn' : 'in-team',
             });
           }
         }
@@ -531,10 +537,12 @@ export function TeamContainer() {
           members: teamInfo.teamMembers?.map((m: any) => m.uid || m.id) || [],
           problemStatement: teamInfo.appliedFor?.title || 'No problem statement selected',
           lookingForMembers: teamInfo.isLooking || false,
-          status: teamInfo.teamStatus === 'pending' ? 'in-team' : 
-                  teamInfo.teamStatus === 'submitted' ? 'submitted' :
-                  teamInfo.teamStatus === 'shortlisted' ? 'shortlisted' :
-                  teamInfo.teamStatus === 'rsvped' ? 'confirmed' : 'in-team',
+          status: teamInfo.teamStatus === 'pending' ? 'in-team' :
+            teamInfo.teamStatus === 'submitted' ? 'submitted' :
+              teamInfo.teamStatus === 'shortlisted' ? 'shortlisted' :
+                teamInfo.teamStatus === 'rsvped' ? 'confirmed' :
+                  teamInfo.teamStatus === 'rsvp_declined' ? 'declined' :
+                    teamInfo.teamStatus === 'withdrawn' ? 'withdrawn' : 'in-team',
         });
         setAlert({
           type: "success",

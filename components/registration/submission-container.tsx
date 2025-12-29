@@ -18,7 +18,7 @@ interface Team {
   code: string;
   leadId: string;
   members: string[];
-  status: "none" | "in-team" | "submitted" | "under-review" | "shortlisted" | "confirmed" | "declined";
+  status: "none" | "in-team" | "submitted" | "under-review" | "shortlisted" | "confirmed" | "declined" | "withdrawn";
 }
 
 export function SubmissionContainer() {
@@ -79,10 +79,12 @@ export function SubmissionContainer() {
                   code: teamInfo.teamCode,
                   leadId: typeof teamInfo.teamLead === 'string' ? teamInfo.teamLead : teamInfo.teamLead?.id || '',
                   members: teamInfo.teamMembers?.map((m: any) => m.uid || m.id) || [],
-                  status: teamInfo.teamStatus === 'pending' ? 'in-team' : 
-                          teamInfo.teamStatus === 'submitted' ? 'submitted' :
-                          teamInfo.teamStatus === 'shortlisted' ? 'shortlisted' :
-                          teamInfo.teamStatus === 'rsvped' ? 'confirmed' : 'in-team',
+                  status: teamInfo.teamStatus === 'pending' ? 'in-team' :
+                    teamInfo.teamStatus === 'submitted' ? 'submitted' :
+                      teamInfo.teamStatus === 'shortlisted' ? 'shortlisted' :
+                        teamInfo.teamStatus === 'rsvped' ? 'confirmed' :
+                          teamInfo.teamStatus === 'rsvp_declined' ? 'declined' :
+                            teamInfo.teamStatus === 'withdrawn' ? 'withdrawn' : 'in-team',
                 });
                 
                 // Set existing submission data if available
@@ -170,10 +172,12 @@ export function SubmissionContainer() {
             code: teamInfo.teamCode,
             leadId: typeof teamInfo.teamLead === 'string' ? teamInfo.teamLead : teamInfo.teamLead?.id || '',
             members: teamInfo.teamMembers?.map((m: any) => m.uid || m.id) || [],
-            status: teamInfo.teamStatus === 'pending' ? 'in-team' : 
-                    teamInfo.teamStatus === 'submitted' ? 'submitted' :
-                    teamInfo.teamStatus === 'shortlisted' ? 'shortlisted' :
-                    teamInfo.teamStatus === 'rsvped' ? 'confirmed' : 'in-team',
+            status: teamInfo.teamStatus === 'pending' ? 'in-team' :
+              teamInfo.teamStatus === 'submitted' ? 'submitted' :
+                teamInfo.teamStatus === 'shortlisted' ? 'shortlisted' :
+                  teamInfo.teamStatus === 'rsvped' ? 'confirmed' :
+                    teamInfo.teamStatus === 'rsvp_declined' ? 'declined' :
+                      teamInfo.teamStatus === 'withdrawn' ? 'withdrawn' : 'in-team',
           });
           
           // Clear submission data
