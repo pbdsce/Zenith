@@ -30,6 +30,7 @@ export function ProfileContainer() {
   const [resumeFileName, setResumeFileName] = useState("");
   const [profilePhotoFileName, setProfilePhotoFileName] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isProfileLocked, setIsProfileLocked] = useState(false);
   const [alert, setAlert] = useState<{ type: "success" | "error" | "warning" | "info"; message: string } | null>(null);
 
   useEffect(() => {
@@ -67,6 +68,14 @@ export function ProfileContainer() {
             
             if (data.user.resume_link) setResumeFileName("resume.pdf");
             if (data.user.profile_picture) setProfilePhotoFileName("profile.jpg");
+
+            if (data.isProfileLocked) {
+              setIsProfileLocked(true);
+              setAlert({
+                type: "warning",
+                message: "Your profile is locked because your team has been evaluated. You can no longer make changes."
+              });
+            }
           }
         }
       } catch (error) {
@@ -153,105 +162,107 @@ export function ProfileContainer() {
       {alert && <AlertBanner type={alert.type} message={alert.message} />}
 
       <form onSubmit={handleUpdateProfile} className="flex flex-col gap-[24px]">
-        <FormSection title="Personal Information">
-          <FormInput
-            label="Full Name"
-            placeholder="John Doe"
-            required
-            value={profileData.name}
-            onChange={(e) => setProfileData({ ...profileData, name: e.target.value })}
-          />
-          <FormInput
-            label="Email Address"
-            type="email"
-            placeholder="your.email@example.com"
-            required
-            value={profileData.email}
-            onChange={(e) => setProfileData({ ...profileData, email: e.target.value })}
-          />
-          <div className="grid grid-cols-2 gap-[16px]">
+        <fieldset disabled={isProfileLocked} className="flex flex-col gap-[24px] disabled:opacity-70 disabled:pointer-events-none">
+          <FormSection title="Personal Information">
             <FormInput
-              label="Phone"
-              type="tel"
-              placeholder="+1 555 0100"
+              label="Full Name"
+              placeholder="John Doe"
               required
-              value={profileData.phone}
-              onChange={(e) => setProfileData({ ...profileData, phone: e.target.value })}
+              value={profileData.name}
+              onChange={(e) => setProfileData({ ...profileData, name: e.target.value })}
             />
             <FormInput
-              label="Age"
-              placeholder="22"
+              label="Email Address"
+              type="email"
+              placeholder="your.email@example.com"
               required
-              value={profileData.age}
-              onChange={(e) => setProfileData({ ...profileData, age: e.target.value })}
+              value={profileData.email}
+              onChange={(e) => setProfileData({ ...profileData, email: e.target.value })}
             />
-          </div>
-          <FormInput
-            label="Organisation"
-            placeholder="Your University"
-            required
-            value={profileData.organisation}
-            onChange={(e) => setProfileData({ ...profileData, organisation: e.target.value })}
-          />
-          <FormTextarea
-            label="Bio"
-            placeholder="Tell us about yourself..."
-            required
-            value={profileData.bio}
-            onChange={(e) => setProfileData({ ...profileData, bio: e.target.value })}
-            rows={3}
-          />
-        </FormSection>
+            <div className="grid grid-cols-2 gap-[16px]">
+              <FormInput
+                label="Phone"
+                type="tel"
+                placeholder="+1 555 0100"
+                required
+                value={profileData.phone}
+                onChange={(e) => setProfileData({ ...profileData, phone: e.target.value })}
+              />
+              <FormInput
+                label="Age"
+                placeholder="22"
+                required
+                value={profileData.age}
+                onChange={(e) => setProfileData({ ...profileData, age: e.target.value })}
+              />
+            </div>
+            <FormInput
+              label="Organisation"
+              placeholder="Your University"
+              required
+              value={profileData.organisation}
+              onChange={(e) => setProfileData({ ...profileData, organisation: e.target.value })}
+            />
+            <FormTextarea
+              label="Bio"
+              placeholder="Tell us about yourself..."
+              required
+              value={profileData.bio}
+              onChange={(e) => setProfileData({ ...profileData, bio: e.target.value })}
+              rows={3}
+            />
+          </FormSection>
 
-        <FormSection title="Files">
-          <FormFileUpload
-            label="Resume (PDF)"
-            accept=".pdf"
-            onChange={(e) => {
-              if (e.target.files && e.target.files[0]) {
-                setResumeFile(e.target.files[0]);
-                setResumeFileName(e.target.files[0].name);
-              }
-            }}
-            currentFile={resumeFileName}
-          />
-          <FormFileUpload
-            label="Profile Photo"
-            accept="image/*"
-            onChange={(e) => {
-              if (e.target.files && e.target.files[0]) {
-                setProfilePhoto(e.target.files[0]);
-                setProfilePhotoFileName(e.target.files[0].name);
-              }
-            }}
-            currentFile={profilePhotoFileName}
-          />
-        </FormSection>
+          <FormSection title="Files">
+            <FormFileUpload
+              label="Resume (PDF)"
+              accept=".pdf"
+              onChange={(e) => {
+                if (e.target.files && e.target.files[0]) {
+                  setResumeFile(e.target.files[0]);
+                  setResumeFileName(e.target.files[0].name);
+                }
+              }}
+              currentFile={resumeFileName}
+            />
+            <FormFileUpload
+              label="Profile Photo"
+              accept="image/*"
+              onChange={(e) => {
+                if (e.target.files && e.target.files[0]) {
+                  setProfilePhoto(e.target.files[0]);
+                  setProfilePhotoFileName(e.target.files[0].name);
+                }
+              }}
+              currentFile={profilePhotoFileName}
+            />
+          </FormSection>
 
-        <FormSection title="Social Links">
-          <FormInput
-            label="GitHub"
-            placeholder="https://github.com/username"
-            value={profileData.github}
-            onChange={(e) => setProfileData({ ...profileData, github: e.target.value })}
-          />
-          <FormInput
-            label="LinkedIn"
-            placeholder="https://linkedin.com/in/username"
-            value={profileData.linkedin}
-            onChange={(e) => setProfileData({ ...profileData, linkedin: e.target.value })}
-          />
-          <FormInput
-            label="Portfolio"
-            placeholder="https://yourportfolio.com"
-            value={profileData.portfolio}
-            onChange={(e) => setProfileData({ ...profileData, portfolio: e.target.value })}
-          />
-        </FormSection>
+          <FormSection title="Social Links">
+            <FormInput
+              label="GitHub"
+              placeholder="https://github.com/username"
+              value={profileData.github}
+              onChange={(e) => setProfileData({ ...profileData, github: e.target.value })}
+            />
+            <FormInput
+              label="LinkedIn"
+              placeholder="https://linkedin.com/in/username"
+              value={profileData.linkedin}
+              onChange={(e) => setProfileData({ ...profileData, linkedin: e.target.value })}
+            />
+            <FormInput
+              label="Portfolio"
+              placeholder="https://yourportfolio.com"
+              value={profileData.portfolio}
+              onChange={(e) => setProfileData({ ...profileData, portfolio: e.target.value })}
+            />
+          </FormSection>
 
-        <Button type="submit" variant="primary" disabled={isSubmitting}>
-          {isSubmitting ? "Saving..." : "Save Changes"}
-        </Button>
+          <Button type="submit" variant="primary" disabled={isSubmitting || isProfileLocked}>
+            {isSubmitting ? "Saving..." : isProfileLocked ? "Profile Locked" : "Save Changes"}
+          </Button>
+        </fieldset>
       </form>
     </div>
   );

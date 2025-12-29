@@ -3,6 +3,7 @@ import { authenticateUser, createAuthErrorResponse, requireEmailVerified } from 
 import dbConnect from "@/lib/db";
 import User from "@/models/User";
 import Team from "@/models/Team";
+import TeamJoinRequest from "@/models/TeamJoinRequest";
 
 // Configure route
 export const dynamic = 'force-dynamic';
@@ -112,6 +113,18 @@ export async function PUT(request: NextRequest) {
     });
 
     await team.save();
+
+    // Cancel all pending join requests for this user
+    await TeamJoinRequest.updateMany(
+      {
+        userId: authResult.user.uid,
+        status: 'pending',
+      },
+      {
+        status: 'cancelled',
+        respondedAt: new Date(),
+      }
+    );
 
     // Update user's teamCode and isLooking
     await User.findOneAndUpdate(

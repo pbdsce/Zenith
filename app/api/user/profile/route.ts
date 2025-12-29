@@ -3,6 +3,7 @@ import { authenticateUser, createAuthErrorResponse, isAuthError, requireEmailVer
 import { cloudinaryV2 } from "@/c";
 import dbConnect from "@/lib/db";
 import User from "@/models/User";
+import Team from "@/models/Team";
 
 // Configure route
 export const dynamic = 'force-dynamic';
@@ -97,7 +98,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    return NextResponse.json({
+    const responseData: any = {
       uid: user.uid,
       name: user.name,
       email: user.email,
@@ -118,7 +119,17 @@ export async function GET(request: NextRequest) {
       role: user.role,
       isLooking: user.isLooking,
       teamCode: user.teamCode || null,
-    });
+      isProfileLocked: false,
+    };
+
+    if (user.teamCode) {
+      const team = await Team.findOne({ teamCode: user.teamCode });
+      if (team && team.isEvaluated) {
+        responseData.isProfileLocked = true;
+      }
+    }
+
+    return NextResponse.json(responseData);
   } catch (error: any) {
     console.error("Get profile error:", error);
     return NextResponse.json(
@@ -178,6 +189,17 @@ export async function PUT(request: NextRequest) {
         { message: "User not found" },
         { status: 404 }
       );
+    }
+
+    // Check if profile is locked
+    if (user.teamCode) {
+      const team = await Team.findOne({ teamCode: user.teamCode });
+      if (team && team.isEvaluated) {
+        return NextResponse.json(
+          { message: "Profile cannot be edited after team evaluation" },
+          { status: 403 }
+        );
+      }
     }
 
     // Build update object with only provided fields

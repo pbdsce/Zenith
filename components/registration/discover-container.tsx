@@ -367,23 +367,39 @@ export function DiscoverContainer() {
         </Button>
       </div>
 
-      <FormSection title="What are you looking for?">
-        <div className="flex flex-col gap-[24px]">
-          {/* Tab Navigation */}
-          <div className="flex gap-[12px]">
-            <SectionTab
-              active={activeTab === "teams"}
-              onClick={() => setActiveTab("teams")}
-              icon={Users}
-              label="Teams Looking for Members"
-            />
-            <SectionTab
-              active={activeTab === "participants"}
-              onClick={() => setActiveTab("participants")}
-              icon={Search}
-              label="Participants Looking for Teams"
-            />
+      {user?.teamCode ? (
+        <div className="flex flex-col items-center justify-center py-[60px] text-center">
+          <div className="bg-[rgba(255,165,0,0.1)] border border-orange-500/30 rounded-lg p-8 max-w-2xl">
+            <h2 className="text-2xl font-bold text-orange-400 mb-4">You are already in a team!</h2>
+            <p className="text-gray-300 mb-6">
+              You are currently a member of team <span className="font-mono text-white bg-white/10 px-2 py-1 rounded">{user.teamCode}</span>.
+              <br />
+              Please leave your current team if you wish to join another one.
+            </p>
+            <Button onClick={() => router.push("/dashboard")} variant="primary">
+              Go to Team Dashboard
+            </Button>
           </div>
+        </div>
+      ) : (
+        <>
+          <FormSection title="What are you looking for?">
+            <div className="flex flex-col gap-[24px]">
+              {/* Tab Navigation */}
+              <div className="flex gap-[12px]">
+                <SectionTab
+                  active={activeTab === "teams"}
+                  onClick={() => setActiveTab("teams")}
+                  icon={Users}
+                  label="Teams Looking for Members"
+                />
+                <SectionTab
+                  active={activeTab === "participants"}
+                  onClick={() => setActiveTab("participants")}
+                  icon={Search}
+                  label="Participants Looking for Teams"
+                />
+              </div>
 
           {/* Tab Content */}
           {activeTab === "teams" ? (
@@ -503,13 +519,15 @@ export function DiscoverContainer() {
         isSendingRequest={selectedTeamCode ? sendingRequest === selectedTeamCode : false}
       />
 
-      {/* User Details Modal */}
-      <UserProfileModal
-        isOpen={!!selectedUserId}
-        onClose={handleCloseUserModal}
-        userDetails={userDetails}
-        isLoading={isLoadingUser}
-      />
+          {/* User Details Modal */}
+          <UserProfileModal
+            isOpen={!!selectedUserId}
+            onClose={handleCloseUserModal}
+            userDetails={userDetails}
+            isLoading={isLoadingUser}
+          />
+        </>
+      )}
     </div>
   );
 }
