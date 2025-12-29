@@ -31,6 +31,7 @@ export const API_ENDPOINTS = {
   withdrawSubmission: '/api/team/withdraw-submission', // PUT
   deleteTeam: '/api/team/delete',                      // DELETE
   getTeam: (teamCode: string) => `/api/team/${teamCode}`,  // GET
+  getTeamMembers: (teamCode: string) => `/api/team/${teamCode}/members`,  // GET (for users looking for teams)
   
   // ===== ADMIN ENDPOINTS =====
   adminParticipants: '/api/admin/participants',        // GET
