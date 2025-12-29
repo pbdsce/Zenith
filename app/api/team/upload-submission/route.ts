@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { authenticateUser } from "@/lib/middleware/auth";
+import { authenticateUser, createAuthErrorResponse, requireEmailVerified } from "@/lib/middleware/auth";
 import { cloudinaryV2 } from "@/c";
 import dbConnect from "@/lib/db";
 import Team from "@/models/Team";
@@ -92,6 +92,11 @@ export async function POST(request: NextRequest) {
         { message: authResult.error.message },
         { status: authResult.status }
       );
+    }
+
+    const emailError = requireEmailVerified(authResult);
+    if (emailError) {
+      return createAuthErrorResponse(emailError);
     }
 
     // Parse multipart form data

@@ -21,6 +21,7 @@ export interface AuthResult {
   firebaseToken: {
     uid: string;
     email?: string;
+    email_verified?: boolean;
   };
 }
 
@@ -110,6 +111,7 @@ export async function authenticateUser(request: NextRequest): Promise<AuthRespon
       firebaseToken: {
         uid: decodedToken.uid,
         email: decodedToken.email,
+        email_verified: decodedToken.email_verified,
       },
     };
   } catch (error: any) {
@@ -144,6 +146,20 @@ export function requireEvaluator(authResult: AuthResult): AuthError | null {
     return {
       success: false,
       error: { code: 'FORBIDDEN', message: 'Evaluator access required' },
+      status: 403,
+    };
+  }
+  return null;
+}
+
+/**
+ * Check if authenticated user has verified email
+ */
+export function requireEmailVerified(authResult: AuthResult): AuthError | null {
+  if (authResult.firebaseToken.email_verified !== true) {
+    return {
+      success: false,
+      error: { code: 'EMAIL_NOT_VERIFIED', message: 'Email verification required' },
       status: 403,
     };
   }

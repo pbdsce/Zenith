@@ -5,10 +5,12 @@ import {
     onAuthStateChanged,
     User as FirebaseUser,
     signOut as firebaseSignOut,
-    signInWithEmailAndPassword
+    signInWithEmailAndPassword,
+    sendEmailVerification
 } from "firebase/auth";
 import { auth } from "@/Firebase";
 import { useRouter } from "next/navigation";
+import { VerifyEmail } from "@/components/auth/verify-email";
 
 const API_ENDPOINTS = {
     login: '/api/user/login',
@@ -24,6 +26,7 @@ interface UserProfile {
     teamCode?: string;
     isLooking: boolean;
     profile_picture?: string;
+    emailVerified?: boolean;
     [key: string]: any;
 }
 
@@ -35,6 +38,7 @@ interface AuthContextType {
     logout: () => Promise<void>;
     refreshUser: () => Promise<void>;
     getToken: () => Promise<string | null>;
+    sendVerificationEmail: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -45,6 +49,7 @@ const AuthContext = createContext<AuthContextType>({
     logout: async () => { },
     refreshUser: async () => { },
     getToken: async () => null,
+    sendVerificationEmail: async () => { },
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -65,7 +70,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 const data = await response.json();
                 // Handle both direct object return and { success: true, data: ... } format
                 const userData = data.success ? data.data : data;
-                setUser(userData);
+                setUser({
+                    ...userData,
+                    emailVerified: currentUser.emailVerified
+                });
             } else {
                 console.error("Failed to fetch user profile");
                 // If 404, maybe they are registered in Firebase but not MongoDB yet (registration flow)
@@ -154,7 +162,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 const password = formData.get('password') as string;
 
                 if (email && password) {
-                    await signInWithEmailAndPassword(auth, email, password);
+                    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+                    // Send verification email immediately after registration
+                    await sendEmailVerification(userCredential.user);
                 } else {
                     if (data.user) {
                     }
@@ -181,6 +191,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const refreshUser = async () => {
         if (auth.currentUser) {
+            // Force token refresh to update emailVerified claim in the token if needed
+            await auth.currentUser.reload();
             setLoading(true);
             await fetchUserProfile(auth.currentUser);
             setLoading(false);
@@ -194,9 +206,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return null;
     };
 
+    const sendVerificationEmail = async () => {
+        if (auth.currentUser) {
+            await sendEmailVerification(auth.currentUser);
+        }
+    };
+
+    // Show VerifyEmail component if logged in but email not verified
+    const showVerificationScreen = !loading && user && !user.emailVerified;
+
     return (
-        <AuthContext.Provider value={{ user, loading, login, register, logout, refreshUser, getToken }}>
-            {children}
+        <AuthContext.Provider value={{ user, loading, login, register, logout, refreshUser, getToken, sendVerificationEmail }}>
+            {showVerificationScreen ? (
+                <VerifyEmail
+                    email={user.email}
+                    onResend={sendVerificationEmail}
+                    onLogout={logout}
+                />
+            ) : (
+                children
+            )}
         </AuthContext.Provider>
     );
 }

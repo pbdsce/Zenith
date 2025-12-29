@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { authenticateUser, createAuthErrorResponse, isAuthError } from "@/lib/middleware/auth";
+import { authenticateUser, createAuthErrorResponse, isAuthError, requireEmailVerified } from "@/lib/middleware/auth";
 import { cloudinaryV2 } from "@/c";
 import dbConnect from "@/lib/db";
 import User from "@/models/User";
@@ -141,6 +141,11 @@ export async function PUT(request: NextRequest) {
         { message: authResult.error.message },
         { status: authResult.status }
       );
+    }
+
+    const emailError = requireEmailVerified(authResult);
+    if (emailError) {
+      return createAuthErrorResponse(emailError);
     }
 
     const body = await request.json();

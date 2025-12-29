@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { authenticateUser, createAuthErrorResponse } from "@/lib/middleware/auth";
+import { authenticateUser, createAuthErrorResponse, requireEmailVerified } from "@/lib/middleware/auth";
 import dbConnect from "@/lib/db";
 import Team from "@/models/Team";
 
@@ -17,6 +17,11 @@ export async function POST(request: NextRequest) {
         { message: authResult.error.message },
         { status: authResult.status }
       );
+    }
+
+    const emailError = requireEmailVerified(authResult);
+    if (emailError) {
+      return createAuthErrorResponse(emailError);
     }
 
     const body = await request.json();
