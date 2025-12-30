@@ -31,14 +31,13 @@ export async function GET() {
     await dbConnect();
 
     const problemStatements = await ProblemStatement.find({ isActive: true })
-      .select('title description teamCount isActive createdAt')
+      .select('title description isActive createdAt')
       .sort({ createdAt: -1 });
 
     const formatted = problemStatements.map(ps => ({
       id: ps._id.toString(),
       title: ps.title,
       description: ps.description,
-      teamCount: ps.teamCount,
       isActive: ps.isActive,
     }));
 
