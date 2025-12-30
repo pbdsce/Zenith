@@ -4,11 +4,13 @@ import { AlertCircle } from "lucide-react";
 interface AlertBannerProps {
   type?: "success" | "error" | "warning" | "yellow" | "info";
   message: string;
+  className?: string;
 }
 
 export function AlertBanner({
   type = "info",
   message,
+  className,
 }: AlertBannerProps) {
   const getTypeClass = () => {
     switch (type) {
@@ -29,7 +31,7 @@ export function AlertBanner({
 
   return (
     <div
-      className={`backdrop-blur-[2.5px] backdrop-filter rounded-[15px] p-[16px] border ${getTypeClass()} flex items-center gap-[12px]`}
+      className={`backdrop-blur-[2.5px] backdrop-filter rounded-[15px] p-[16px] border ${getTypeClass()} flex items-center gap-[12px] ${className || ""}`}
     >
       <AlertCircle className="w-5 h-5 text-white" />
       <span className="text-[14px] text-white" style={{ fontFamily: 'var(--font-body)' }}>
