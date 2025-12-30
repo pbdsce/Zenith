@@ -93,6 +93,45 @@ export function DashboardContainer() {
   const [alert, setAlert] = useState<{ type: "success" | "error" | "warning" | "info"; message: string } | null>(null);
   const [deleteTeamDialogOpen, setDeleteTeamDialogOpen] = useState(false);
   const [leaveTeamDialogOpen, setLeaveTeamDialogOpen] = useState(false);
+  const [invites, setInvites] = useState<any[]>([]);
+
+  const handleRespondToInvite = async (requestId: string, action: 'accept' | 'decline') => {
+    try {
+      const token = await getToken();
+      if (!token) return;
+
+      const response = await fetch(API_ENDPOINTS.respondToJoinRequest(requestId), {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ action }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || `Failed to ${action} invitation`);
+      }
+
+      toast({
+        title: action === 'accept' ? "Invitation Accepted" : "Invitation Declined",
+        description: data.message,
+      });
+
+      // Refresh data
+      setRefreshTrigger(prev => prev + 1);
+
+    } catch (error) {
+      console.error('Error responding to invitation:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to respond",
+      });
+    }
+  };
 
   useEffect(() => {
     if (!isAuthenticated || !user) {
@@ -195,6 +234,25 @@ export function DashboardContainer() {
             } else {
               // User doesn't have a teamCode, clear team state
               setTeam(null);
+
+              // Fetch invites
+              try {
+                const invitesResponse = await fetch(`${API_ENDPOINTS.joinRequest}?type=user`, {
+                  headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                  }
+                });
+
+                if (invitesResponse.ok) {
+                  const invitesData = await invitesResponse.json();
+                  if (invitesData.success && invitesData.data && invitesData.data.requests) {
+                    setInvites(invitesData.data.requests.filter((r: any) => r.type === 'invite' && r.status === 'pending'));
+                  }
+                }
+              } catch (error) {
+                console.error("Error fetching invites:", error);
+              }
             }
           } else {
             // If API doesn't return expected format, calculate from context user
@@ -546,6 +604,12 @@ export function DashboardContainer() {
           <Users className="w-4 h-4" />
           Team
         </Button>
+        {(!team || (isTeamLead() && team.memberCount < 4)) && (
+          <Button onClick={() => router.push("/dashboard/discover")} variant="secondary">
+            <Search className="w-4 h-4" />
+            Discover
+          </Button>
+        )}
         {team && isTeamLead() && getTeamStatus() === "active" && (
           <Button onClick={() => router.push("/dashboard/submission")} variant="secondary">
             <FileText className="w-4 h-4" />
@@ -605,6 +669,46 @@ export function DashboardContainer() {
         </div>
       </FormSection>
 
+      {/* Team Invitations */}
+      {invites.length > 0 && !team && (
+        <FormSection
+          title="Team Invitations"
+          status={<StatusBadge status="active" icon={Users} />}
+        >
+          <div className="flex flex-col gap-[12px]">
+            {invites.map((invite) => (
+              <div
+                key={invite.requestId}
+                className="flex items-center justify-between p-[16px] bg-[rgba(138,138,138,0.1)] rounded-[12px] border border-[rgba(255,255,255,0.1)]"
+              >
+                <div className="flex flex-col gap-[4px]">
+                  <span className="text-[14px] text-white opacity-90" style={{ fontFamily: 'var(--font-body)' }}>
+                    You have been invited to join team <span className="font-bold">{invite.teamName || invite.teamCode}</span>
+                  </span>
+                  <span className="text-[12px] text-white opacity-50" style={{ fontFamily: 'var(--font-body)' }}>
+                    Code: <span className="font-mono">{invite.teamCode}</span> • Invited {new Date(invite.requestedAt).toLocaleDateString()}
+                  </span>
+                </div>
+                <div className="flex gap-[8px]">
+                  <Button
+                    onClick={() => handleRespondToInvite(invite.requestId, 'accept')}
+                    variant="primary"
+                  >
+                    <Check className="w-4 h-4" /> Accept
+                  </Button>
+                  <Button
+                    onClick={() => handleRespondToInvite(invite.requestId, 'decline')}
+                    variant="danger"
+                  >
+                    <X className="w-4 h-4" /> Decline
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </FormSection>
+      )}
+
       {/* Team Status */}
       <FormSection
         title="Team Status"
@@ -615,8 +719,8 @@ export function DashboardContainer() {
               teamStatus === "none"
                 ? AlertCircle
                 : teamStatus === "shortlisted" || teamStatus === "confirmed"
-                ? Award
-                : Users
+                  ? Award
+                  : Users
             }
           />
         }

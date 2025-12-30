@@ -55,11 +55,22 @@ export async function PUT(
       );
     }
 
-    if (team.teamLead !== authResult.user.uid) {
-      return NextResponse.json(
-        { message: "Only team lead can respond to join requests" },
-        { status: 403 }
-      );
+    const isInvite = joinRequest.type === 'invite';
+
+    if (isInvite) {
+      if (joinRequest.userId !== authResult.user.uid) {
+        return NextResponse.json(
+          { message: "Only the invited user can respond to this invitation" },
+          { status: 403 }
+        );
+      }
+    } else {
+      if (team.teamLead !== authResult.user.uid) {
+        return NextResponse.json(
+          { message: "Only team lead can respond to join requests" },
+          { status: 403 }
+        );
+      }
     }
 
     if (['submitted', 'shortlisted', 'rsvped'].includes(team.teamStatus)) {
@@ -92,7 +103,7 @@ export async function PUT(
         await joinRequest.save();
 
         return NextResponse.json(
-          { message: "User is already in another team. Request declined." },
+          { message: "User is already in another team. Request/Invite declined." },
           { status: 409 }
         );
       }
@@ -129,7 +140,7 @@ export async function PUT(
 
       return NextResponse.json({
         success: true,
-        message: "Join request accepted. User added to team.",
+        message: isInvite ? "Invitation accepted. You have joined the team." : "Join request accepted. User added to team.",
         data: {
           requestId: joinRequest._id.toString(),
           teamCode: team.teamCode,
@@ -145,7 +156,7 @@ export async function PUT(
 
       return NextResponse.json({
         success: true,
-        message: "Join request declined",
+        message: isInvite ? "Invitation declined" : "Join request declined",
         data: {
           requestId: joinRequest._id.toString(),
           status: 'declined',

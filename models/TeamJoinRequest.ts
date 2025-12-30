@@ -5,6 +5,7 @@ export interface ITeamJoinRequest extends Document {
   userId: string;
   userName: string;
   userEmail: string;
+  type: 'request' | 'invite';
   status: 'pending' | 'accepted' | 'declined' | 'cancelled';
   requestedAt: Date;
   respondedAt?: Date;
@@ -30,6 +31,12 @@ const TeamJoinRequestSchema: Schema = new Schema({
     type: String,
     required: true,
   },
+  type: {
+    type: String,
+    enum: ['request', 'invite'],
+    default: 'request',
+    index: true,
+  },
   status: {
     type: String,
     enum: ['pending', 'accepted', 'declined', 'cancelled'],
@@ -50,7 +57,7 @@ const TeamJoinRequestSchema: Schema = new Schema({
   timestamps: true,
 });
 
-TeamJoinRequestSchema.index({ teamCode: 1, userId: 1, status: 1 }, { unique: true, partialFilterExpression: { status: 'pending' } });
+TeamJoinRequestSchema.index({ teamCode: 1, userId: 1, status: 1, type: 1 }, { unique: true, partialFilterExpression: { status: 'pending' } });
 
 if (mongoose.models.TeamJoinRequest) {
   delete mongoose.models.TeamJoinRequest;

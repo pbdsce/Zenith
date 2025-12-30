@@ -519,6 +519,57 @@ export function TeamContainer() {
     }
   };
 
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [isInviting, setIsInviting] = useState(false);
+
+  const handleInviteMember = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!team) return;
+    setIsInviting(true);
+    setAlert(null);
+
+    try {
+      const token = await getToken();
+      if (!token) return;
+
+      const response = await fetch(API_ENDPOINTS.joinRequest, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          teamCode: team.code,
+          type: 'invite',
+          email: inviteEmail
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to send invitation');
+      }
+
+      setAlert({
+        type: "success",
+        message: "Invitation sent successfully!"
+      });
+      setInviteEmail("");
+
+      // Refresh requests
+      fetchJoinRequests(team.code, token);
+
+    } catch (error) {
+      setAlert({
+        type: "error",
+        message: error instanceof Error ? error.message : "Failed to invite user"
+      });
+    } finally {
+      setIsInviting(false);
+    }
+  };
+
   const handleCreateTeam = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -1014,19 +1065,41 @@ export function TeamContainer() {
                 </FormSection>
               )}
 
-              {/* Join Requests Section */}
-              <FormSection title="Join Requests">
+              {/* Invite Members Section */}
+              {team.leadId === user.uid && team.status === "active" && team.members.length < 4 && (
+                <FormSection title="Invite Members">
+                  <form onSubmit={handleInviteMember} className="flex gap-[12px] items-end">
+                    <div className="flex-1">
+                      <FormInput
+                        label="User Email"
+                        placeholder="Enter user email to invite"
+                        value={inviteEmail}
+                        onChange={(e) => setInviteEmail(e.target.value)}
+                        type="email"
+                        required
+                      />
+                    </div>
+                    <Button type="submit" variant="primary" disabled={isInviting}>
+                      {isInviting ? "Inviting..." : "Invite"}
+                      <UserPlus className="w-4 h-4 ml-2" />
+                    </Button>
+                  </form>
+                </FormSection>
+              )}
+
+              {/* Incoming Join Requests */}
+              <FormSection title="Incoming Requests">
                 {isLoadingRequests ? (
                   <div className="text-white text-center py-[20px] opacity-70" style={{ fontFamily: 'var(--font-body)' }}>
                     Loading requests...
                   </div>
-                ) : joinRequests.length === 0 ? (
+                ) : joinRequests.filter(r => r.type === 'request').length === 0 ? (
                   <div className="text-white text-center py-[20px] opacity-70" style={{ fontFamily: 'var(--font-body)' }}>
-                    No pending join requests
+                    No incoming join requests
                   </div>
                 ) : (
                   <div className="flex flex-col gap-[12px]">
-                    {joinRequests.map((request) => (
+                    {joinRequests.filter(r => r.type === 'request').map((request) => (
                       <div
                         key={request.requestId}
                         className="flex items-center justify-between p-[12px] bg-[rgba(138,138,138,0.1)] rounded-[8px] border border-[rgba(255,255,255,0.1)]"
@@ -1070,6 +1143,47 @@ export function TeamContainer() {
                   </div>
                 )}
               </FormSection>
+
+              {/* Sent Invitations */}
+              {team.leadId === user.uid && (
+                <FormSection title="Sent Invitations">
+                  {isLoadingRequests ? (
+                    <div className="text-white text-center py-[20px] opacity-70" style={{ fontFamily: 'var(--font-body)' }}>
+                      Loading invitations...
+                    </div>
+                  ) : joinRequests.filter(r => r.type === 'invite').length === 0 ? (
+                    <div className="text-white text-center py-[20px] opacity-70" style={{ fontFamily: 'var(--font-body)' }}>
+                      No pending invitations
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-[12px]">
+                      {joinRequests.filter(r => r.type === 'invite').map((request) => (
+                        <div
+                          key={request.requestId}
+                          className="flex items-center justify-between p-[12px] bg-[rgba(138,138,138,0.1)] rounded-[8px] border border-[rgba(255,255,255,0.1)]"
+                        >
+                          <div className="flex flex-col gap-[4px]">
+                            <span className="text-[14px] text-white" style={{ fontFamily: 'var(--font-body)' }}>
+                              {request.userName}
+                            </span>
+                            <span className="text-[12px] text-white opacity-60" style={{ fontFamily: 'var(--font-body)' }}>
+                              {request.userEmail}
+                            </span>
+                            <span className="text-[12px] text-white opacity-50" style={{ fontFamily: 'var(--font-body)' }}>
+                              Invited {new Date(request.requestedAt).toLocaleDateString()}
+                            </span>
+                          </div>
+                          <div className="flex gap-[8px] items-center">
+                            <span className="text-[12px] text-yellow-400 font-medium px-2 py-1 bg-yellow-400/10 rounded">
+                              Pending
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </FormSection>
+              )}
             </>
           )}
         </>

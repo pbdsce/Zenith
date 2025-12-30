@@ -41,6 +41,7 @@ interface ParticipantLookingForTeam {
   skills: string;
   interests: string;
   university?: string;
+  email?: string;
 }
 
 export function DiscoverContainer() {
@@ -54,7 +55,10 @@ export function DiscoverContainer() {
   const [userRequests, setUserRequests] = useState<Record<string, string>>({}); // teamCode -> requestStatus
   const [sendingRequest, setSendingRequest] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  
+  const [isTeamLead, setIsTeamLead] = useState(false);
+  const [invitingUser, setInvitingUser] = useState<string | null>(null);
+  const [sentInvites, setSentInvites] = useState<Set<string>>(new Set()); // User IDs
+
   // Modal states
   const [selectedTeamCode, setSelectedTeamCode] = useState<string | null>(null);
   const [teamDetails, setTeamDetails] = useState<TeamDetails | null>(null);
@@ -71,6 +75,54 @@ export function DiscoverContainer() {
         if (!token) {
           setIsLoading(false);
           return;
+        }
+
+        // Check if user is Team Lead
+        if (user?.teamCode) {
+          try {
+            const teamResponse = await fetch(API_ENDPOINTS.getTeam(user.teamCode), {
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+              }
+            });
+            if (teamResponse.ok) {
+              const teamData = await teamResponse.json();
+              if (teamData.success && teamData.data) {
+                const leadId = typeof teamData.data.teamLead === 'string' ? teamData.data.teamLead : teamData.data.teamLead?.id;
+                if (leadId === user.uid) {
+                  setIsTeamLead(true);
+                  setActiveTab("participants"); // Auto-switch for team leads
+
+                  // Fetch already sent invites by this team
+                  try {
+                    const invitesResponse = await fetch(`${API_ENDPOINTS.joinRequest}?teamCode=${user.teamCode}`, {
+                      headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                      }
+                    });
+                    if (invitesResponse.ok) {
+                      const invitesData = await invitesResponse.json();
+                      if (invitesData.success && invitesData.data && Array.isArray(invitesData.data.requests)) {
+                        const inviteeIds = new Set<string>();
+                        invitesData.data.requests.forEach((req: any) => {
+                          if (req.type === 'invite' && (req.status === 'pending' || req.status === 'accepted')) {
+                            inviteeIds.add(req.userId);
+                          }
+                        });
+                        setSentInvites(inviteeIds);
+                      }
+                    }
+                  } catch (e) {
+                    console.error("Error fetching sent invites:", e);
+                  }
+                }
+              }
+            }
+          } catch (error) {
+            console.error("Error verifying team lead status:", error);
+          }
         }
 
         // Fetch teams looking for members
@@ -121,6 +173,7 @@ export function DiscoverContainer() {
               skills: user.bio || 'No skills listed',
               interests: user.bio || 'No interests listed',
               university: user.organisation || undefined,
+              email: user.email,
             }));
             setParticipantsLookingForTeams(transformed);
           } else {
@@ -159,7 +212,7 @@ export function DiscoverContainer() {
     };
 
     fetchData();
-  }, [getToken]);
+  }, [getToken, user]);
 
   const handleSendRequest = async (teamCode: string) => {
     if (!user) return;
@@ -199,6 +252,52 @@ export function DiscoverContainer() {
       });
     } finally {
       setSendingRequest(null);
+    }
+  };
+
+  const handleInviteUser = async (userEmail: string, userId: string) => {
+    if (!user || !user.teamCode) return;
+
+    try {
+      setInvitingUser(userId);
+      const token = await getToken();
+      if (!token) return;
+
+      const response = await fetch(API_ENDPOINTS.joinRequest, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          teamCode: user.teamCode,
+          type: 'invite',
+          email: userEmail
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to invite user');
+      }
+
+      toast({
+        title: "Invitation sent",
+        description: `Invitation sent to ${userEmail} successfully.`,
+      });
+
+      setSentInvites(prev => new Set(prev).add(userId));
+
+    } catch (error) {
+      console.error('Error sending invite:', error);
+      toast({
+        variant: "destructive",
+        title: "Failed to send invite",
+        description: error instanceof Error ? error.message : 'Failed to send invite',
+      });
+    } finally {
+      setInvitingUser(null);
     }
   };
 
@@ -401,7 +500,7 @@ export function DiscoverContainer() {
         </Button>
       </div>
 
-      {user?.teamCode ? (
+      {user?.teamCode && !isTeamLead ? (
         <div className="flex flex-col items-center justify-center py-[60px] text-center">
           <div className="bg-[rgba(255,165,0,0.1)] border border-orange-500/30 rounded-lg p-8 max-w-2xl">
             <h2 className="text-2xl font-bold text-orange-400 mb-4">You are already in a team!</h2>
@@ -417,16 +516,19 @@ export function DiscoverContainer() {
         </div>
       ) : (
         <>
-          <FormSection title="What are you looking for?">
+          <FormSection title={isTeamLead ? "Find Team Members" : "What are you looking for?"}>
             <div className="flex flex-col gap-[24px]">
               {/* Tab Navigation */}
               <div className="flex gap-[12px]">
-                <SectionTab
-                  active={activeTab === "teams"}
-                  onClick={() => setActiveTab("teams")}
-                  icon={Users}
-                  label="Teams Looking for Members"
-                />
+                {/* Only user without team can see teams tab */}
+                {!isTeamLead && (
+                  <SectionTab
+                    active={activeTab === "teams"}
+                    onClick={() => setActiveTab("teams")}
+                    icon={Users}
+                    label="Teams Looking for Members"
+                  />
+                )}
                 <SectionTab
                   active={activeTab === "participants"}
                   onClick={() => setActiveTab("participants")}
@@ -448,112 +550,129 @@ export function DiscoverContainer() {
                 />
               </div>
 
-          {/* Tab Content */}
-          {activeTab === "teams" ? (
-            <div>
-        {isLoading ? (
-          <div className="text-white text-center py-[40px]">Loading teams...</div>
-        ) : filteredTeams.length === 0 ? (
-          <div className="text-white text-center py-[40px] opacity-70">
-            {searchQuery.trim() ? "No teams match your search." : "No teams are currently looking for members."}
-          </div>
-        ) : (
-          <div className="flex flex-col gap-[16px]">
-            {filteredTeams.map((team, idx) => (
-              <div
-                key={idx}
-                className="transition-all duration-300 hover:scale-[1.02] hover:shadow-lg hover:shadow-[rgba(255,77,0,0.2)]"
-              >
-                <Card>
-                  <div 
-                    className="flex items-start justify-between cursor-pointer"
-                    onClick={() => handleTeamClick(team.teamCode)}
-                  >
-                  <div className="flex-1">
-                    <div className="flex items-center gap-[12px] mb-[8px]">
-                      <h3 className="font-['Inter',sans-serif] text-[16px] text-white">{team.teamName}</h3>
-                      {userRequests[team.teamCode] === 'pending' && (
-                        <span className="px-[8px] py-[2px] bg-[rgba(255,235,59,0.2)] border border-[#ffeb3b] rounded-[6px] text-[12px] text-[#ffeb3b] font-medium">
-                          Request Sent
-                        </span>
-                      )}
-                      {userRequests[team.teamCode] === 'accepted' && (
-                        <span className="px-[8px] py-[2px] bg-[rgba(76,175,80,0.2)] border border-[#4caf50] rounded-[6px] text-[12px] text-[#4caf50] font-medium">
-                          Accepted
-                        </span>
-                      )}
+              {/* Tab Content */}
+              {activeTab === "teams" && !isTeamLead ? (
+                <div>
+                  {isLoading ? (
+                    <div className="text-white text-center py-[40px]">Loading teams...</div>
+                  ) : filteredTeams.length === 0 ? (
+                    <div className="text-white text-center py-[40px] opacity-70">
+                      {searchQuery.trim() ? "No teams match your search." : "No teams are currently looking for members."}
                     </div>
-                    <p className="font-['Inter',sans-serif] text-[13px] text-white opacity-70 mb-[8px]">
-                      Problem: {team.problemStatement}
-                    </p>
-                    <div className="flex items-center gap-[12px]">
-                      <span className="font-['Inter',sans-serif] text-[12px] text-white opacity-60">
-                        {team.currentMembers}/{team.maxMembers} members
-                      </span>
+                  ) : (
+                    <div className="flex flex-col gap-[16px]">
+                      {filteredTeams.map((team, idx) => (
+                        <div
+                          key={idx}
+                          className="transition-all duration-300 hover:scale-[1.02] hover:shadow-lg hover:shadow-[rgba(255,77,0,0.2)]"
+                        >
+                          <Card>
+                            <div
+                              className="flex items-start justify-between cursor-pointer"
+                              onClick={() => handleTeamClick(team.teamCode)}
+                            >
+                              <div className="flex-1">
+                                <div className="flex items-center gap-[12px] mb-[8px]">
+                                  <h3 className="font-['Inter',sans-serif] text-[16px] text-white">{team.teamName}</h3>
+                                  {userRequests[team.teamCode] === 'pending' && (
+                                    <span className="px-[8px] py-[2px] bg-[rgba(255,235,59,0.2)] border border-[#ffeb3b] rounded-[6px] text-[12px] text-[#ffeb3b] font-medium">
+                                      Request Sent
+                                    </span>
+                                  )}
+                                  {userRequests[team.teamCode] === 'accepted' && (
+                                    <span className="px-[8px] py-[2px] bg-[rgba(76,175,80,0.2)] border border-[#4caf50] rounded-[6px] text-[12px] text-[#4caf50] font-medium">
+                                      Accepted
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="font-['Inter',sans-serif] text-[13px] text-white opacity-70 mb-[8px]">
+                                  Problem: {team.problemStatement}
+                                </p>
+                                <div className="flex items-center gap-[12px]">
+                                  <span className="font-['Inter',sans-serif] text-[12px] text-white opacity-60">
+                                    {team.currentMembers}/{team.maxMembers} members
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          </Card>
+                        </div>
+                      ))}
                     </div>
-                  </div>
+                  )}
                 </div>
-                </Card>
-              </div>
-            ))}
-          </div>
-        )}
-            </div>
-          ) : (
-            <div>
-        {isLoading ? (
-          <div className="text-white text-center py-[40px]">Loading participants...</div>
-        ) : filteredParticipants.length === 0 ? (
-          <div className="text-white text-center py-[40px] opacity-70">
-            {searchQuery.trim() ? "No participants match your search." : "No participants are currently looking for teams."}
-          </div>
-        ) : (
-          <div className="flex flex-col gap-[16px]">
-            {filteredParticipants.map((participant, idx) => (
-              <div
-                key={idx}
-                className="transition-all duration-300 hover:scale-[1.02] hover:shadow-lg hover:shadow-[rgba(255,77,0,0.2)]"
-              >
-                <Card>
-                  <div 
-                    className="flex flex-col gap-[8px] cursor-pointer"
-                    onClick={() => handleUserClick(participant.id)}
-                  >
-                  <div className="flex items-start justify-between">
-                    <h3 className="font-['Inter',sans-serif] text-[16px] text-white">{participant.name}</h3>
-                    {participant.university && (
-                      <span className="font-['Inter',sans-serif] text-[12px] text-white opacity-60">{participant.university}</span>
-                    )}
-                  </div>
-                  <p className="font-['Inter',sans-serif] text-[13px] text-white opacity-70">
-                    Skills: {participant.skills}
-                  </p>
-                  <p className="font-['Inter',sans-serif] text-[13px] text-white opacity-70">
-                    Interests: {participant.interests}
-                  </p>
-                </div>
-                </Card>
-              </div>
-            ))}
-          </div>
-        )}
-            </div>
-          )}
-        </div>
-      </FormSection>
+              ) : (
+                <div>
+                  {isLoading ? (
+                    <div className="text-white text-center py-[40px]">Loading participants...</div>
+                  ) : filteredParticipants.length === 0 ? (
+                    <div className="text-white text-center py-[40px] opacity-70">
+                      {searchQuery.trim() ? "No participants match your search." : "No participants are currently looking for teams."}
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-[16px]">
+                      {filteredParticipants.map((participant, idx) => (
+                        <div
+                          key={idx}
+                          className="transition-all duration-300 hover:scale-[1.02] hover:shadow-lg hover:shadow-[rgba(255,77,0,0.2)]"
+                        >
+                          <Card>
+                            <div className="flex items-start justify-between">
+                              <div
+                                className="flex-1 cursor-pointer"
+                                onClick={() => handleUserClick(participant.id)}
+                              >
+                                <div className="flex flex-col gap-[8px]">
+                                  <div className="flex items-start justify-between">
+                                    <h3 className="font-['Inter',sans-serif] text-[16px] text-white">{participant.name}</h3>
+                                    {participant.university && (
+                                      <span className="font-['Inter',sans-serif] text-[12px] text-white opacity-60">{participant.university}</span>
+                                    )}
+                                  </div>
+                                  <p className="font-['Inter',sans-serif] text-[13px] text-white opacity-70">
+                                    Skills: {participant.skills}
+                                  </p>
+                                  <p className="font-['Inter',sans-serif] text-[13px] text-white opacity-70">
+                                    Interests: {participant.interests}
+                                  </p>
+                                </div>
+                              </div>
 
-      {/* Team Details Modal */}
-      <TeamDetailsModal
-        isOpen={!!selectedTeamCode}
-        onClose={handleCloseTeamModal}
-        teamDetails={teamDetails}
-        isLoading={isLoadingTeam}
-        error={teamError}
-        onMemberClick={(userId: string) => handleUserClick(userId)}
-        requestStatus={selectedTeamCode ? userRequests[selectedTeamCode] : undefined}
-        onSendRequest={selectedTeamCode ? () => handleSendRequest(selectedTeamCode) : undefined}
-        isSendingRequest={selectedTeamCode ? sendingRequest === selectedTeamCode : false}
-      />
+                              {/* Invite Button for Team Leads */}
+                              {isTeamLead && participant.email && (
+                                <div className="ml-[16px] flex items-center">
+                                  <Button
+                                    variant="primary"
+                                    onClick={() => handleInviteUser(participant.email!, participant.id)}
+                                    disabled={invitingUser === participant.id || sentInvites.has(participant.id)}
+                                  >
+                                    {sentInvites.has(participant.id) ? "Invited" : invitingUser === participant.id ? "Sending..." : "Invite"}
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
+                          </Card>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </FormSection>
+
+          {/* Team Details Modal */}
+          <TeamDetailsModal
+            isOpen={!!selectedTeamCode}
+            onClose={handleCloseTeamModal}
+            teamDetails={teamDetails}
+            isLoading={isLoadingTeam}
+            error={teamError}
+            onMemberClick={(userId: string) => handleUserClick(userId)}
+            requestStatus={selectedTeamCode ? userRequests[selectedTeamCode] : undefined}
+            onSendRequest={selectedTeamCode ? () => handleSendRequest(selectedTeamCode) : undefined}
+            isSendingRequest={selectedTeamCode ? sendingRequest === selectedTeamCode : false}
+          />
 
           {/* User Details Modal */}
           <UserProfileModal
