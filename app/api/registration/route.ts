@@ -146,14 +146,17 @@ const parseForm = async (req: Request): Promise<{ fields: any, files: any }> => 
 
 
 // Create user in Firebase Authentication
-const createAuthUser = async (email: string, password: string): Promise<string> => {
+const createAuthUser = async (email: string, password: string, origin: string): Promise<string> => {
   try {
     // Create the user with email and password
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-    
+
     // Send email verification
-    await sendEmailVerification(userCredential.user);
-    
+    await sendEmailVerification(userCredential.user, {
+      url: `${origin}/dashboard`,
+      handleCodeInApp: true,
+    });
+
     // Return the Firebase Auth UID
     return userCredential.user.uid;
   } catch (error: any) {
@@ -504,7 +507,8 @@ export async function POST(request: Request) {
     // Create user in Firebase Authentication
     let authUid: string;
     try {
-      authUid = await createAuthUser(data.email, password);
+      const origin = new URL(request.url).origin;
+      authUid = await createAuthUser(data.email, password, origin);
     } catch (error: any) {
       return NextResponse.json(
         {

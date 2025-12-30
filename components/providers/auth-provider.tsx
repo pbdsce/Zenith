@@ -210,7 +210,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const sendVerificationEmail = async () => {
         if (auth.currentUser) {
-            await sendEmailVerification(auth.currentUser);
+            await sendEmailVerification(auth.currentUser, {
+                url: `${window.location.origin}/dashboard`,
+                handleCodeInApp: true,
+            });
         }
     };
 

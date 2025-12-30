@@ -6,6 +6,7 @@ interface ButtonProps {
   variant?: "primary" | "secondary" | "danger";
   disabled?: boolean;
   type?: "button" | "submit";
+  className?: string;
 }
 
 export function Button({
@@ -14,6 +15,7 @@ export function Button({
   variant = "primary",
   disabled = false,
   type = "button",
+  className = "",
 }: ButtonProps) {
   const getVariantClass = () => {
     if (disabled)
@@ -36,7 +38,7 @@ export function Button({
       type={type}
       onClick={onClick}
       disabled={disabled}
-      className={`flex items-center justify-center gap-[8px] px-[24px] py-[12px] rounded-[15px] transition-all text-[14px] ${getVariantClass()}`}
+      className={`flex items-center justify-center gap-[8px] px-[24px] py-[12px] rounded-[15px] transition-all text-[14px] ${getVariantClass()} ${className}`}
       style={{ fontFamily: 'var(--font-body)' }}
     >
       {children}
