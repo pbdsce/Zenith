@@ -14,13 +14,13 @@ const instrumentSerif = Instrument_Serif({
 export const metadata: Metadata = {
   title: {
     template: '%s | Zenith',
-    default: 'Zenith - Programming Contest'
+    default: 'Zenith'
   },
   description: 'A 36-hour programming contest featuring CTF, Kaggle, Hackathon, and DSA',
   viewport: 'width=device-width, initial-scale=1',
   themeColor: '#171717',
   icons: {
-    icon: '/favicon.ico',
+    icon: '/Vector.svg',
   }
 };
 
