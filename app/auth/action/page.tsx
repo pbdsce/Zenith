@@ -50,6 +50,25 @@ export default function AuthActionPage() {
                 }
             } catch (error: any) {
                 console.error("Verification error:", error);
+
+                let isActuallyVerified = false;
+                if (auth.currentUser) {
+                    try {
+                        await auth.currentUser.reload();
+                        if (auth.currentUser.emailVerified) {
+                            isActuallyVerified = true;
+                        }
+                    } catch (e) {
+                        console.error("Error checking user status:", e);
+                    }
+                }
+
+                if (isActuallyVerified) {
+                    setStatus("success");
+                    setMessage("Your email has already been verified. You can proceed to the dashboard.");
+                    return;
+                }
+
                 setStatus("error");
                 switch (error.code) {
                     case "auth/expired-action-code":
@@ -85,73 +104,73 @@ export default function AuthActionPage() {
 
     return (
         <div
-            className="min-h-screen w-full flex flex-col items-start relative"
+            className="min-h-screen w-full flex flex-col items-center justify-center relative font-sans text-white p-4"
             style={{
                 backgroundImage: "linear-gradient(90deg, rgb(23, 23, 23) 0%, rgb(23, 23, 23) 100%)",
             }}
         >
-            <div className="bg-[#171717] w-full relative flex-1">
+            <div className="absolute inset-0 z-0">
                 <div
-                    className="flex flex-col items-center justify-center w-full min-h-screen pb-[80px] pt-[60px] px-[40px] relative"
+                    className="absolute inset-0 z-0 opacity-40"
                     style={{
                         backgroundImage:
                             "url('data:image/svg+xml;utf8,<svg viewBox=\\'0 0 1440 652\\' xmlns=\\'http://www.w3.org/2000/svg\\' preserveAspectRatio=\\'none\\'><rect x=\\'0\\' y=\\'0\\' height=\\'100%\\' width=\\'100%\\' fill=\\'url(%23grad)\\' opacity=\\'1\\'/><defs><radialGradient id=\\'grad\\' gradientUnits=\\'userSpaceOnUse\\' cx=\\'0\\' cy=\\'0\\' r=\\'10\\' gradientTransform=\\'matrix(31.68 0 0 22.168 0 174.74)\\'><stop stop-color=\\'rgba(62,32,19,1)\\' offset=\\'0.10445\\'/><stop stop-color=\\'rgba(62,32,19,0)\\' offset=\\'1\\'/></radialGradient></defs></svg>')",
+                        backgroundSize: "cover",
+                        backgroundPosition: "center",
                     }}
-                >
-                    <div className="max-w-[600px] w-full z-10 flex flex-col gap-[32px] items-center">
+                />
+                <DotPattern />
+            </div>
 
-                        <div className="flex flex-col gap-[12px] items-center text-center">
-                            <h1 className="font-['Instrument_Serif',sans-serif] text-[48px] text-white leading-[52px] tracking-[-1px]">
-                                {status === "loading" && "Verifying..."}
-                                {status === "success" && "Email Verified"}
-                                {status === "error" && "Verification Failed"}
-                            </h1>
-                            <p className="font-['Inter',sans-serif] text-[15.9px] text-white opacity-90 leading-[23.8px]">
-                                {status === "loading" && "Please wait while we verify your email address."}
-                                {status === "success" && "Thank you for verifying your email."}
-                                {status === "error" && "We couldn't verify your email address."}
-                            </p>
+            <div className="max-w-[480px] w-full z-10 relative">
+                <div className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-[24px] p-8 md:p-10 shadow-2xl flex flex-col items-center text-center gap-8">
+
+                    {status === "loading" && (
+                        <div className="flex flex-col items-center gap-6 py-8">
+                            <Loader2 className="h-16 w-16 text-[#ff4d00] animate-spin" />
+                            <h1 className="font-['Instrument_Serif',serif] text-4xl">Verifying...</h1>
                         </div>
+                    )}
 
-                        <FormSection title={status === "success" ? "Success" : status === "error" ? "Error" : "Processing"}>
-                            <div className="flex flex-col gap-[20px] items-center text-center py-4">
-
-                                {status === "loading" && (
-                                    <Loader2 className="h-16 w-16 text-[#ff4d00] animate-spin" />
-                                )}
-
-                                {status === "success" && (
-                                    <div className="rounded-full bg-green-500/10 p-4">
-                                        <CheckCircle2 className="h-16 w-16 text-green-500" />
-                                    </div>
-                                )}
-
-                                {status === "error" && (
-                                    <div className="rounded-full bg-red-500/10 p-4">
-                                        <XCircle className="h-16 w-16 text-red-500" />
-                                    </div>
-                                )}
-
-                                <p className="font-['Inter',sans-serif] text-[14px] text-white opacity-80 max-w-[400px]">
+                    {status === "success" && (
+                        <>
+                            <div className="rounded-full bg-green-500/10 p-5 ring-1 ring-green-500/30 shadow-[0_0_30px_-5px_rgba(34,197,94,0.3)]">
+                                <CheckCircle2 className="h-16 w-16 text-green-500" />
+                            </div>
+                            <div className="space-y-3">
+                                <h1 className="font-['Instrument_Serif',serif] text-4xl">Email Verified</h1>
+                                <p className="text-white/70 text-base leading-relaxed">
                                     {message}
                                 </p>
-
-                                {status !== "loading" && (
-                                    <Button
-                                        variant="primary"
-                                        onClick={handleContinue}
-                                        className="w-full mt-4"
-                                    >
-                                        {status === "success" ? "Continue to Dashboard" : "Return to Login"}
-                                        <ArrowRight className="ml-2 h-4 w-4" />
-                                    </Button>
-                                )}
                             </div>
-                        </FormSection>
-                    </div>
-                </div>
+                        </>
+                    )}
 
-                <DotPattern />
+                    {status === "error" && (
+                        <>
+                            <div className="rounded-full bg-red-500/10 p-5 ring-1 ring-red-500/30 shadow-[0_0_30px_-5px_rgba(239,68,68,0.3)]">
+                                <XCircle className="h-16 w-16 text-red-500" />
+                            </div>
+                            <div className="space-y-3">
+                                <h1 className="font-['Instrument_Serif',serif] text-4xl">Verification Failed</h1>
+                                <p className="text-white/70 text-base leading-relaxed">
+                                    {message}
+                                </p>
+                            </div>
+                        </>
+                    )}
+
+                    {status !== "loading" && (
+                        <Button
+                            variant="primary"
+                            onClick={handleContinue}
+                            className="w-full h-12 text-base mt-2"
+                        >
+                            {status === "success" ? "Continue to Dashboard" : "Return to Login"}
+                            <ArrowRight className="ml-2 h-5 w-5" />
+                        </Button>
+                    )}
+                </div>
             </div>
         </div>
     );
