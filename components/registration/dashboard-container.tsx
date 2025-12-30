@@ -45,6 +45,7 @@ interface Team {
     name: string;
     email?: string;
     phone?: string;
+    discord_username?: string;
     organisation?: string;
     resume_link?: string;
     github_link?: string;
@@ -171,6 +172,7 @@ export function DashboardContainer() {
               { key: 'name', label: 'Name' },
               { key: 'email', label: 'Email' },
               { key: 'phone', label: 'Phone' },
+              { key: 'discord_username', label: 'Discord' },
               { key: 'age', label: 'Age' },
               { key: 'organisation', label: 'Organisation' },
               { key: 'bio', label: 'Bio' },
@@ -277,6 +279,7 @@ export function DashboardContainer() {
         { key: 'name', label: 'Name' },
         { key: 'email', label: 'Email' },
         { key: 'phone', label: 'Phone' },
+        { key: 'discord_username', label: 'Discord' },
         { key: 'age', label: 'Age' },
         { key: 'organisation', label: 'Organisation' },
         { key: 'bio', label: 'Bio' },

@@ -103,6 +103,7 @@ export async function GET(request: NextRequest) {
       name: user.name,
       email: user.email,
       phone: user.phone || null,
+      discord_username: user.discord_username || null,
       resume_link: user.resume_link || null,
       profile_picture: user.profile_picture || null,
       leetcode_profile: user.leetcode_profile || null,
@@ -166,6 +167,7 @@ export async function PUT(request: NextRequest) {
       name,
       bio,
       phone,
+      discord_username,
       organisation,
       age,
       resume, // base64 encoded PDF
@@ -208,6 +210,7 @@ export async function PUT(request: NextRequest) {
     if (name !== undefined) updateData.name = name.trim();
     if (bio !== undefined) updateData.bio = bio.trim();
     if (phone !== undefined) updateData.phone = phone.trim();
+    if (discord_username !== undefined) updateData.discord_username = discord_username.trim();
     if (organisation !== undefined) updateData.organisation = organisation.trim();
     if (age !== undefined) updateData.age = Number(age);
     if (github_link !== undefined) updateData.github_link = github_link?.trim() || null;

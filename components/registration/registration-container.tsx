@@ -34,6 +34,7 @@ export function RegistrationContainer({ onSuccess }: RegistrationContainerProps)
     email: "",
     password: "",
     confirmPassword: "",
+    discord_username: "",
     phone: "",
     age: "",
     organisation: "",
@@ -71,7 +72,8 @@ export function RegistrationContainer({ onSuccess }: RegistrationContainerProps)
       email: `testuser${randomId}@example.com`,
       password: "Password@123",
       confirmPassword: "Password@123",
-      phone: `+1 555 123 4567`,
+      discord_username: "testuser.discord",
+      phone: "+1 555 123 4567",
       age: "22",
       organisation: "Test University",
       bio: "I'm a passionate developer interested in AI, web development, and hackathons. Looking forward to participating in Zenith!",
@@ -135,7 +137,11 @@ export function RegistrationContainer({ onSuccess }: RegistrationContainerProps)
     if (registerData.password !== registerData.confirmPassword) {
       newErrors.confirmPassword = "Passwords do not match";
     }
-    
+
+    if (!registerData.discord_username.trim()) {
+      newErrors.discord_username = "Discord username is required";
+    }
+
     if (!registerData.phone.trim()) {
       newErrors.phone = "Phone is required";
     }
@@ -188,6 +194,7 @@ export function RegistrationContainer({ onSuccess }: RegistrationContainerProps)
       formData.append('name', registerData.name);
       formData.append('email', registerData.email);
       formData.append('password', registerData.password);
+      formData.append('discord_username', registerData.discord_username);
       formData.append('phone', registerData.phone);
       formData.append('age', registerData.age);
       formData.append('organisation', registerData.organisation);
@@ -386,6 +393,19 @@ export function RegistrationContainer({ onSuccess }: RegistrationContainerProps)
               error={errors.confirmPassword}
             />
             <div className="grid grid-cols-2 gap-[16px]">
+              <FormInput
+              label="Discord Username"
+              placeholder="username"
+              required
+              value={registerData.discord_username}
+              onChange={(e) =>
+                setRegisterData({
+                  ...registerData,
+                  discord_username: e.target.value,
+                })
+              }
+              error={errors.discord_username}
+              />
               <FormInput
                 label="Phone"
                 type="tel"

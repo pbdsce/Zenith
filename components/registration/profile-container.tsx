@@ -18,6 +18,7 @@ export function ProfileContainer() {
     name: "",
     email: "",
     phone: "",
+    discord_username: "",
     age: "",
     organisation: "",
     bio: "",
@@ -58,6 +59,7 @@ export function ProfileContainer() {
               name: data.user.name || "",
               email: data.user.email || "",
               phone: data.user.phone || "",
+              discord_username: data.user.discord_username || "",
               age: data.user.age?.toString() || "",
               organisation: data.user.organisation || "",
               bio: data.user.bio || "",
@@ -96,6 +98,7 @@ export function ProfileContainer() {
       formData.append('name', profileData.name);
       formData.append('email', profileData.email);
       formData.append('phone', profileData.phone);
+      formData.append('discord_username', profileData.discord_username);
       formData.append('age', profileData.age);
       formData.append('organisation', profileData.organisation);
       formData.append('bio', profileData.bio);
@@ -181,8 +184,14 @@ export function ProfileContainer() {
             />
             <div className="grid grid-cols-2 gap-[16px]">
               <FormInput
+                label="Discord Username"
+                placeholder="username"
+                required
+                value={profileData.discord_username}
+                onChange={(e) => setProfileData({ ...profileData, discord_username: e.target.value })}
+              />
+              <FormInput
                 label="Phone"
-                type="tel"
                 placeholder="+1 555 0100"
                 required
                 value={profileData.phone}

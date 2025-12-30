@@ -54,7 +54,7 @@ export async function GET(
 
     const memberUids = team.teamMembers.map((m: any) => m.uid);
     const members = await User.find({ uid: { $in: memberUids } })
-      .select('uid name email organisation profile_picture phone resume_link github_link linkedin_link leetcode_profile codeforces_link kaggle_link portfolio_link bio age');
+      .select('uid name email organisation profile_picture discord_username resume_link github_link linkedin_link leetcode_profile codeforces_link kaggle_link portfolio_link bio age');
 
     let problemStatement = null;
     if (team.appliedFor) {
@@ -76,7 +76,7 @@ export async function GET(
         email: userInfo?.email || null,
         organisation: userInfo?.organisation || null,
         profile_picture: userInfo?.profile_picture || null,
-        phone: userInfo?.phone || null,
+        discord_username: userInfo?.discord_username || null,
         resume_link: userInfo?.resume_link || null,
         github_link: userInfo?.github_link || null,
         linkedin_link: userInfo?.linkedin_link || null,

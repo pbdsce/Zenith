@@ -1,12 +1,12 @@
 "use client";
 
-import { User, Mail, Phone, Building, FileText, Github, Linkedin, ExternalLink } from "lucide-react";
+import { User, Mail, MessageSquare, Building, FileText, Github, Linkedin, ExternalLink } from "lucide-react";
 
 interface UserDetails {
   uid: string;
   name: string;
   email: string;
-  phone?: string;
+  discord_username?: string;
   organisation?: string;
   bio?: string;
   profile_picture?: string;
@@ -77,10 +77,10 @@ export function UserProfileModal({ isOpen, onClose, userDetails, isLoading }: Us
                   <span className="font-['Inter',sans-serif] text-[14px] text-white opacity-70">{userDetails.email}</span>
                 </div>
               )}
-              {userDetails.phone && (
+              {userDetails.discord_username && (
                 <div className="flex items-center gap-[8px] mb-[4px]">
-                  <Phone className="w-4 h-4 text-white opacity-60" />
-                  <span className="font-['Inter',sans-serif] text-[14px] text-white opacity-70">{userDetails.phone}</span>
+                  <MessageSquare className="w-4 h-4 text-white opacity-60" />
+                  <span className="font-['Inter',sans-serif] text-[14px] text-white opacity-70">{userDetails.discord_username}</span>
                 </div>
               )}
               {userDetails.organisation && (

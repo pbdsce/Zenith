@@ -49,12 +49,13 @@ export async function GET(request: NextRequest) {
 
     if (exportType === 'participants' || exportType === 'all') {
       const users = await User.find({ role: 'user' })
-        .select('uid name email phone age organisation isLooking teamCode github_link linkedin_link createdAt');
+        .select('uid name email phone discord_username age organisation isLooking teamCode github_link linkedin_link createdAt');
       exportData.participants = users.map(u => ({
         id: u._id.toString(),
         name: u.name,
         email: u.email,
         phone: u.phone,
+        discord_username: u.discord_username,
         age: u.age,
         organisation: u.organisation,
         isLooking: u.isLooking,

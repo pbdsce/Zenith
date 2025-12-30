@@ -10,7 +10,7 @@ import User, { IUser } from "@/models/User";
 
 // Utility functions for format validation
 const validateEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-const validatePhone = (phone: string) => /^\+?\d{1,4}[-\s]?\d{10}$/.test(phone);
+const validateDiscordUsername = (username: string) => username.length >= 2 && username.length <= 32;
 const validateAge = (age: string) => {
   const ageNum = parseInt(age);
   return !isNaN(ageNum) && ageNum > 0 && ageNum < 120;
@@ -288,9 +288,9 @@ export async function POST(request: Request) {
     if (
       !data.name ||
       !data.email ||
-      !data.phone ||
-      !data.linkedin_link||
-      !data.github_link||
+      !data.discord_username ||
+      !data.linkedin_link ||
+      !data.github_link ||
       !resumeUrl ||
       !password ||
       !data.bio ||
@@ -317,11 +317,11 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!validatePhone(data.phone)) {
+    if (!validateDiscordUsername(data.discord_username)) {
       return NextResponse.json(
         {
-          message: "Invalid phone number format. It should be a 10-digit number starting with 6-9.",
-          error: "Invalid phone",
+          message: "Invalid Discord username.",
+          error: "Invalid Discord username",
         },
         { status: 400 }
       );
@@ -470,12 +470,12 @@ export async function POST(request: Request) {
       }, { status: 400 });
     }
 
-    // Check for duplicate phone registration
-    const existingUserByPhone = await User.findOne({ phone: String(data.phone) });
-    if (existingUserByPhone) {
-      return NextResponse.json({ 
-        message: "Phone number is already registered!", 
-        error: "Phone number is already registered!" 
+    // Check for duplicate discord registration
+    const existingUserByDiscord = await User.findOne({ discord_username: String(data.discord_username) });
+    if (existingUserByDiscord) {
+      return NextResponse.json({
+        message: "Discord username is already registered!",
+        error: "Discord username is already registered!"
       }, { status: 400 });
     }
 
@@ -519,7 +519,7 @@ export async function POST(request: Request) {
       uid: authUid,
       name: data.name,
       email: data.email,
-      phone: String(data.phone), // Store phone as string
+      discord_username: String(data.discord_username), // Store discord username as string
       resume_link: resumeUrl,
       bio: data.bio,
       age: parseInt(data.age),
@@ -575,13 +575,13 @@ export async function POST(request: Request) {
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const email = searchParams.get('email');
-  const phone = searchParams.get('phone');
+  const discord_username = searchParams.get('discord_username');
 
-  if (!email && !phone) {
+  if (!email && !discord_username) {
     return NextResponse.json(
-      { 
-        message: "Missing query parameters", 
-        error: "Email or phone must be provided"
+      {
+        message: "Missing query parameters",
+        error: "Email or Discord username must be provided"
       },
       { status: 400 }
     );
@@ -591,17 +591,17 @@ export async function GET(request: Request) {
     await dbConnect();
     if (email) {
       const existingUser = await User.findOne({ email });
-      return NextResponse.json({ 
+      return NextResponse.json({
         exists: !!existingUser,
         field: "email"
       });
     }
-    
-    if (phone) {
-      const existingUser = await User.findOne({ phone: String(phone) });
-      return NextResponse.json({ 
+
+    if (discord_username) {
+      const existingUser = await User.findOne({ discord_username: String(discord_username) });
+      return NextResponse.json({
         exists: !!existingUser,
-        field: "phone"
+        field: "discord_username"
       });
     }
   } catch (error) {

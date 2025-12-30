@@ -64,7 +64,7 @@ export async function GET(
       uid: user.uid,
       name: user.name,
       email: user.email,
-      phone: user.phone || null,
+      discord_username: user.discord_username || null,
       age: user.age || null,
       organisation: user.organisation || null,
       bio: user.bio || null,

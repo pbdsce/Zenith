@@ -18,7 +18,8 @@ cloudinaryV2.config({
 
 // Validation functions
 const validateEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-const validatePhone = (phone: string) => /^\+?[1-9]\d{9,14}$/.test(phone.replace(/[\s-]/g, ''));
+const validateDiscordUsername = (username: string) => username.length >= 2 && username.length <= 32;
+const validatePhone = (phone: string) => /^\+?\d{1,4}[-\s]?\d{10}$/.test(phone);
 const validateAge = (age: number) => age >= 13 && age <= 100;
 const validatePassword = (password: string) => {
   if (password.length < 8) return false;
@@ -69,6 +70,7 @@ export async function POST(request: Request) {
     const name = formData.get('name') as string;
     const email = formData.get('email') as string;
     const password = formData.get('password') as string;
+    const discord_username = formData.get('discord_username') as string;
     const phone = formData.get('phone') as string;
     const age = formData.get('age') as string;
     const organisation = formData.get('organisation') as string;
@@ -113,6 +115,12 @@ export async function POST(request: Request) {
 
     if (!password || !validatePassword(password)) {
       errors.password = "Password must be at least 8 characters and contain uppercase, lowercase, number, and special character";
+    }
+
+    if (!discord_username?.trim()) {
+      errors.discord_username = "Discord username is required";
+    } else if (!validateDiscordUsername(discord_username)) {
+      errors.discord_username = "Invalid Discord username";
     }
 
     if (!phone?.trim()) {
@@ -161,6 +169,15 @@ export async function POST(request: Request) {
     if (existingUser) {
       return NextResponse.json(
         { message: "Email already exists" },
+        { status: 409 }
+      );
+    }
+
+    // Check if discord username already exists
+    const existingDiscord = await User.findOne({ discord_username });
+    if (existingDiscord) {
+      return NextResponse.json(
+        { message: "Discord username already exists" },
         { status: 409 }
       );
     }
@@ -226,6 +243,7 @@ export async function POST(request: Request) {
       name: name.trim(),
       email: email.toLowerCase().trim(),
       phone: phone.trim(),
+      discord_username: discord_username.trim(),
       age: Number(age),
       organisation: organisation.trim(),
       bio: bio?.trim(),

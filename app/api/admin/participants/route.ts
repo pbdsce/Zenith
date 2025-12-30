@@ -78,7 +78,7 @@ export async function GET(request: NextRequest) {
 
     const [users, totalParticipants] = await Promise.all([
       User.find(query)
-        .select('uid name email phone organisation age isLooking teamCode resume_link profile_picture github_link linkedin_link createdAt')
+        .select('uid name email phone discord_username organisation age isLooking teamCode resume_link profile_picture github_link linkedin_link createdAt')
         .skip(skip)
         .limit(limit)
         .sort(sortObj),
@@ -101,6 +101,7 @@ export async function GET(request: NextRequest) {
         name: user.name,
         email: user.email,
         phone: user.phone || null,
+        discord_username: user.discord_username || null,
         organisation: user.organisation || null,
         age: user.age || null,
         isLooking: user.isLooking,

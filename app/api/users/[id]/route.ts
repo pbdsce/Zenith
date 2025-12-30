@@ -156,7 +156,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
         uid: user.uid,
         email: user.email,
         name: user.name,
-        phone: user.phone || null,
+        discord_username: user.discord_username || null,
         profile_picture: user.profile_picture || null,
         resume_link: user.resume_link || null,
         leetcode_profile: user.leetcode_profile || null,
@@ -307,7 +307,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     }
     
     const allowedFields = [
-      'phone', 'bio', 'age', 'organisation', 'resume_link', 'profile_picture',
+      'discord_username', 'bio', 'age', 'organisation', 'resume_link', 'profile_picture',
       'leetcode_profile', 'github_link', 'linkedin_link', 'codeforces_link',
       'kaggle_link', 'devfolio_link', 'portfolio_link', 'ctf_profile', 'isLooking'
     ];

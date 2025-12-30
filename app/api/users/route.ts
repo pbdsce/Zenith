@@ -11,7 +11,7 @@ export async function GET() {
       uid: user.uid,
       name: user.name,
       email: user.email,
-      phone: user.phone || null,
+      discord_username: user.discord_username || null,
       resume_link: user.resume_link || null,
       profile_picture: user.profile_picture || null,
       leetcode_profile: user.leetcode_profile || null,

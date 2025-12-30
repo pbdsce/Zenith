@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
-// add mongodb
+import User from "@/models/User";
+import dbConnect from "@/lib/db";
 
 // Validation functions
 const validateEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+const validateDiscordUsername = (username: string) => username.length >= 2 && username.length <= 32;
 const validatePhone = (phone: string) => /^\+?\d{1,4}[-\s]?\d{10}$/.test(phone);
 const validateURL = (url: string) => {
   try {
@@ -39,11 +41,10 @@ const validateStep1 = async (data: any) => {
   } else if (!validateEmail(data.email)) {
     errors.email = "Invalid email format";
   } else {
-    // TODO: Check for duplicate email in MongoDB User collection
-    // const existingUser = await User.findOne({ email: data.email });
-    // if (existingUser) {
-    //   errors.email = "Email is already registered";
-    // }
+    const existingUser = await User.findOne({ email: data.email });
+    if (existingUser) {
+      errors.email = "Email is already registered";
+    }
   }
 
   // Validate password
@@ -70,14 +71,25 @@ const validateStep2 = async (data: any) => {
   // Validate phone
   if (!data.phone?.trim()) {
     errors.phone = "Phone number is required";
-  } else if (data.phone.length !== 10) {
-    errors.phone = "Phone number must be 10 digits";
+  } else if (!validatePhone(data.phone)) {
+    errors.phone = "Invalid phone format";
   } else {
-    // TODO: Check if phone is already registered in MongoDB User collection
-    // const existingUser = await User.findOne({ phone: data.stdCode + data.phone });
-    // if (existingUser) {
-    //   errors.phone = "Phone number is already registered";
-    // }
+    const existingUser = await User.findOne({ phone: data.phone });
+    if (existingUser) {
+      errors.phone = "Phone number is already registered";
+    }
+  }
+
+  // Validate discord username
+  if (!data.discord_username?.trim()) {
+    errors.discord_username = "Discord username is required";
+  } else if (!validateDiscordUsername(data.discord_username)) {
+    errors.discord_username = "Invalid Discord username";
+  } else {
+    const existingUser = await User.findOne({ discord_username: data.discord_username });
+    if (existingUser) {
+      errors.discord_username = "Discord username is already registered";
+    }
   }
 
   // Resume is required but we can't validate it here since we don't have file access
@@ -178,6 +190,7 @@ const validateStep5 = async (data: any) => {
 
 export async function POST(request: Request) {
   try {
+    await dbConnect();
     const data = await request.json();
     const { step } = data;
     let errors = {};

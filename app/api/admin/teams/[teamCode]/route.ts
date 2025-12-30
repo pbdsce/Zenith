@@ -55,7 +55,7 @@ export async function GET(
     // Get member details
     const memberUids = team.teamMembers.map((m: any) => m.uid);
     const members = await User.find({ uid: { $in: memberUids } })
-      .select('uid name email organisation profile_picture phone resume_link github_link');
+      .select('uid name email organisation profile_picture discord_username resume_link github_link');
 
     // Get problem statement
     let problemStatement = null;
@@ -96,7 +96,7 @@ export async function GET(
         id: members.find(u => u.uid === team.teamLead)?._id.toString(),
         name: members.find(u => u.uid === team.teamLead)?.name,
         email: members.find(u => u.uid === team.teamLead)?.email,
-        phone: members.find(u => u.uid === team.teamLead)?.phone,
+        discord_username: members.find(u => u.uid === team.teamLead)?.discord_username,
         organisation: members.find(u => u.uid === team.teamLead)?.organisation,
         resume_link: members.find(u => u.uid === team.teamLead)?.resume_link,
         github_link: members.find(u => u.uid === team.teamLead)?.github_link,

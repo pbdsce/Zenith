@@ -12,7 +12,7 @@ export interface TeamDetails {
     uid?: string;
     name: string;
     email?: string;
-    phone?: string;
+    discord_username?: string;
     organisation?: string;
   };
   teamMembers: Array<{

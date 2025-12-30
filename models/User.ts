@@ -6,6 +6,7 @@ export interface IUser extends Document {
     name: string;
     email: string;
     phone?: string;
+    discord_username?: string;
     resume_link?: string;
     leetcode_profile?: string;
     github_link?: string;
@@ -31,6 +32,7 @@ const UserSchema: Schema = new Schema({
     name: { type: String, required: true },
     email: { type: String, required: true, unique: true },
     phone: { type: String }, // Optional - required for regular users during registration
+    discord_username: { type: String }, // Optional - required for regular users during registration
     resume_link: { type: String },
     leetcode_profile: { type: String },
     github_link: { type: String },
