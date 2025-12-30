@@ -164,9 +164,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 const password = formData.get('password') as string;
 
                 if (email && password) {
-                    const userCredential = await signInWithEmailAndPassword(auth, email, password);
-                    // Send verification email immediately after registration
-                    await sendEmailVerification(userCredential.user);
+                    await signInWithEmailAndPassword(auth, email, password);
                 } else {
                     if (data.user) {
                     }
@@ -210,10 +208,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const sendVerificationEmail = async () => {
         if (auth.currentUser) {
-            await sendEmailVerification(auth.currentUser, {
-                url: `${window.location.origin}/dashboard`,
-                handleCodeInApp: true,
-            });
+            await sendEmailVerification(auth.currentUser);
         }
     };
 
