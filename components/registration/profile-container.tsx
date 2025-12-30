@@ -25,6 +25,9 @@ export function ProfileContainer() {
     github: "",
     linkedin: "",
     portfolio: "",
+    profile_picture: "",
+    isLooking: false,
+    teamCode: "",
   });
   const [resumeFile, setResumeFile] = useState<File | null>(null);
   const [profilePhoto, setProfilePhoto] = useState<File | null>(null);
@@ -68,6 +71,9 @@ export function ProfileContainer() {
               github: userData.github_link || "",
               linkedin: userData.linkedin_link || "",
               portfolio: userData.portfolio_link || "",
+              isLooking: userData.isLooking || false,
+              teamCode: userData.teamCode || "",
+              profile_picture: userData.profile_picture || "",
             });
 
             if (userData.resume_link) setResumeFileName("resume.pdf");
@@ -131,6 +137,7 @@ export function ProfileContainer() {
         github_link: profileData.github,
         linkedin_link: profileData.linkedin,
         portfolio_link: profileData.portfolio,
+        isLooking: profileData.isLooking,
         resume: resumeBase64,
         profile_picture: photoBase64,
       };
@@ -185,6 +192,28 @@ export function ProfileContainer() {
       </div>
 
       {alert && <AlertBanner type={alert.type} message={alert.message} />}
+
+      {!profileData.teamCode && (
+        <div className="flex items-center justify-between p-4 rounded-[15px] bg-[rgba(138,138,138,0.1)] border border-[rgba(255,255,255,0.1)]">
+          <div className="flex flex-col gap-1">
+            <h3 className="text-white font-medium">Looking for a Team?</h3>
+            <p className="text-sm text-[rgba(255,255,255,0.6)]">
+              Enable this to let other participants find and invite you.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setProfileData(prev => ({ ...prev, isLooking: !prev.isLooking }))}
+            className={`relative w-12 h-6 rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-[#ff4d00] focus:ring-offset-2 focus:ring-offset-black ${profileData.isLooking ? 'bg-[#ff4d00]' : 'bg-[rgba(255,255,255,0.2)]'
+              }`}
+          >
+            <span
+              className={`inline-block w-4 h-4 transform transition-transform duration-200 ease-in-out bg-white rounded-full ${profileData.isLooking ? 'translate-x-7' : 'translate-x-1'
+                }`}
+            />
+          </button>
+        </div>
+      )}
 
       <form onSubmit={handleUpdateProfile} className="flex flex-col gap-[24px]">
         <fieldset disabled={isProfileLocked} className="flex flex-col gap-[24px] disabled:opacity-70 disabled:pointer-events-none">
