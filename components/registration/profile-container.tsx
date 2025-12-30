@@ -12,7 +12,7 @@ import { Button } from "./button";
 import { AlertBanner } from "./alert-banner";
 
 export function ProfileContainer() {
-  const { user, isAuthenticated, refreshUser } = useAuth();
+  const { user, isAuthenticated, refreshUser, getToken } = useAuth();
   const router = useRouter();
   const [profileData, setProfileData] = useState({
     name: "",
@@ -43,9 +43,9 @@ export function ProfileContainer() {
     // Load data from API
     const fetchProfile = async () => {
       try {
-        const token = localStorage.getItem('authToken');
-        
-        const response = await fetch(`/api/users/${user.uid}`, {
+        const token = await getToken();
+
+        const response = await fetch('/api/user/profile', {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -54,24 +54,26 @@ export function ProfileContainer() {
 
         if (response.ok) {
           const data = await response.json();
-          if (data.status === "success" && data.user) {
-            setProfileData({
-              name: data.user.name || "",
-              email: data.user.email || "",
-              phone: data.user.phone || "",
-              discord_username: data.user.discord_username || "",
-              age: data.user.age?.toString() || "",
-              organisation: data.user.organisation || "",
-              bio: data.user.bio || "",
-              github: data.user.github_link || "",
-              linkedin: data.user.linkedin_link || "",
-              portfolio: data.user.portfolio_link || "",
-            });
-            
-            if (data.user.resume_link) setResumeFileName("resume.pdf");
-            if (data.user.profile_picture) setProfilePhotoFileName("profile.jpg");
+          const userData = data.success ? data.data : data;
 
-            if (data.isProfileLocked) {
+          if (userData && userData.email) {
+            setProfileData({
+              name: userData.name || "",
+              email: userData.email || "",
+              phone: userData.phone || "",
+              age: userData.age?.toString() || "",
+              discord_username: userData.discord_username || "",
+              organisation: userData.organisation || "",
+              bio: userData.bio || "",
+              github: userData.github_link || "",
+              linkedin: userData.linkedin_link || "",
+              portfolio: userData.portfolio_link || "",
+            });
+
+            if (userData.resume_link) setResumeFileName("resume.pdf");
+            if (userData.profile_picture) setProfilePhotoFileName("profile.jpg");
+
+            if (userData.isProfileLocked || data.isProfileLocked) {
               setIsProfileLocked(true);
               setAlert({
                 type: "warning",
@@ -88,46 +90,66 @@ export function ProfileContainer() {
     fetchProfile();
   }, [user, isAuthenticated, router]);
 
+  const toBase64 = (file: File) => new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = error => reject(error);
+  });
+
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     setAlert(null);
 
     try {
-      const formData = new FormData();
-      formData.append('name', profileData.name);
-      formData.append('email', profileData.email);
-      formData.append('phone', profileData.phone);
-      formData.append('discord_username', profileData.discord_username);
-      formData.append('age', profileData.age);
-      formData.append('organisation', profileData.organisation);
-      formData.append('bio', profileData.bio);
-      formData.append('github_link', profileData.github);
-      formData.append('linkedin_link', profileData.linkedin);
-      formData.append('portfolio_link', profileData.portfolio);
-      
-      if (resumeFile) formData.append('resume', resumeFile);
-      if (profilePhoto) formData.append('profile_picture', profilePhoto);
+      const token = await getToken();
 
-      const token = localStorage.getItem('authToken');
+      if (!token) {
+        throw new Error("Not authenticated");
+      }
+
+      let resumeBase64: string | undefined;
+      let photoBase64: string | undefined;
+
+      if (resumeFile) {
+        resumeBase64 = await toBase64(resumeFile);
+      }
+
+      if (profilePhoto) {
+        photoBase64 = await toBase64(profilePhoto);
+      }
+
+      const payload = {
+        name: profileData.name,
+        email: profileData.email,
+        phone: profileData.phone,
+        age: profileData.age,
+        organisation: profileData.organisation,
+        bio: profileData.bio,
+        discord_username: profileData.discord_username,
+        github_link: profileData.github,
+        linkedin_link: profileData.linkedin,
+        portfolio_link: profileData.portfolio,
+        resume: resumeBase64,
+        profile_picture: photoBase64,
+      };
 
       // Call Next.js API route
-      const response = await fetch(`/api/users/${user?.uid}`, {
+      const response = await fetch('/api/user/profile', {
         method: 'PUT',
         headers: {
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         },
-        body: formData
+        body: JSON.stringify(payload)
       });
 
       const data = await response.json();
 
-      if (!response.ok || data.status !== 'success') {
+      if (!response.ok || !data.success && data.status !== 'success') {
         throw new Error(data.message || 'Failed to update profile');
       }
-
-      // Update local storage
-      localStorage.setItem('authUser', JSON.stringify(data.user));
 
       setAlert({
         type: "success",
@@ -173,6 +195,7 @@ export function ProfileContainer() {
               required
               value={profileData.name}
               onChange={(e) => setProfileData({ ...profileData, name: e.target.value })}
+              disabled
             />
             <FormInput
               label="Email Address"
@@ -181,21 +204,17 @@ export function ProfileContainer() {
               required
               value={profileData.email}
               onChange={(e) => setProfileData({ ...profileData, email: e.target.value })}
+              disabled
             />
             <div className="grid grid-cols-2 gap-[16px]">
               <FormInput
-                label="Discord Username"
-                placeholder="username"
-                required
-                value={profileData.discord_username}
-                onChange={(e) => setProfileData({ ...profileData, discord_username: e.target.value })}
-              />
-              <FormInput
                 label="Phone"
+                type="tel"
                 placeholder="+1 555 0100"
                 required
                 value={profileData.phone}
                 onChange={(e) => setProfileData({ ...profileData, phone: e.target.value })}
+                disabled
               />
               <FormInput
                 label="Age"
@@ -203,8 +222,16 @@ export function ProfileContainer() {
                 required
                 value={profileData.age}
                 onChange={(e) => setProfileData({ ...profileData, age: e.target.value })}
+                disabled
               />
             </div>
+            <FormInput
+              label="Discord Username"
+              placeholder="username#1234"
+              required
+              value={profileData.discord_username}
+              onChange={(e) => setProfileData({ ...profileData, discord_username: e.target.value })}
+            />
             <FormInput
               label="Organisation"
               placeholder="Your University"

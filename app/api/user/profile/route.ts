@@ -207,12 +207,9 @@ export async function PUT(request: NextRequest) {
     // Build update object with only provided fields
     const updateData: Record<string, any> = {};
 
-    if (name !== undefined) updateData.name = name.trim();
     if (bio !== undefined) updateData.bio = bio.trim();
-    if (phone !== undefined) updateData.phone = phone.trim();
     if (discord_username !== undefined) updateData.discord_username = discord_username.trim();
     if (organisation !== undefined) updateData.organisation = organisation.trim();
-    if (age !== undefined) updateData.age = Number(age);
     if (github_link !== undefined) updateData.github_link = github_link?.trim() || null;
     if (linkedin_link !== undefined) updateData.linkedin_link = linkedin_link?.trim() || null;
     if (leetcode_profile !== undefined) updateData.leetcode_profile = leetcode_profile?.trim() || null;
