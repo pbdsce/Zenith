@@ -789,6 +789,32 @@ export function DashboardContainer() {
 
       {/* Commented out Quick Actions - now using QuickActionsCard */}
 
+      {/* Delete Team Confirmation Dialog */}
+      <AlertDialog open={deleteTeamDialogOpen} onOpenChange={setDeleteTeamDialogOpen}>
+        <AlertDialogContent className="bg-[rgba(138,138,138,0.15)] backdrop-blur-[2.5px] border-[rgba(255,255,255,0.2)]">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white" style={{ fontFamily: 'var(--font-heading)' }}>
+              Delete Team
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-white/80" style={{ fontFamily: 'var(--font-body)' }}>
+              Are you sure you want to delete the team "{team?.teamName}"? This action cannot be undone and all team data including members and submissions will be permanently removed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="text-white" style={{ fontFamily: 'var(--font-body)' }}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteTeam}
+              className="bg-red-600 hover:bg-red-700 text-white"
+              style={{ fontFamily: 'var(--font-body)' }}
+            >
+              Delete Team
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Leave Team Confirmation Dialog */}
       <AlertDialog open={leaveTeamDialogOpen} onOpenChange={setLeaveTeamDialogOpen}>
         <AlertDialogContent className="bg-[rgba(138,138,138,0.15)] backdrop-blur-[2.5px] border-[rgba(255,255,255,0.2)]">
