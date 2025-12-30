@@ -52,6 +52,23 @@ export async function GET(request: NextRequest) {
       query.appliedFor = appliedFor;
     }
 
+    const search = searchParams.get('search');
+    if (search) {
+      const searchRegex = { $regex: search, $options: 'i' };
+
+      // Find matching problem statements
+      const matchingPs = await ProblemStatement.find({
+        title: searchRegex
+      }).select('_id');
+      const matchingPsIds = matchingPs.map(ps => ps._id.toString());
+
+      query.$or = [
+        { teamName: searchRegex },
+        { teamCode: searchRegex },
+        { appliedFor: { $in: matchingPsIds } }
+      ];
+    }
+
     const skip = (page - 1) * limit;
 
     const [teams, totalTeams] = await Promise.all([

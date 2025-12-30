@@ -59,6 +59,17 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    const search = searchParams.get('search');
+    if (search) {
+      const searchRegex = { $regex: search, $options: 'i' };
+      query.$or = [
+        { name: searchRegex },
+        { email: searchRegex },
+        { organisation: searchRegex },
+        { bio: searchRegex }
+      ];
+    }
+
     const skip = (page - 1) * limit;
     
     const [users, totalUsers] = await Promise.all([

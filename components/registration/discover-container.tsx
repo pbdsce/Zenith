@@ -58,6 +58,15 @@ export function DiscoverContainer() {
   const [isTeamLead, setIsTeamLead] = useState(false);
   const [invitingUser, setInvitingUser] = useState<string | null>(null);
   const [sentInvites, setSentInvites] = useState<Set<string>>(new Set()); // User IDs
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
+
+  // Debounce search query
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   // Modal states
   const [selectedTeamCode, setSelectedTeamCode] = useState<string | null>(null);
@@ -70,12 +79,18 @@ export function DiscoverContainer() {
 
   useEffect(() => {
     const fetchData = async () => {
+      setIsLoading(true);
       try {
         const token = await getToken();
         if (!token) {
           setIsLoading(false);
           return;
         }
+
+        // Build query string
+        const queryParams = debouncedSearchQuery.trim()
+          ? `?search=${encodeURIComponent(debouncedSearchQuery.trim())}`
+          : '';
 
         // Check if user is Team Lead
         if (user?.teamCode) {
@@ -126,7 +141,7 @@ export function DiscoverContainer() {
         }
 
         // Fetch teams looking for members
-        const teamsResponse = await fetch(API_ENDPOINTS.lookingForMembers, {
+        const teamsResponse = await fetch(`${API_ENDPOINTS.lookingForMembers}${queryParams}`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -155,7 +170,7 @@ export function DiscoverContainer() {
         }
 
         // Fetch participants looking for teams
-        const participantsResponse = await fetch(API_ENDPOINTS.lookingForTeam, {
+        const participantsResponse = await fetch(`${API_ENDPOINTS.lookingForTeam}${queryParams}`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -212,7 +227,7 @@ export function DiscoverContainer() {
     };
 
     fetchData();
-  }, [getToken, user]);
+  }, [getToken, user, debouncedSearchQuery]);
 
   const handleSendRequest = async (teamCode: string) => {
     if (!user) return;
@@ -465,28 +480,7 @@ export function DiscoverContainer() {
     setUserDetails(null);
   };
 
-  // Filter teams based on search query
-  const filteredTeams = teamsLookingForMembers.filter(team => {
-    if (!searchQuery.trim()) return true;
-    const query = searchQuery.toLowerCase();
-    return (
-      team.teamName.toLowerCase().includes(query) ||
-      team.teamCode.toLowerCase().includes(query) ||
-      team.problemStatement.toLowerCase().includes(query)
-    );
-  });
 
-  // Filter participants based on search query
-  const filteredParticipants = participantsLookingForTeams.filter(participant => {
-    if (!searchQuery.trim()) return true;
-    const query = searchQuery.toLowerCase();
-    return (
-      participant.name.toLowerCase().includes(query) ||
-      participant.skills.toLowerCase().includes(query) ||
-      participant.interests.toLowerCase().includes(query) ||
-      (participant.university && participant.university.toLowerCase().includes(query))
-    );
-  });
 
   return (
     <div className="flex flex-col gap-[24px] w-full">
@@ -555,13 +549,13 @@ export function DiscoverContainer() {
                 <div>
                   {isLoading ? (
                     <div className="text-white text-center py-[40px]">Loading teams...</div>
-                  ) : filteredTeams.length === 0 ? (
+                  ) : teamsLookingForMembers.length === 0 ? (
                     <div className="text-white text-center py-[40px] opacity-70">
                       {searchQuery.trim() ? "No teams match your search." : "No teams are currently looking for members."}
                     </div>
                   ) : (
                     <div className="flex flex-col gap-[16px]">
-                      {filteredTeams.map((team, idx) => (
+                      {teamsLookingForMembers.map((team, idx) => (
                         <div
                           key={idx}
                           className="transition-all duration-300 hover:scale-[1.02] hover:shadow-lg hover:shadow-[rgba(255,77,0,0.2)]"
@@ -605,13 +599,13 @@ export function DiscoverContainer() {
                 <div>
                   {isLoading ? (
                     <div className="text-white text-center py-[40px]">Loading participants...</div>
-                  ) : filteredParticipants.length === 0 ? (
+                  ) : participantsLookingForTeams.length === 0 ? (
                     <div className="text-white text-center py-[40px] opacity-70">
                       {searchQuery.trim() ? "No participants match your search." : "No participants are currently looking for teams."}
                     </div>
                   ) : (
                     <div className="flex flex-col gap-[16px]">
-                      {filteredParticipants.map((participant, idx) => (
+                      {participantsLookingForTeams.map((participant, idx) => (
                         <div
                           key={idx}
                           className="transition-all duration-300 hover:scale-[1.02] hover:shadow-lg hover:shadow-[rgba(255,77,0,0.2)]"
