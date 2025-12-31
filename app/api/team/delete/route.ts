@@ -55,6 +55,14 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
+    // Check if team has other members (enforce ownership transfer or member removal first)
+    if (team.teamMembers.length > 1) {
+      return NextResponse.json(
+        { message: "Cannot delete team with other members. Please transfer ownership or remove members first." },
+        { status: 400 }
+      );
+    }
+
     // Prevent deletion if team has been submitted
     if (team.teamStatus === 'submitted' || team.teamStatus === 'shortlisted' || team.teamStatus === 'rsvped') {
       return NextResponse.json(

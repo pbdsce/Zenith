@@ -25,11 +25,13 @@ export function TeamMembersCard({
   teamStatus,
   currentUserId,
   onRemoveMember,
-}: TeamMembersCardProps) {
+  onTransferOwnership,
+}: TeamMembersCardProps & { onTransferOwnership?: (memberId: string) => void }) {
   // Can remove members only if lead and team is in active state
-  const canRemove = isLead && 
-    teamStatus !== "submitted" && 
-    teamStatus !== "shortlisted" && 
+  // Can transfer ownership only if lead and team is in active state
+  const isActionable = isLead &&
+    teamStatus !== "submitted" &&
+    teamStatus !== "shortlisted" &&
     teamStatus !== "confirmed";
 
   // Generate initials from name
@@ -97,15 +99,26 @@ export function TeamMembersCard({
               </div>
             </div>
 
-            {/* Remove Button */}
-            {canRemove && member.uid !== currentUserId && (
-              <Button
-                onClick={() => onRemoveMember(member.uid, member.name)}
-                variant="danger"
-              >
-                <Trash2 className="w-4 h-4" />
-                Remove
-              </Button>
+            {/* Actions */}
+            {isActionable && member.uid !== currentUserId && (
+              <div className="flex gap-2">
+                {onTransferOwnership && (
+                  <Button
+                    onClick={() => onTransferOwnership(member.uid)}
+                    variant="secondary"
+                    className="h-8 px-3 text-xs"
+                  >
+                    Transfer Lead
+                  </Button>
+                )}
+                <Button
+                  onClick={() => onRemoveMember(member.uid, member.name)}
+                  variant="danger"
+                  className="h-8 px-3"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              </div>
             )}
           </div>
         ))}

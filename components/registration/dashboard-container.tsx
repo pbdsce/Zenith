@@ -24,6 +24,7 @@ import { TeamMembersCard } from "./team-members-card";
 import { QuickActionsCard } from "./quick-actions-card";
 import { SubmissionStatusCard } from "./submission-status-card";
 import { DeadlineTimer } from "./deadline-timer";
+import { TransferOwnershipModal } from "./transfer-ownership-modal";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -100,6 +101,7 @@ export function DashboardContainer() {
   const [withdrawSubmissionDialogOpen, setWithdrawSubmissionDialogOpen] = useState(false);
   const [removeMemberDialogOpen, setRemoveMemberDialogOpen] = useState(false);
   const [memberToRemove, setMemberToRemove] = useState<{ id: string; name: string } | null>(null);
+  const [transferOwnershipDialogOpen, setTransferOwnershipDialogOpen] = useState(false);
 
   const handleRespondToInvite = async (requestId: string, action: 'accept' | 'decline') => {
     try {
@@ -149,14 +151,14 @@ export function DashboardContainer() {
     const fetchData = async () => {
       try {
         setIsLoading(true);
-        
+
         // Get Firebase auth token (automatically refreshed by Firebase SDK)
         const token = await getToken();
         if (!token) {
           router.push("/login");
           return;
         }
-        
+
         // Fetch user profile from authenticated endpoint
         const userResponse = await fetch(API_ENDPOINTS.userProfile, {
           headers: {
@@ -185,7 +187,7 @@ export function DashboardContainer() {
           const userData = await userResponse.json();
           // Profile API returns data directly (not wrapped in success/data)
           const profileData = userData.success ? userData.data : userData;
-          
+
           if (profileData) {
             // Calculate profile completeness based on ALL profile fields (excluding system fields)
             // Define all profile fields with their human-readable labels
@@ -208,10 +210,10 @@ export function DashboardContainer() {
               { key: 'portfolio_link', label: 'Portfolio' },
               { key: 'ctf_profile', label: 'CTF Profile' },
             ];
-            
+
             let completed = 0;
             const missing: string[] = [];
-            
+
             profileFields.forEach((field) => {
               const value = profileData[field.key];
               // Check if field exists and is not null/empty
@@ -221,7 +223,7 @@ export function DashboardContainer() {
                 missing.push(field.label);
               }
             });
-            
+
             const percentage = Math.round((completed / profileFields.length) * 100);
             setProfileCompleteness(percentage);
             setMissingFields(missing);
@@ -241,7 +243,7 @@ export function DashboardContainer() {
                   const teamData = await teamResponse.json();
                   if (teamData.success && teamData.data) {
                     setTeam(teamData.data);
-                    
+
                     // Fetch team requests if lead
                     const teamInfo = teamData.data;
                     const teamCode = teamInfo.teamCode;
@@ -256,7 +258,7 @@ export function DashboardContainer() {
                         if (requestsResponse.ok) {
                           const requestsData = await requestsResponse.json();
                           if (requestsData.success && requestsData.data && requestsData.data.requests) {
-                             setTeamRequests(requestsData.data.requests.filter((r: any) => r.type === 'request' && r.status === 'pending'));
+                            setTeamRequests(requestsData.data.requests.filter((r: any) => r.type === 'request' && r.status === 'pending'));
                           }
                         }
                       } catch (error) {
@@ -353,10 +355,10 @@ export function DashboardContainer() {
         { key: 'portfolio_link', label: 'Portfolio' },
         { key: 'ctf_profile', label: 'CTF Profile' },
       ];
-      
+
       let completed = 0;
       const missing: string[] = [];
-      
+
       profileFields.forEach((field) => {
         if (!user) return;
         const value = user[field.key as keyof typeof user];
@@ -366,7 +368,7 @@ export function DashboardContainer() {
           missing.push(field.label);
         }
       });
-      
+
       setProfileCompleteness(Math.round((completed / profileFields.length) * 100));
       setMissingFields(missing);
     };
@@ -400,7 +402,29 @@ export function DashboardContainer() {
     // TODO: Call API to update RSVP status
   };
 
-  const handleDeleteTeam = async () => {
+  /* 
+    Triggered by the "Delete Team" button in QuickActions.
+    Checks eligibility before opening confirmation dialog.
+  */
+  const checkDeleteTeamEligibility = () => {
+    if (!team) return;
+
+    if (team.teamMembers.length > 1) {
+      toast({
+        variant: "destructive",
+        title: "Cannot Delete Team",
+        description: "You must transfer ownership or remove other members before deleting the team.",
+      });
+      return;
+    }
+
+    setDeleteTeamDialogOpen(true);
+  };
+
+  /* 
+    Executed after confirmation in the dialog.
+  */
+  const executeDeleteTeam = async () => {
     if (!team || !user) return;
 
     try {
@@ -488,10 +512,10 @@ export function DashboardContainer() {
         description: "You have successfully left the team",
       });
       setLeaveTeamDialogOpen(false);
-      
+
       // Clear team state and refresh
       setTeam(null);
-      
+
       // Trigger refresh to reload data
       setRefreshTrigger(prev => prev + 1);
     } catch (error) {
@@ -614,6 +638,7 @@ export function DashboardContainer() {
           setTeam(teamData.data);
         }
       }
+      setRemoveMemberDialogOpen(false);
     } catch (error) {
       console.error('Error removing member:', error);
       setAlert({
@@ -621,6 +646,57 @@ export function DashboardContainer() {
         message: error instanceof Error ? error.message : 'Failed to remove member',
       });
       setTimeout(() => setAlert(null), 3000);
+      setRemoveMemberDialogOpen(false);
+    }
+  };
+
+  const handleTransferOwnership = async (newLeadId: string) => {
+    if (!team || !user) return;
+
+    try {
+      const token = await getToken();
+      if (!token) {
+        setAlert({
+          type: "error",
+          message: "Authentication required",
+        });
+        return;
+      }
+
+      const response = await fetch('/api/team/transfer-ownership', {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          teamCode: team.teamCode,
+          newLeadId,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to transfer ownership');
+      }
+
+      toast({
+        title: "Ownership Transferred",
+        description: "You have successfully transferred team ownership.",
+      });
+
+      setTransferOwnershipDialogOpen(false);
+      setRefreshTrigger(prev => prev + 1);
+
+    } catch (error) {
+      console.error('Error transferring ownership:', error);
+      toast({
+        variant: "destructive",
+        title: "Failed to transfer",
+        description: error instanceof Error ? error.message : "Failed to transfer ownership",
+      });
+      setTransferOwnershipDialogOpen(false);
     }
   };
 
@@ -643,7 +719,7 @@ export function DashboardContainer() {
   return (
     <div className="flex flex-col gap-[24px] max-w-[1100px] w-full">
       {alert && <AlertBanner type={alert.type} message={alert.message} />}
-      
+
       {/* Header */}
       <div className="flex flex-col gap-[12px] items-center text-center">
         <h1 className="text-[48px] text-white leading-[52px] tracking-[-1px]" style={{ fontFamily: 'var(--font-heading)' }}>
@@ -684,9 +760,9 @@ export function DashboardContainer() {
               status={<StatusBadge status="none" icon={AlertCircle} />}
             >
               <div className="flex flex-col gap-[16px]">
-                <AlertBanner 
-                  type="warning" 
-                  message="Important: Even if you want to participate alone, you still need to create a team to submit your project." 
+                <AlertBanner
+                  type="warning"
+                  message="Important: Even if you want to participate alone, you still need to create a team to submit your project."
                 />
                 <p className="text-[14px] text-white opacity-80" style={{ fontFamily: 'var(--font-body)' }}>
                   You're not part of a team yet. Create or join a team to participate in the hackathon.
@@ -728,6 +804,7 @@ export function DashboardContainer() {
               teamStatus={teamStatus}
               currentUserId={user.uid}
               onRemoveMember={handleRemoveMember}
+              onTransferOwnership={() => setTransferOwnershipDialogOpen(true)}
             />
           )}
 
@@ -785,7 +862,7 @@ export function DashboardContainer() {
               memberCount={team.memberCount}
               maxMembers={4}
               onNavigate={(path) => router.push(path)}
-              onDeleteTeam={() => setDeleteTeamDialogOpen(true)}
+              onDeleteTeam={checkDeleteTeamEligibility}
               onLeaveTeam={() => setLeaveTeamDialogOpen(true)}
               onWithdrawSubmission={handleWithdrawSubmission}
               isDeadlineExpired={isDeadlineExpired}
@@ -886,7 +963,7 @@ export function DashboardContainer() {
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleDeleteTeam}
+              onClick={executeDeleteTeam}
               className="bg-black/50 hover:bg-black/60 text-white border border-[#ff4d00]"
               style={{ fontFamily: 'var(--font-body)' }}
             >
@@ -973,6 +1050,17 @@ export function DashboardContainer() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Transfer Ownership Modal */}
+      {team && (
+        <TransferOwnershipModal
+          isOpen={transferOwnershipDialogOpen}
+          onClose={() => setTransferOwnershipDialogOpen(false)}
+          onConfirm={handleTransferOwnership}
+          members={team.teamMembers}
+          currentUserId={user.uid}
+        />
+      )}
     </div>
   );
 }
