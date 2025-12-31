@@ -764,9 +764,9 @@ export function DashboardContainer() {
                 />
               </div>
               {profileCompleteness < 100 && (
-                <p 
-                  onClick={() => router.push("/dashboard/profile")} 
-                  className="text-[12px] text-[#ff8800] opacity-80 cursor-pointer hover:opacity-100 transition-opacity"
+                <p
+                  onClick={() => router.push("/dashboard/profile")}
+                  className="text-[12px] text-[#ff8800] opacity-80 cursor-pointer hover:opacity-100 transition-opacity break-words text-center"
                   style={{ fontFamily: 'var(--font-body)' }}
                 >
                   {missingFields.length} fields missing → Complete now
@@ -799,26 +799,26 @@ export function DashboardContainer() {
                 {teamRequests.map((request) => (
                   <div
                     key={request.requestId}
-                    className="flex flex-col gap-[8px] p-[12px] bg-[rgba(138,138,138,0.1)] rounded-[12px] border border-[rgba(255,255,255,0.1)]"
+                    className="flex flex-col gap-[8px] p-[12px] bg-[rgba(138,138,138,0.1)] rounded-[12px] border border-[rgba(255,255,255,0.1)] min-w-0 items-center text-center"
                   >
-                    <span className="text-[14px] text-white" style={{ fontFamily: 'var(--font-body)' }}>
+                    <span className="text-[14px] text-white break-words" style={{ fontFamily: 'var(--font-body)' }}>
                       <span className="font-semibold">{request.userName}</span> wants to join your team
                     </span>
-                    <span className="text-[12px] text-white opacity-50" style={{ fontFamily: 'var(--font-body)' }}>
+                    <span className="text-[12px] text-white opacity-50 break-all" style={{ fontFamily: 'var(--font-body)' }}>
                       Email: {request.userEmail}
                     </span>
-                    <div className="flex gap-[8px]">
+                    <div className="flex flex-wrap gap-[8px] w-full">
                       <Button
                         onClick={() => handleRespondToInvite(request.requestId, 'accept')}
                         variant="primary"
-                        className="flex-1"
+                        className="flex-1 min-w-[100px]"
                       >
                         <Check className="w-4 h-4 mr-2" /> Accept
                       </Button>
                       <Button
                         onClick={() => handleRespondToInvite(request.requestId, 'decline')}
                         variant="danger"
-                        className="flex-1"
+                        className="flex-1 min-w-[100px]"
                       >
                         <X className="w-4 h-4 mr-2" /> Decline
                       </Button>
@@ -836,26 +836,26 @@ export function DashboardContainer() {
                 {invites.map((invite) => (
                   <div
                     key={invite.requestId}
-                    className="flex flex-col gap-[8px] p-[12px] bg-[rgba(138,138,138,0.1)] rounded-[12px] border border-[rgba(255,255,255,0.1)]"
+                    className="flex flex-col gap-[8px] p-[12px] bg-[rgba(138,138,138,0.1)] rounded-[12px] border border-[rgba(255,255,255,0.1)] min-w-0 items-center text-center"
                   >
-                    <span className="text-[14px] text-white" style={{ fontFamily: 'var(--font-body)' }}>
+                    <span className="text-[14px] text-white break-words" style={{ fontFamily: 'var(--font-body)' }}>
                       Invited to join <span className="font-semibold">{invite.teamName || invite.teamCode}</span>
                     </span>
-                    <span className="text-[12px] text-white opacity-50" style={{ fontFamily: 'var(--font-body)' }}>
+                    <span className="text-[12px] text-white opacity-50 break-all" style={{ fontFamily: 'var(--font-body)' }}>
                       Code: <span className="font-mono">{invite.teamCode}</span>
                     </span>
-                    <div className="flex gap-[8px]">
+                    <div className="flex flex-wrap gap-[8px] w-full">
                       <Button
                         onClick={() => handleRespondToInvite(invite.requestId, 'accept')}
                         variant="primary"
-                        className="flex-1"
+                        className="flex-1 min-w-[100px]"
                       >
                         <Check className="w-4 h-4 mr-2" /> Accept
                       </Button>
                       <Button
                         onClick={() => handleRespondToInvite(invite.requestId, 'decline')}
                         variant="danger"
-                        className="flex-1"
+                        className="flex-1 min-w-[100px]"
                       >
                         <X className="w-4 h-4 mr-2" /> Decline
                       </Button>
