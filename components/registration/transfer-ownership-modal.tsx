@@ -87,7 +87,7 @@ export function TransferOwnershipModal({
                                 key={member.uid}
                                 onClick={() => setSelectedMemberId(member.uid)}
                                 className={`
-                  p-3 rounded-lg border cursor-pointer transition-all flex items-center justify-between
+                  p-3 rounded-[15px] border cursor-pointer transition-all flex items-center justify-between
                   ${selectedMemberId === member.uid
                                         ? "bg-[#2a2a2a] border-white/30 ring-1 ring-white/20"
                                         : "bg-[#111] border-[#333] hover:border-white/20 hover:bg-[#1f1f1f]"
