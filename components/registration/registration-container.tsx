@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
-import { LogIn, UserPlus, Zap, Info } from "lucide-react";
+import { LogIn, UserPlus, Zap, Info, ExternalLink } from "lucide-react";
 import { FormInput } from "./form-input";
 import { FormTextarea } from "./form-textarea";
 import { FormSelect } from "./form-select";
@@ -14,6 +14,7 @@ import { Button } from "./button";
 import { Card } from "./card";
 import { StickyAlert } from "./sticky-alert";
 import { Spinner } from "@/components/ui/spinner";
+import { Modal } from "./modal";
 
 // PRODUCTION MODE - Debug features disabled
 const DEBUG_MODE = false;
@@ -67,6 +68,8 @@ export function RegistrationContainer({ onSuccess }: RegistrationContainerProps)
   // Errors
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCodeOfConductModalOpen, setIsCodeOfConductModalOpen] = useState(false);
+  const [acceptedCodeOfConduct, setAcceptedCodeOfConduct] = useState(false);
 
   // DEBUG: Auto-fill function
   const handleAutoFill = () => {
@@ -184,6 +187,9 @@ export function RegistrationContainer({ onSuccess }: RegistrationContainerProps)
     
     if (!resume) {
       newErrors.resume = "Resume is required";
+    }
+    if (!acceptedCodeOfConduct) {
+      newErrors.codeOfConduct = "You must accept the Code of Conduct to register";
     }
 
     if (Object.keys(newErrors).length > 0) {
@@ -669,12 +675,193 @@ export function RegistrationContainer({ onSuccess }: RegistrationContainerProps)
                 }
               />
             </div>
-            <Button type="submit" variant="primary" disabled={isSubmitting}>
+            {/* Code of Conduct Section */}
+            <div className="flex flex-col gap-[12px]">
+              <div className="flex items-start gap-[12px]">
+                <div className="relative flex-shrink-0 mt-0.5">
+                  <input
+                    type="checkbox"
+                    id="codeOfConduct"
+                    checked={acceptedCodeOfConduct}
+                    onChange={(e) => {
+                      setAcceptedCodeOfConduct(e.target.checked);
+                      if (errors.codeOfConduct) {
+                        const newErrors = { ...errors };
+                        delete newErrors.codeOfConduct;
+                        setErrors(newErrors);
+                      }
+                    }}
+                    className="w-[18px] h-[18px] rounded-[4px] border border-[rgba(255,255,255,0.38)] backdrop-blur-[2.5px] backdrop-filter bg-[rgba(138,138,138,0.2)] text-[#ff4d00] focus:ring-2 focus:ring-[#ff4d00] focus:ring-offset-0 cursor-pointer appearance-none checked:bg-[#ff4d00] checked:border-[#ff4d00] transition-all"
+                    style={{
+                      backgroundImage: acceptedCodeOfConduct 
+                        ? `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='none' stroke='%23ffffff' stroke-width='2' d='M2 6l3 3 5-5'/%3E%3C/svg%3E")`
+                        : 'none',
+                      backgroundRepeat: 'no-repeat',
+                      backgroundPosition: 'center',
+                      backgroundSize: '12px 12px'
+                    }}
+                  />
+                </div>
+                <label
+                  htmlFor="codeOfConduct"
+                  className="text-[14px] text-white leading-[20px] cursor-pointer flex-1"
+                  style={{ fontFamily: 'var(--font-body)' }}
+                >
+                  I agree to the{" "}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setIsCodeOfConductModalOpen(true);
+                    }}
+                    className="text-[#ff4d00] hover:text-[#ff8800] underline inline-flex items-center gap-1 transition-colors"
+                  >
+                    Code of Conduct
+                    <ExternalLink className="w-3 h-3" />
+                  </button>
+                </label>
+              </div>
+              {errors.codeOfConduct && (
+                <span className="text-[12px] text-[#ff4d00]" style={{ fontFamily: 'var(--font-body)' }}>
+                  {errors.codeOfConduct}
+                </span>
+              )}
+            </div>
+            <Button 
+              type="submit" 
+              variant="primary" 
+              disabled={isSubmitting || !acceptedCodeOfConduct}
+            >
               {isSubmitting && <Spinner size="sm" className="mr-2" />}
               {isSubmitting ? "Creating Account..." : "Create Account"}
             </Button>
           </form>
         </FormSection>
+        {/* Code of Conduct Modal */}
+        <Modal
+          isOpen={isCodeOfConductModalOpen}
+          onClose={() => setIsCodeOfConductModalOpen(false)}
+          title="Code of Conduct"
+        >
+          <div className="flex flex-col gap-[24px] text-white" style={{ fontFamily: 'var(--font-body)' }}>
+         
+
+            <div className="flex flex-col gap-[16px]">
+              <div>
+                <h3 className="text-[18px] font-semibold mb-[8px]" style={{ fontFamily: 'var(--font-heading)' }}>
+                  Overview
+                </h3>
+                <p className="text-[14px] leading-[22px] opacity-90">
+                  Point Blank is committed to providing a safe, inclusive, and respectful environment for all hackathon participants. This event is about building the future of work in an AI-native world, and that requires professionalism, integrity, and mutual respect.
+                </p>
+                <p className="text-[14px] leading-[22px] opacity-90 mt-[8px]">
+                  By participating, you agree to follow this Code of Conduct.
+                </p>
+              </div>
+
+              <div>
+                <h3 className="text-[18px] font-semibold mb-[8px]" style={{ fontFamily: 'var(--font-heading)' }}>
+                  Expected Behavior
+                </h3>
+                <p className="text-[14px] leading-[22px] opacity-90 mb-[8px]">
+                  Participants must:
+                </p>
+                <ul className="list-disc list-inside space-y-[4px] text-[14px] leading-[22px] opacity-90 ml-[8px]">
+                  <li>Treat others with respect and professionalism</li>
+                  <li>Communicate constructively and collaborate in good faith</li>
+                  <li>Compete fairly and honestly</li>
+                  <li>Respect diverse perspectives and backgrounds</li>
+                  <li>Follow all hackathon rules and guidelines</li>
+                </ul>
+              </div>
+
+              <div>
+                <h3 className="text-[18px] font-semibold mb-[8px]" style={{ fontFamily: 'var(--font-heading)' }}>
+                  Prohibited Conduct
+                </h3>
+                <p className="text-[14px] leading-[22px] opacity-90 mb-[8px]">
+                  The following will not be tolerated:
+                </p>
+                <ul className="list-disc list-inside space-y-[4px] text-[14px] leading-[22px] opacity-90 ml-[8px]">
+                  <li>Harassment, discrimination, or offensive behavior</li>
+                  <li>Plagiarism or misrepresentation of work</li>
+                  <li>Cheating, sabotage, or misuse of platforms</li>
+                  <li>Disruptive or unethical conduct in any form</li>
+                </ul>
+                <p className="text-[14px] leading-[22px] opacity-90 mt-[8px]">
+                  This applies across all hackathon-related spaces and platforms.
+                </p>
+              </div>
+
+              <div>
+                <h3 className="text-[18px] font-semibold mb-[8px]" style={{ fontFamily: 'var(--font-heading)' }}>
+                  Intellectual Property
+                </h3>
+                <p className="text-[14px] leading-[22px] opacity-90 mb-[8px]">
+                  By participating, you agree that:
+                </p>
+                <ul className="list-disc list-inside space-y-[4px] text-[14px] leading-[22px] opacity-90 ml-[8px]">
+                  <li>All code, submissions, designs, documentation, and intellectual property created during the hackathon are the exclusive property of FinalRound AI.</li>
+                  <li>Participants may reference their work for non-commercial portfolio or resume use unless otherwise stated.</li>
+                  <li>FinalRound AI reserves the right to use, modify, and commercialize submissions.</li>
+                </ul>
+              </div>
+
+              <div>
+                <h3 className="text-[18px] font-semibold mb-[8px]" style={{ fontFamily: 'var(--font-heading)' }}>
+                  Original Work & AI Usage
+                </h3>
+                <ul className="list-disc list-inside space-y-[4px] text-[14px] leading-[22px] opacity-90 ml-[8px]">
+                  <li>All submissions must be created during the hackathon</li>
+                  <li>Use of AI tools is allowed but must be ethical and license-compliant</li>
+                  <li>Any third-party tools or APIs must follow their respective terms</li>
+                </ul>
+              </div>
+
+              <div>
+                <h3 className="text-[18px] font-semibold mb-[8px]" style={{ fontFamily: 'var(--font-heading)' }}>
+                  Enforcement
+                </h3>
+                <ul className="list-disc list-inside space-y-[4px] text-[14px] leading-[22px] opacity-90 ml-[8px]">
+                  <li>Point Blank reserves the right to take action for violations, including warnings, disqualification, or removal from the event.</li>
+                  <li>Reports of misconduct will be handled confidentially.</li>
+                </ul>
+              </div>
+
+              <div>
+                <h3 className="text-[18px] font-semibold mb-[8px]" style={{ fontFamily: 'var(--font-heading)' }}>
+                  Final Note
+                </h3>
+                <p className="text-[14px] leading-[22px] opacity-90">
+                  This hackathon is about building real systems for the future of work.
+                </p>
+                <p className="text-[14px] leading-[22px] opacity-90 mt-[8px]">
+                  Bring curiosity, build responsibly, and respect the community.
+                </p>
+                <p className="text-[14px] leading-[22px] opacity-90 mt-[12px] text-right">
+                  — Point Blank
+                </p>
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-[16px] border-t border-[rgba(255,255,255,0.2)]">
+              <Button
+                onClick={() => {
+                  setAcceptedCodeOfConduct(true);
+                  setIsCodeOfConductModalOpen(false);
+                  if (errors.codeOfConduct) {
+                    const newErrors = { ...errors };
+                    delete newErrors.codeOfConduct;
+                    setErrors(newErrors);
+                  }
+                }}
+                variant="primary"
+              >
+                I Accept
+              </Button>
+            </div>
+          </div>
+        </Modal>
     </div>
   );
 }
