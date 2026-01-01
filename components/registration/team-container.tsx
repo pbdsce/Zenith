@@ -255,6 +255,19 @@ export function TeamContainer() {
     }
   }, []);
 
+  const handleCopyCode = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!team?.code) return;
+    try {
+      await navigator.clipboard.writeText(team.code);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error("Failed to copy team code:", err);
+    }
+  };
+
   const handleDeleteTeam = async () => {
     if (!team || !user) return;
 
@@ -1082,12 +1095,8 @@ export function TeamContainer() {
                       <div className="flex items-center gap-[6px]">
                         <span className="text-[14px] text-white font-mono bg-[rgba(138,138,138,0.2)] px-[8px] py-[2px] rounded-[4px]">{team.code}</span>
                         <button
-                          onClick={async () => {
-                            await navigator.clipboard.writeText(team.code);
-                            setCopied(true);
-                            setTimeout(() => setCopied(false), 2000);
-                            toast({ title: "Team code copied!" });
-                          }}
+                          type="button"
+                          onClick={handleCopyCode}
                           className="p-[4px] rounded-[4px] hover:bg-[rgba(255,255,255,0.1)] transition-colors"
                           title="Copy team code"
                         >
@@ -1224,16 +1233,8 @@ export function TeamContainer() {
                     Share your team code 
                     <span className="font-mono text-white bg-[rgba(138,138,138,0.2)] px-[8px] py-[4px] rounded-[4px]">{team.code}</span>
                     <button
-                      onClick={async () => {
-                        try {
-                          await navigator.clipboard.writeText(team.code);
-                          setCopied(true);
-                          setTimeout(() => setCopied(false), 2000);
-                          toast({ title: "Team code copied!" });
-                        } catch (err) {
-                          console.error("Failed to copy:", err);
-                        }
-                      }}
+                      type="button"
+                      onClick={handleCopyCode}
                       className="p-[6px] rounded-[4px] bg-[rgba(138,138,138,0.2)] hover:bg-[rgba(138,138,138,0.3)] transition-colors"
                       title={copied ? "Copied!" : "Copy team code"}
                     >
