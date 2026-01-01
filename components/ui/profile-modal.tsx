@@ -14,6 +14,23 @@ interface ProfileModalProps {
 }
 
 export default function ProfileModal({ profile, isOpen, onClose }: ProfileModalProps) {
+    const handleResumeDownload = async (url: string) => {
+      try {
+        const response = await fetch(url);
+        const blob = await response.blob();
+        const blobUrl = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = 'resume.pdf';
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(blobUrl);
+        document.body.removeChild(a);
+      } catch (error) {
+        console.error('Error downloading resume:', error);
+      }
+    };
+
     // Generate a consistent color based on name
     const getColorFromName = (name: string) => {
       const colors = [
@@ -186,15 +203,13 @@ export default function ProfileModal({ profile, isOpen, onClose }: ProfileModalP
                     )}
 
                     {profile.resume_link && (
-                      <a
-                        href={profile.resume_link}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-1.5 bg-[#0a3333] hover:bg-[#0a4444] text-white px-3 py-1.5 rounded-full text-sm transition-colors"
+                      <button
+                        onClick={() => handleResumeDownload(profile.resume_link!)}
+                        className="flex items-center gap-1.5 bg-[#0a3333] hover:bg-[#0a4444] text-white px-3 py-1.5 rounded-full text-sm transition-colors cursor-pointer"
                       >
                         <Download size={16} className="text-[#0ff]" />
                         <span>Resume</span>
-                      </a>
+                      </button>
                     )}
                   </div>
                 </div>

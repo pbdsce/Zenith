@@ -48,6 +48,23 @@ export function UserProfileModal({
   canInvite = false,
   error
 }: UserProfileModalProps) {
+  const handleResumeDownload = async (url: string) => {
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = 'resume.pdf';
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(blobUrl);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('Error downloading resume:', error);
+    }
+  };
+
   // Prevent background scrolling when modal is open
   useEffect(() => {
     if (isOpen) {
@@ -167,16 +184,14 @@ export function UserProfileModal({
                   </a>
                 )}
                 {userDetails.resume_link && (
-                  <a 
-                    href={userDetails.resume_link} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-[8px] p-[8px] bg-[rgba(138,138,138,0.1)] rounded-[8px] hover:bg-[rgba(138,138,138,0.2)] transition-colors"
+                  <button
+                    onClick={() => handleResumeDownload(userDetails.resume_link!)}
+                    className="flex items-center gap-[8px] p-[8px] bg-[rgba(138,138,138,0.1)] rounded-[8px] hover:bg-[rgba(138,138,138,0.2)] transition-colors cursor-pointer w-full"
                   >
                     <FileText className="w-4 h-4 text-white opacity-70" />
                     <span className="font-['Inter',sans-serif] text-[14px] text-white">Resume</span>
                     <ExternalLink className="w-3 h-3 text-white opacity-50 ml-auto" />
-                  </a>
+                  </button>
                 )}
                 {userDetails.leetcode_profile && (
                   <a 
