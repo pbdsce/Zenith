@@ -7,6 +7,7 @@ interface FormInputProps {
   required?: boolean;
   value: string;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onBlur?: (e: React.FocusEvent<HTMLInputElement>) => void;
   error?: string;
   disabled?: boolean;
 }
@@ -18,6 +19,7 @@ export function FormInput({
   required = false,
   value,
   onChange,
+  onBlur,
   error,
   disabled = false,
 }: FormInputProps) {
@@ -33,6 +35,7 @@ export function FormInput({
         required={required}
         value={value}
         onChange={onChange}
+        onBlur={onBlur}
         disabled={disabled}
         className={`backdrop-blur-[2.5px] backdrop-filter bg-[rgba(138,138,138,0.2)] border ${error
             ? "border-[#ff4d00]"

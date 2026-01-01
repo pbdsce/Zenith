@@ -188,16 +188,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 // Extract error message from response - handle both message and error fields
                 const errorMessage = data?.message || data?.error || `Registration failed with status ${response.status}. Please try again.`;
                 
-                if (response.status === 400) {
-                    throw new Error(errorMessage);
-                } else if (response.status === 409) {
-                    // 409 is used for conflicts: duplicate email, phone, discord, etc.
-                    throw new Error(errorMessage);
-                } else if (response.status === 500) {
-                    throw new Error(errorMessage);
-                } else {
-                    throw new Error(errorMessage);
+                const error = new Error(errorMessage);
+                
+                if (data?.errors && typeof data.errors === 'object') {
+                    (error as any).fieldErrors = data.errors;
                 }
+                
+                throw error;
             }
 
             if (data.message && data.message.toLowerCase().includes('success')) {

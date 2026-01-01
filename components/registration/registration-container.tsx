@@ -50,6 +50,8 @@ export function RegistrationContainer({ onSuccess }: RegistrationContainerProps)
     leetcode: "",
     kaggle: "",
     devfolio: "",
+    codeforces: "",
+    ctf: "",
     referralCode: "",
   });
 
@@ -90,6 +92,8 @@ export function RegistrationContainer({ onSuccess }: RegistrationContainerProps)
       leetcode: "https://leetcode.com/testuser",
       kaggle: "https://kaggle.com/testuser",
       devfolio: "https://devfolio.co/@testuser",
+      codeforces: "https://codeforces.com/profile/testuser",
+      ctf: "https://ctftime.org/user/testuser",
       referralCode: "TEST2024",
     });
     
@@ -117,73 +121,100 @@ export function RegistrationContainer({ onSuccess }: RegistrationContainerProps)
     setTimeout(() => setAlert(null), 3000);
   };
 
-  // Handle Registration
+  const validateField = (fieldName: string, value: string): string | null => {
+    switch (fieldName) {
+      case 'name':
+        if (!value.trim()) return "Name is required";
+        break;
+      case 'email':
+        if (!value.trim()) return "Email is required";
+        if (!/\S+@\S+\.\S+/.test(value)) return "Please enter a valid email address";
+        break;
+      case 'password':
+        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
+        if (!value) return "Password is required";
+        if (!passwordRegex.test(value)) return "Password must be 8+ chars, incl. uppercase, lowercase, number, special char";
+        break;
+      case 'confirmPassword':
+        if (!value) return "Please confirm your password";
+        if (value !== registerData.password) return "Passwords do not match";
+        break;
+      case 'discord_username':
+        if (!value.trim()) return "Discord username is required";
+        break;
+      case 'phone':
+        if (!value.trim()) return "Phone is required";
+        const phoneDigits = value.replace(/\D/g, '');
+        if (phoneDigits.length < 10 || phoneDigits.length > 13) {
+          return "Please enter a valid 10-digit phone number";
+        }
+        break;
+      case 'age':
+        if (!value || !value.trim()) return "Age is required";
+        const ageNum = parseInt(value.trim());
+        if (isNaN(ageNum) || ageNum < 13 || ageNum > 100) {
+          return "Please enter a valid age (13-100)";
+        }
+        break;
+      case 'organisation':
+        if (!value.trim()) return "Organisation is required";
+        break;
+      case 'bio':
+        if (!value.trim()) return "Bio is required";
+        break;
+      case 'github':
+        if (!value.trim()) return "GitHub link is required";
+        const githubPattern = /^(https?:\/\/)?(www\.)?github\.com\/[\w-]+(\/)?$/i;
+        if (!githubPattern.test(value.trim())) {
+          return "Please enter a valid GitHub URL (e.g., https://github.com/username)";
+        }
+        break;
+      case 'linkedin':
+        if (!value.trim()) return "LinkedIn link is required";
+        const linkedinPattern = /^(https?:\/\/)?(www\.)?linkedin\.com\/(in|profile)\/[\w-]+(\/)?$/i;
+        if (!linkedinPattern.test(value.trim())) {
+          return "Please enter a valid LinkedIn URL (e.g., https://linkedin.com/in/username)";
+        }
+        break;
+      default:
+        return null;
+    }
+    return null;
+  };
+
+  const handleFieldBlur = (fieldName: string) => (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const value = e.target.value;
+    const error = validateField(fieldName, value);
+    
+    if (error) {
+      setErrors(prev => ({ ...prev, [fieldName]: error }));
+    } else {
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[fieldName];
+        return newErrors;
+      });
+    }
+  };
+
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    setErrors({});
     setAlert(null);
 
-    // Validation
     const newErrors: Record<string, string> = {};
     
-    if (!registerData.name.trim()) {
-      newErrors.name = "Name is required";
-    }
+    const fieldsToValidate: Array<keyof typeof registerData> = [
+      'name', 'email', 'password', 'confirmPassword', 'discord_username',
+      'phone', 'age', 'organisation', 'bio', 'github', 'linkedin'
+    ];
     
-    if (!registerData.email.trim() || !/\S+@\S+\.\S+/.test(registerData.email)) {
-      newErrors.email = "Valid email is required";
-    }
-
-    //password validation to match backend
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
-    if (!registerData.password || !passwordRegex.test(registerData.password)) {
-      newErrors.password = "Password must be 8+ chars, incl. uppercase, lowercase, number, special char";
-    }
-    
-    if (registerData.password !== registerData.confirmPassword) {
-      newErrors.confirmPassword = "Passwords do not match";
-    }
-
-    if (!registerData.discord_username.trim()) {
-      newErrors.discord_username = "Discord username is required";
-    }
-
-    if (!registerData.phone.trim()) {
-      newErrors.phone = "Phone is required";
-    }
-    
-    if (!registerData.age.trim() || parseInt(registerData.age) < 1 || parseInt(registerData.age) > 120) {
-      newErrors.age = "Valid age is required";
-    }
-    
-    if (!registerData.organisation.trim()) {
-      newErrors.organisation = "Organisation is required";
-    }
-    
-    if (!registerData.bio.trim()) {
-      newErrors.bio = "Bio is required";
-    }
-    
-    // GitHub URL validation
-    if (!registerData.github.trim()) {
-      newErrors.github = "GitHub link is required";
-    } else {
-      const githubPattern = /^(https?:\/\/)?(www\.)?github\.com\/[\w-]+(\/)?$/i;
-      if (!githubPattern.test(registerData.github.trim())) {
-        newErrors.github = "Please enter a valid GitHub URL (e.g., https://github.com/username)";
+    fieldsToValidate.forEach(field => {
+      const error = validateField(field, registerData[field]);
+      if (error) {
+        newErrors[field] = error;
       }
-    }
-    
-    // LinkedIn URL validation
-    if (!registerData.linkedin.trim()) {
-      newErrors.linkedin = "LinkedIn link is required";
-    } else {
-      const linkedinPattern = /^(https?:\/\/)?(www\.)?linkedin\.com\/(in|profile)\/[\w-]+(\/)?$/i;
-      if (!linkedinPattern.test(registerData.linkedin.trim())) {
-        newErrors.linkedin = "Please enter a valid LinkedIn URL (e.g., https://linkedin.com/in/username)";
-      }
-    }
+    });
     
     if (!resume) {
       newErrors.resume = "Resume is required";
@@ -199,13 +230,23 @@ export function RegistrationContainer({ onSuccess }: RegistrationContainerProps)
     }
 
     try {
+      let formattedPhone = registerData.phone.trim();
+      const phoneDigits = formattedPhone.replace(/\D/g, '');
+      
+      if (phoneDigits.length === 10) {
+        formattedPhone = `+91${phoneDigits}`;
+      } else if (phoneDigits.length === 12 && phoneDigits.startsWith('91')) {
+        formattedPhone = `+${phoneDigits}`;
+      } else if (phoneDigits.length === 11 && phoneDigits.startsWith('0')) {
+        formattedPhone = `+91${phoneDigits.substring(1)}`;
+      }
       // Create FormData for API request
       const formData = new FormData();
       formData.append('name', registerData.name);
       formData.append('email', registerData.email);
       formData.append('password', registerData.password);
       formData.append('discord_username', registerData.discord_username);
-      formData.append('phone', registerData.phone);
+      formData.append('phone', formattedPhone);
       formData.append('age', registerData.age);
       formData.append('organisation', registerData.organisation);
       formData.append('bio', registerData.bio);
@@ -218,16 +259,11 @@ export function RegistrationContainer({ onSuccess }: RegistrationContainerProps)
       if (registerData.leetcode) formData.append('leetcode_profile', registerData.leetcode);
       if (registerData.kaggle) formData.append('kaggle_link', registerData.kaggle);
       if (registerData.devfolio) formData.append('devfolio_link', registerData.devfolio);
+      if (registerData.codeforces) formData.append('codeforces_link', registerData.codeforces);
+      if (registerData.ctf) formData.append('ctf_profile', registerData.ctf);
       if (registerData.referralCode) formData.append('referral_code', registerData.referralCode);
 
-      // Register user - This will store user data
-      try {
-        await register(formData);
-      } catch (registerError) {
-        // Re-throw to be caught by outer catch block
-        console.error('Register function error:', registerError);
-        throw registerError;
-      }
+      await register(formData);
 
       setAlert({
         type: "success",
@@ -244,41 +280,65 @@ export function RegistrationContainer({ onSuccess }: RegistrationContainerProps)
         }
       }, 1500);
     } catch (error) {
-      // Extract error message - handle various error types
       let errorMessage = "Registration failed. Please try again.";
-      
-      console.error('Registration catch block - error:', error);
-      console.error('Registration catch block - error type:', typeof error);
-      console.error('Registration catch block - error instanceof Error:', error instanceof Error);
+      const fieldErrors: Record<string, string> = {};
+      const fieldNameMap: Record<string, string> = {
+        'github_link': 'github',
+        'linkedin_link': 'linkedin',
+        'portfolio_link': 'portfolio',
+        'leetcode_profile': 'leetcode',
+        'kaggle_link': 'kaggle',
+        'devfolio_link': 'devfolio',
+        'codeforces_link': 'codeforces',
+        'ctf_profile': 'ctf',
+      };
       
       if (error instanceof Error) {
         errorMessage = error.message || errorMessage;
-        console.error('Registration catch block - error.message:', error.message);
+        const fieldErrorsFromApi = (error as any).fieldErrors;
+        if (fieldErrorsFromApi && typeof fieldErrorsFromApi === 'object') {
+          Object.keys(fieldErrorsFromApi).forEach((backendField) => {
+            const frontendField = fieldNameMap[backendField] || backendField;
+            fieldErrors[frontendField] = fieldErrorsFromApi[backendField];
+          });
+        } else {
+          const errorMsg = error.message.toLowerCase();
+          if (errorMsg.includes('email already exists') || errorMsg.includes('email is already')) {
+            fieldErrors.email = 'This email is already registered';
+          } else if (errorMsg.includes('discord username already exists') || errorMsg.includes('discord username is already')) {
+            fieldErrors.discord_username = 'This Discord username is already registered';
+          } else if (errorMsg.includes('phone number already exists') || errorMsg.includes('phone number is already')) {
+            fieldErrors.phone = 'This phone number is already registered';
+          }
+        }
       } else if (typeof error === 'string') {
         errorMessage = error;
       } else if (error && typeof error === 'object' && 'message' in error) {
         errorMessage = String(error.message);
       }
       
-      console.error('Registration catch block - final errorMessage:', errorMessage);
-      
-      // Show alert with error message - errors are always shown and don't auto-hide quickly
-      setAlert({
-        type: "error",
-        message: errorMessage,
-      });
-      
-      // Also show toast notification as backup to ensure error is visible
-      toast({
-        variant: "destructive",
-        title: "Registration Failed",
-        description: errorMessage,
-      });
-      
-      console.log('Registration catch block - alert set with:', { type: "error", message: errorMessage });
-      
-      // Keep alert visible for longer so user can read it
-      // The StickyAlert component will auto-hide after 10 seconds for errors
+      if (Object.keys(fieldErrors).length > 0) {
+        setErrors(fieldErrors);
+        setAlert({
+          type: "error",
+          message: "Please fix the errors highlighted in red below.",
+        });
+        toast({
+          variant: "destructive",
+          title: "Registration Failed",
+          description: errorMessage,
+        });
+      } else {
+        setAlert({
+          type: "error",
+          message: errorMessage,
+        });
+        toast({
+          variant: "destructive",
+          title: "Registration Failed",
+          description: errorMessage,
+        });
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -448,6 +508,7 @@ export function RegistrationContainer({ onSuccess }: RegistrationContainerProps)
                   name: e.target.value,
                 })
               }
+              onBlur={handleFieldBlur('name')}
               error={errors.name}
             />
             <FormInput
@@ -462,6 +523,7 @@ export function RegistrationContainer({ onSuccess }: RegistrationContainerProps)
                   email: e.target.value,
                 })
               }
+              onBlur={handleFieldBlur('email')}
               error={errors.email}
             />
             <FormInput
@@ -476,6 +538,7 @@ export function RegistrationContainer({ onSuccess }: RegistrationContainerProps)
                   password: e.target.value,
                 })
               }
+              onBlur={handleFieldBlur('password')}
               error={errors.password}
             />
             <FormInput
@@ -490,6 +553,7 @@ export function RegistrationContainer({ onSuccess }: RegistrationContainerProps)
                   confirmPassword: e.target.value,
                 })
               }
+              onBlur={handleFieldBlur('confirmPassword')}
               error={errors.confirmPassword}
             />
             <div className="grid grid-cols-2 gap-[16px]">
@@ -504,12 +568,13 @@ export function RegistrationContainer({ onSuccess }: RegistrationContainerProps)
                   discord_username: e.target.value,
                 })
               }
+              onBlur={handleFieldBlur('discord_username')}
               error={errors.discord_username}
               />
               <FormInput
                 label="Phone"
                 type="tel"
-                placeholder="+1 555 0100"
+                placeholder="9876543210"
                 required
                 value={registerData.phone}
                 onChange={(e) =>
@@ -518,6 +583,7 @@ export function RegistrationContainer({ onSuccess }: RegistrationContainerProps)
                     phone: e.target.value,
                   })
                 }
+                onBlur={handleFieldBlur('phone')}
                 error={errors.phone}
               />
               <FormInput
@@ -532,6 +598,7 @@ export function RegistrationContainer({ onSuccess }: RegistrationContainerProps)
                     age: e.target.value,
                   })
                 }
+                onBlur={handleFieldBlur('age')}
                 error={errors.age}
               />
             </div>
@@ -546,6 +613,7 @@ export function RegistrationContainer({ onSuccess }: RegistrationContainerProps)
                   organisation: e.target.value,
                 })
               }
+              onBlur={handleFieldBlur('organisation')}
               error={errors.organisation}
             />
             <FormTextarea
@@ -559,7 +627,9 @@ export function RegistrationContainer({ onSuccess }: RegistrationContainerProps)
                   bio: e.target.value,
                 })
               }
+              onBlur={handleFieldBlur('bio')}
               rows={3}
+              error={errors.bio}
             />
             <FormFileUpload
               label="Resume (PDF)"
@@ -599,6 +669,7 @@ export function RegistrationContainer({ onSuccess }: RegistrationContainerProps)
                     github: e.target.value,
                   })
                 }
+                onBlur={handleFieldBlur('github')}
                 error={errors.github}
               />
               <FormInput
@@ -612,6 +683,7 @@ export function RegistrationContainer({ onSuccess }: RegistrationContainerProps)
                     linkedin: e.target.value,
                   })
                 }
+                onBlur={handleFieldBlur('linkedin')}
                 error={errors.linkedin}
               />
             </div>
@@ -660,6 +732,28 @@ export function RegistrationContainer({ onSuccess }: RegistrationContainerProps)
                   setRegisterData({
                     ...registerData,
                     devfolio: e.target.value,
+                  })
+                }
+              />
+              <FormInput
+                label="Codeforces"
+                placeholder="https://codeforces.com/profile/username"
+                value={registerData.codeforces}
+                onChange={(e) =>
+                  setRegisterData({
+                    ...registerData,
+                    codeforces: e.target.value,
+                  })
+                }
+              />
+              <FormInput
+                label="CTF Profile"
+                placeholder="your CTF profile URL"
+                value={registerData.ctf}
+                onChange={(e) =>
+                  setRegisterData({
+                    ...registerData,
+                    ctf: e.target.value,
                   })
                 }
               />
