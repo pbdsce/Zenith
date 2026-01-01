@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from '@/hooks/use-auth';
 import { API_ENDPOINTS } from "@/lib/api-config";
-import { Users, Search, Home } from "lucide-react";
+import { Users, Search, Home, User } from "lucide-react";
 import { FormSection } from "./form-section";
 import { Button } from "./button";
 import { Card } from "./card";
@@ -641,7 +641,7 @@ export function DiscoverContainer() {
                 <SectionTab
                   active={activeTab === "participants"}
                   onClick={() => setActiveTab("participants")}
-                  icon={Search}
+                  icon={User}
                   label="Participants"
                 />
               </div>
