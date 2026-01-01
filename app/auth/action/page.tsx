@@ -2,21 +2,30 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { applyActionCode, onAuthStateChanged } from "firebase/auth";
+import { applyActionCode, onAuthStateChanged, confirmPasswordReset, verifyPasswordResetCode } from "firebase/auth";
 import { auth } from "@/Firebase";
 import { FormSection } from "@/components/registration/form-section";
 import { Button } from "@/components/registration/button";
+import { FormInput } from "@/components/registration/form-input";
 import { DotPattern } from "@/components/registration/dot-pattern";
-import { CheckCircle2, XCircle, ArrowRight, Mail } from "lucide-react";
+import { CheckCircle2, XCircle, ArrowRight, Mail, KeyRound } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
+import { StickyAlert } from "@/components/registration/sticky-alert";
 
 export default function AuthActionPage() {
     const searchParams = useSearchParams();
     const router = useRouter();
-    const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
+    const [status, setStatus] = useState<"loading" | "success" | "error" | "reset_password">("loading");
     const [message, setMessage] = useState("Verifying your request...");
     const [mode, setMode] = useState<string | null>(null);
     const [isRedirecting, setIsRedirecting] = useState(false);
+
+    // Password reset state
+    const [newPassword, setNewPassword] = useState("");
+    const [confirmPassword, setConfirmPassword] = useState("");
+    const [resetEmail, setResetEmail] = useState("");
+    const [isResetting, setIsResetting] = useState(false);
+    const [resetError, setResetError] = useState("");
 
     const handleContinue = useCallback(() => {
         setIsRedirecting(true);
@@ -56,9 +65,10 @@ export default function AuthActionPage() {
                         await auth.currentUser.reload();
                     }
                 } else if (modeParam === "resetPassword") {
-                    // TODO: specific handling for password reset if needed, 
-                    setStatus("error");
-                    setMessage("Password reset is not configured on this page yet.");
+                    const email = await verifyPasswordResetCode(auth, actionCode);
+                    setResetEmail(email);
+                    setStatus("reset_password");
+                    setMessage("Please enter your new password.");
                 } else {
                     setStatus("error");
                     setMessage("Invalid operation mode.");
@@ -66,22 +76,24 @@ export default function AuthActionPage() {
             } catch (error: any) {
                 console.error("Verification error:", error);
 
-                let isActuallyVerified = false;
-                if (auth.currentUser) {
-                    try {
-                        await auth.currentUser.reload();
-                        if (auth.currentUser.emailVerified) {
-                            isActuallyVerified = true;
+                if (modeParam === "verifyEmail") {
+                    let isActuallyVerified = false;
+                    if (auth.currentUser) {
+                        try {
+                            await auth.currentUser.reload();
+                            if (auth.currentUser.emailVerified) {
+                                isActuallyVerified = true;
+                            }
+                        } catch (e) {
+                            console.error("Error checking user status:", e);
                         }
-                    } catch (e) {
-                        console.error("Error checking user status:", e);
                     }
-                }
 
-                if (isActuallyVerified) {
-                    setStatus("success");
-                    setMessage("Your email has already been verified. You can now access all features.");
-                    return;
+                    if (isActuallyVerified) {
+                        setStatus("success");
+                        setMessage("Your email has already been verified. You can now access all features.");
+                        return;
+                    }
                 }
 
                 setStatus("error");
@@ -107,6 +119,34 @@ export default function AuthActionPage() {
         handleVerification();
     }, [searchParams]);
 
+    const handlePasswordReset = async (e: React.FormEvent) => {
+        e.preventDefault();
+        const actionCode = searchParams.get("oobCode");
+
+        if (!actionCode) return;
+        if (newPassword !== confirmPassword) {
+            setResetError("Passwords do not match.");
+            return;
+        }
+        if (newPassword.length < 6) {
+            setResetError("Password must be at least 6 characters.");
+            return;
+        }
+
+        setIsResetting(true);
+        setResetError("");
+
+        try {
+            await confirmPasswordReset(auth, actionCode, newPassword);
+            setStatus("success");
+            setMessage("Your password has been reset successfully. You can now login with your new password.");
+        } catch (error: any) {
+            setResetError(error.message || "Failed to reset password. Please try again.");
+        } finally {
+            setIsResetting(false);
+        }
+    };
+
     return (
         <div
             className="min-h-screen w-full flex flex-col items-start relative font-['Inter',sans-serif]"
@@ -124,28 +164,74 @@ export default function AuthActionPage() {
                 >
                     <div className="max-w-[600px] w-full z-10 flex flex-col gap-[32px] items-center">
                         {status === "loading" && (
-                            <FormSection title="Email Verification">
+                            <FormSection title="Verifying">
                                 <div className="flex flex-col gap-[20px] items-center text-center py-8">
                                     <div className="mb-2 flex h-16 w-16 items-center justify-center rounded-full bg-[#ff4d00]/10">
-                                        <Mail className="h-8 w-8 text-[#ff4d00] animate-pulse" />
+                                        <Spinner size="lg" />
                                     </div>
-                                    <Spinner size="lg" />
                                     <p className="font-['Inter',sans-serif] text-[15.9px] text-white opacity-90 leading-[23.8px]">
-                                        Verifying your email address...
+                                        Processing your request...
                                     </p>
                                 </div>
                             </FormSection>
                         )}
 
+                        {status === "reset_password" && (
+                            <FormSection title="Reset Password">
+                                <div className="w-full flex flex-col gap-[24px]">
+                                    <div className="flex flex-col gap-[12px] items-center text-center">
+                                        <div className="mb-2 flex h-16 w-16 items-center justify-center rounded-full bg-[#ff4d00]/10">
+                                            <KeyRound className="h-8 w-8 text-[#ff4d00]" />
+                                        </div>
+                                        <h1 className="font-['Instrument_Serif',sans-serif] text-[32px] text-white leading-[36px] tracking-[-1px]">
+                                            Set New Password
+                                        </h1>
+                                        <p className="font-['Inter',sans-serif] text-[14px] text-white opacity-70">
+                                            for {resetEmail}
+                                        </p>
+                                    </div>
+
+                                    {resetError && <StickyAlert type="error" message={resetError} onClose={() => setResetError("")} />}
+
+                                    <form onSubmit={handlePasswordReset} className="flex flex-col gap-[20px]">
+                                        <FormInput
+                                            label="New Password"
+                                            type="password"
+                                            placeholder="Enter new password"
+                                            required
+                                            value={newPassword}
+                                            onChange={(e) => setNewPassword(e.target.value)}
+                                        />
+                                        <FormInput
+                                            label="Confirm Password"
+                                            type="password"
+                                            placeholder="Confirm new password"
+                                            required
+                                            value={confirmPassword}
+                                            onChange={(e) => setConfirmPassword(e.target.value)}
+                                        />
+                                        <Button
+                                            type="submit"
+                                            variant="primary"
+                                            disabled={isResetting}
+                                            className="w-full"
+                                        >
+                                            {isResetting ? "Resetting..." : "Reset Password"}
+                                        </Button>
+                                    </form>
+                                </div>
+                            </FormSection>
+                        )}
+
                         {status === "success" && (
-                            <FormSection title="Email Verified">
+                            <FormSection title={mode === "resetPassword" ? "Password Reset" : "Email Verified"}>
                                 <div className="flex flex-col gap-[20px] items-center text-center">
                                     <div className="mb-2 flex h-20 w-20 items-center justify-center rounded-full bg-[rgba(255,77,0,0.2)] ring-2 ring-[#ff4d00]/30">
                                         <CheckCircle2 className="h-12 w-12 text-white" />
                                     </div>
                                     <div className="flex flex-col gap-[12px]">
                                         <h1 className="font-['Instrument_Serif',sans-serif] text-[36px] text-white leading-[40px] tracking-[-1px]">
-                                            Verification Successful
+                                            Success!
                                         </h1>
                                         <p className="font-['Inter',sans-serif] text-[15.9px] text-white opacity-90 leading-[23.8px]">
                                             {message}
@@ -163,10 +249,10 @@ export default function AuthActionPage() {
                                         <div className="w-full mt-2">
                                             <Button
                                                 variant="primary"
-                                                onClick={handleContinue}
+                                                onClick={mode === "resetPassword" ? () => router.push("/login") : handleContinue}
                                                 className="w-full"
                                             >
-                                                Continue to Dashboard
+                                                {mode === "resetPassword" ? "Return to Login" : "Continue to Dashboard"}
                                                 <ArrowRight className="h-4 w-4" />
                                             </Button>
                                         </div>
@@ -176,7 +262,7 @@ export default function AuthActionPage() {
                         )}
 
                         {status === "error" && (
-                            <FormSection title="Verification Failed">
+                            <FormSection title="Action Failed">
                                 <div className="flex flex-col gap-[20px] items-center text-center">
                                     <div className="mb-2 flex h-20 w-20 items-center justify-center rounded-full bg-black/50 ring-2 ring-[#ff4d00]/30">
                                         <XCircle className="h-12 w-12 text-[#ff4d00]" />
@@ -192,7 +278,7 @@ export default function AuthActionPage() {
 
                                     <div className="bg-white/5 p-4 rounded-lg mt-4">
                                         <p className="font-['Inter',sans-serif] text-[13px] text-white opacity-60">
-                                            If you continue to experience issues, please contact support or request a new verification email.
+                                            If you continue to experience issues, please contact support or request a new link.
                                         </p>
                                     </div>
 

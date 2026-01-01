@@ -6,7 +6,8 @@ import {
     User as FirebaseUser,
     signOut as firebaseSignOut,
     signInWithEmailAndPassword,
-    sendEmailVerification
+    sendEmailVerification,
+    sendPasswordResetEmail
 } from "firebase/auth";
 import { auth } from "@/Firebase";
 import { useRouter } from "next/navigation";
@@ -39,6 +40,7 @@ interface AuthContextType {
     refreshUser: () => Promise<void>;
     getToken: () => Promise<string | null>;
     sendVerificationEmail: () => Promise<void>;
+    resetPassword: (email: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -50,6 +52,7 @@ const AuthContext = createContext<AuthContextType>({
     refreshUser: async () => { },
     getToken: async () => null,
     sendVerificationEmail: async () => { },
+    resetPassword: async () => { },
 });
 
 import { useToast } from "@/hooks/use-toast";
@@ -268,11 +271,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
+    const resetPassword = async (email: string) => {
+        try {
+            const actionCodeSettings = {
+                url: `${typeof window !== 'undefined' ? window.location.origin : ''}/login`,
+                handleCodeInApp: false,
+            };
+            await sendPasswordResetEmail(auth, email, actionCodeSettings);
+        } catch (error: any) {
+            console.error("Error sending password reset email:", error);
+            throw new Error(error.message || "Failed to send password reset email.");
+        }
+    };
+
     // Show VerifyEmail component if logged in but email not verified
     const showVerificationScreen = !loading && user && !user.emailVerified;
 
     return (
-        <AuthContext.Provider value={{ user, loading, login, register, logout, refreshUser, getToken, sendVerificationEmail }}>
+        <AuthContext.Provider value={{ user, loading, login, register, logout, refreshUser, getToken, sendVerificationEmail, resetPassword }}>
             {showVerificationScreen ? (
                 <VerifyEmail
                     email={user.email}

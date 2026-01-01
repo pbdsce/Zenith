@@ -97,6 +97,15 @@ export default function LoginPage() {
                   value={loginData.password}
                   onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
                 />
+                <div className="flex justify-end -mt-3">
+                  <button
+                    type="button"
+                    onClick={() => router.push("/forgot-password")}
+                    className="font-['Inter',sans-serif] text-[12px] sm:text-[13px] text-white opacity-70 hover:opacity-100 hover:underline"
+                  >
+                    Forgot Password?
+                  </button>
+                </div>
                 <Button type="submit" variant="primary" disabled={isSubmitting} className="w-full">
                   Login
                 </Button>
