@@ -26,7 +26,7 @@ export function TeamMembersCard({
   currentUserId,
   onRemoveMember,
   onTransferOwnership,
-}: TeamMembersCardProps & { onTransferOwnership?: (memberId: string) => void }) {
+}: TeamMembersCardProps & { onTransferOwnership?: () => void }) {
   // Can remove members only if lead and team is in active state
   // Can transfer ownership only if lead and team is in active state
   const isActionable = isLead &&
@@ -62,7 +62,20 @@ export function TeamMembersCard({
   }
 
   return (
-    <FormSection title="Team Members">
+    <FormSection
+      title="Team Members"
+      status={
+        isActionable && members.length > 1 && onTransferOwnership ? (
+          <Button
+            onClick={() => onTransferOwnership()}
+            variant="secondary"
+            className="h-8 px-3 text-xs"
+          >
+            Transfer Lead
+          </Button>
+        ) : undefined
+      }
+    >
       <div className="flex flex-col gap-[12px]">
         {members.map((member) => (
           <div
@@ -102,15 +115,6 @@ export function TeamMembersCard({
             {/* Actions */}
             {isActionable && member.uid !== currentUserId && (
               <div className="flex gap-2">
-                {onTransferOwnership && (
-                  <Button
-                    onClick={() => onTransferOwnership(member.uid)}
-                    variant="secondary"
-                    className="h-8 px-3 text-xs"
-                  >
-                    Transfer Lead
-                  </Button>
-                )}
                 <Button
                   onClick={() => onRemoveMember(member.uid, member.name)}
                   variant="danger"
