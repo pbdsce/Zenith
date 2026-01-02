@@ -135,7 +135,7 @@ export default function ProblemStatementsPage() {
                         </div>
 
                         <div className="mb-8">
-                            <FormSection title="Common Guidelines & Critical Note">
+                            <FormSection title="Common Guidelines">
                                 <div className="space-y-4 text-white/80 font-body">
                                     <p>
                                         Before selecting a track, please adhere to the following architectural requirement applicable to all problem statements:
