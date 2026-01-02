@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { User, Mail, MessageSquare, Building, FileText, Github, Linkedin, ExternalLink, UserPlus, Check } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
 import { Button } from "./button";
+import { AlertBanner } from "./alert-banner";
 
 interface UserDetails {
   uid: string;
@@ -34,6 +35,7 @@ interface UserProfileModalProps {
   isInviting?: boolean;
   isInvited?: boolean;
   canInvite?: boolean;
+  showCreateTeamHint?: boolean;
   error?: string | null;
 }
 
@@ -46,6 +48,7 @@ export function UserProfileModal({
   isInviting = false,
   isInvited = false,
   canInvite = false,
+  showCreateTeamHint = false,
   error
 }: UserProfileModalProps) {
   const handleResumeDownload = async (url: string) => {
@@ -260,8 +263,17 @@ export function UserProfileModal({
                   </a>
                 )}
               </div>
-            </div>
-          )}
+                </div>
+              )}
+
+            {showCreateTeamHint && (
+              <div className="mt-[12px] pt-[24px] border-t border-[rgba(255,255,255,0.1)]">
+                <AlertBanner
+                  type="info"
+                  message="Want to invite members? You need to create a team first to send invitations."
+                />
+              </div>
+            )}
 
           {canInvite && userDetails.email && onInvite && (
             <div className="mt-[12px] pt-[24px] border-t border-[rgba(255,255,255,0.1)] flex justify-end">

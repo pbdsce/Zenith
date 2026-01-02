@@ -800,6 +800,7 @@ export function DiscoverContainer() {
             isInviting={userDetails ? invitingUser === userDetails.uid : false}
             isInvited={userDetails ? sentInvites.has(userDetails.uid) : false}
             canInvite={isTeamLead && (!teamCapacity || teamCapacity.current < teamCapacity.max)}
+            showCreateTeamHint={!user?.teamCode}
             error={userError}
           />
         </>
