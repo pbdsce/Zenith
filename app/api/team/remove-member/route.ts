@@ -45,7 +45,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { teamCode, memberId, setTheirLookingStatus = true } = body;
+    const { teamCode, memberId, setTheirLookingStatus = false } = body;
 
     if (!teamCode || !memberId) {
       return NextResponse.json(

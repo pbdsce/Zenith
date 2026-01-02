@@ -77,7 +77,7 @@ export async function DELETE(request: NextRequest) {
     // Update all team members' teamCode to null and set isLooking to true
     await User.updateMany(
       { uid: { $in: memberUids } },
-      { teamCode: null, isLooking: true }
+      { teamCode: null }
     );
 
     // Decrement problem statement team count if applicable

@@ -347,7 +347,7 @@ export function TeamContainer() {
         body: JSON.stringify({
           teamCode: team.code,
           memberId: memberToRemove.id,
-          setTheirLookingStatus: true
+          setTheirLookingStatus: false
         })
       });
 
