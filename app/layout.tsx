@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import { Instrument_Serif } from 'next/font/google';
 import { AuthProvider } from '@/components/providers/auth-provider';
 import { Toaster } from "@/components/ui/toaster";
+import { HelpButton } from "@/components/ui/help-button";
 
 const instrumentSerif = Instrument_Serif({
   subsets: ['latin'],
@@ -41,6 +42,7 @@ export default function RootLayout({
         <AuthProvider>
           {children}
           <Toaster />
+          <HelpButton />
         </AuthProvider>
       </body>
     </html>
