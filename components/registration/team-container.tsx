@@ -806,6 +806,7 @@ export function TeamContainer() {
         type: "error",
         message: error instanceof Error ? error.message : "Failed to create team",
       });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
       setIsSubmitting(false);
     }
@@ -887,6 +888,7 @@ export function TeamContainer() {
         type: "error",
         message: error instanceof Error ? error.message : "Failed to join team",
       });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
       setIsSubmitting(false);
     }
