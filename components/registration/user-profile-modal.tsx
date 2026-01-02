@@ -95,6 +95,7 @@ export function UserProfileModal({
             User Profile
           </h2>
           <button
+            type="button"
             onClick={onClose}
             className="text-white opacity-70 hover:opacity-100 transition-opacity"
           >

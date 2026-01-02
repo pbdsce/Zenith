@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState, useCallback, useMemo } from "react";
 import {
     onAuthStateChanged,
     User as FirebaseUser,
@@ -124,7 +124,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return () => unsubscribe();
     }, []);
 
-    const login = async (email: string, password: string) => {
+    const login = useCallback(async (email: string, password: string) => {
         try {
             setLoading(true); // Start loading immediately
             const response = await fetch(API_ENDPOINTS.login, {
@@ -164,9 +164,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setLoading(false); // Ensure loading is stopped on error
             throw error;
         }
-    };
+    }, []);
 
-    const register = async (formData: FormData) => {
+    const register = useCallback(async (formData: FormData) => {
         try {
             setLoading(true); // Start loading immediately
             const response = await fetch(API_ENDPOINTS.register, {
@@ -228,9 +228,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 throw new Error(String(error) || 'Registration failed. Please try again.');
             }
         }
-    };
+    }, []);
 
-    const logout = async () => {
+    const logout = useCallback(async () => {
         try {
             await firebaseSignOut(auth);
             setUser(null);
@@ -238,9 +238,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } catch (error) {
             console.error("Error signing out:", error);
         }
-    };
+    }, [router]);
 
-    const refreshUser = async () => {
+    const refreshUser = useCallback(async () => {
         if (auth.currentUser) {
             // Force token refresh to update emailVerified claim in the token if needed
             await auth.currentUser.reload();
@@ -248,16 +248,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             await fetchUserProfile(auth.currentUser);
             setLoading(false);
         }
-    };
+    }, []);
 
-    const getToken = async () => {
+    const getToken = useCallback(async () => {
         if (auth.currentUser) {
             return await auth.currentUser.getIdToken();
         }
         return null;
-    };
+    }, []);
 
-    const sendVerificationEmail = async () => {
+    const sendVerificationEmail = useCallback(async () => {
         if (auth.currentUser) {
             // Include continueUrl to redirect to dashboard after verification
             const actionCodeSettings = {
@@ -266,9 +266,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             };
             await sendEmailVerification(auth.currentUser, actionCodeSettings);
         }
-    };
+    }, []);
 
-    const resetPassword = async (email: string) => {
+    const resetPassword = useCallback(async (email: string) => {
         try {
             const actionCodeSettings = {
                 url: `${typeof window !== 'undefined' ? window.location.origin : ''}/login`,
@@ -279,13 +279,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             console.error("Error sending password reset email:", error);
             throw new Error(error.message || "Failed to send password reset email.");
         }
-    };
+    }, []);
 
     // Show VerifyEmail component if logged in but email not verified
     const showVerificationScreen = !loading && user && !user.emailVerified;
 
+    const contextValue = useMemo(() => ({
+        user,
+        loading,
+        login,
+        register,
+        logout,
+        refreshUser,
+        getToken,
+        sendVerificationEmail,
+        resetPassword
+    }), [user, loading, login, register, logout, refreshUser, getToken, sendVerificationEmail, resetPassword]);
+
     return (
-        <AuthContext.Provider value={{ user, loading, login, register, logout, refreshUser, getToken, sendVerificationEmail, resetPassword }}>
+        <AuthContext.Provider value={contextValue}>
             {showVerificationScreen ? (
                 <VerifyEmail
                     email={user.email}

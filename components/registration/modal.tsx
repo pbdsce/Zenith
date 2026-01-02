@@ -51,6 +51,7 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
             {title}
           </h2>
           <button
+            type="button"
             onClick={onClose}
             className="text-white opacity-70 hover:opacity-100 transition-opacity"
           >

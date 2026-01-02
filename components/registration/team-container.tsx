@@ -614,9 +614,9 @@ export function TeamContainer() {
         throw new Error(data.message || 'Failed to send invitation');
       }
 
-      setAlert({
-        type: "success",
-        message: "Invitation sent successfully!"
+      toast({
+        title: "Invitation sent",
+        description: "Invitation sent successfully!",
       });
       setInviteEmail("");
 
@@ -624,9 +624,10 @@ export function TeamContainer() {
       fetchJoinRequests(team.code, token);
 
     } catch (error) {
-      setAlert({
-        type: "error",
-        message: error instanceof Error ? error.message : "Failed to invite user"
+      toast({
+        variant: "destructive",
+        title: "Failed to invite user",
+        description: error instanceof Error ? error.message : "Failed to invite user",
       });
     } finally {
       setIsInviting(false);
