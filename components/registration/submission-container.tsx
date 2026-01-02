@@ -300,7 +300,7 @@ export function SubmissionContainer() {
     } catch (error) {
       setAlert({
         type: "error",
-        message: error instanceof Error ? error.message : "Failed to submit project",
+        message: error instanceof Error ? error.message : "Failed to submit team",
       });
     } finally {
       setIsSubmitting(false);
@@ -331,7 +331,7 @@ export function SubmissionContainer() {
   if (!isTeamLead) {
     return (
       <div className="flex flex-col gap-[24px] max-w-[700px] w-full">
-        <AlertBanner type="warning" message="Only team leaders can submit projects." />
+        <AlertBanner type="warning" message="Only team leaders can submit teams." />
         <Button onClick={() => router.push("/dashboard")} variant="primary">
           Back to Dashboard
         </Button>
@@ -401,7 +401,7 @@ export function SubmissionContainer() {
         <div className="flex gap-[12px]">
           <Button type="submit" variant="primary" disabled={isLocked || isSubmitting}>
             <Upload className="w-4 h-4" />
-            {team.status === "submitted" ? "Update Submission" : "Submit Project"}
+            {team.status === "submitted" ? "Update Submission" : "Submit Team"}
           </Button>
           {canWithdraw && (
             <Button onClick={() => setWithdrawDialogOpen(true)} variant="danger" disabled={isSubmitting}>

@@ -1185,7 +1185,7 @@ export function TeamContainer() {
                 {team.leadId === user.uid && team.status === "active" && (
                   <Button onClick={() => router.push("/dashboard/submission")} variant="primary">
                     <Upload className="w-4 h-4" />
-                    Submit Project
+                    Submit Team
                   </Button>
                 )}
                 {team.leadId === user.uid && team.status !== "submitted" && team.status !== "shortlisted" && team.status !== "confirmed" && (

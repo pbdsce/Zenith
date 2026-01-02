@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = 'force-dynamic';
 
-// Submission deadline: January 20, 2026 23:59:59 IST (UTC+5:30)
-const SUBMISSION_DEADLINE = new Date('2026-01-20T23:59:59+05:30');
+// Submission deadline: January 15, 2026 23:59:59 IST (UTC+5:30)
+const SUBMISSION_DEADLINE = new Date('2026-01-15T23:59:59+05:30');
 
 /**
  * GET /api/config/deadline
@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
         deadline: SUBMISSION_DEADLINE.toISOString(),
         serverTime: serverTime.toISOString(),
         isExpired,
-        deadlineIST: "January 20, 2026, 11:59:59 PM IST",
+        deadlineIST: "January 15, 2026, 11:59:59 PM IST",
       },
     });
   } catch (error: any) {
