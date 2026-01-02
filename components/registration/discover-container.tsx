@@ -62,6 +62,7 @@ export function DiscoverContainer() {
   const [sentInvites, setSentInvites] = useState<Set<string>>(new Set()); // User IDs
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const [userIsLooking, setUserIsLooking] = useState(false);
+  const [teamCapacity, setTeamCapacity] = useState<{ current: number, max: number } | null>(null);
 
   // Debounce search query
   useEffect(() => {
@@ -131,6 +132,12 @@ export function DiscoverContainer() {
                 if (leadId === user.uid) {
                   setIsTeamLead(true);
                   setActiveTab("participants"); // Auto-switch for team leads
+
+                  // Set team capacity
+                  setTeamCapacity({
+                    current: teamData.data.currentMemberCount || (teamData.data.teamMembers?.length || 0),
+                    max: teamData.data.maxMembers || 4
+                  });
 
                   // Fetch already sent invites by this team
                   try {
@@ -792,7 +799,7 @@ export function DiscoverContainer() {
             onInvite={handleInviteUser}
             isInviting={userDetails ? invitingUser === userDetails.uid : false}
             isInvited={userDetails ? sentInvites.has(userDetails.uid) : false}
-            canInvite={isTeamLead}
+            canInvite={isTeamLead && (!teamCapacity || teamCapacity.current < teamCapacity.max)}
             error={userError}
           />
         </>

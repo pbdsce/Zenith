@@ -146,6 +146,16 @@ export function ProfileContainer() {
         return;
       }
 
+      // Check if user is in a team before allowing to enable public profile
+      if (profileData.teamCode && !profileData.isLooking) {
+        toast({
+          variant: "destructive",
+          title: "Action not allowed",
+          description: "You cannot enable public profile whilst in a team.",
+        });
+        return;
+      }
+
       const newValue = !profileData.isLooking;
 
       const response = await fetch(API_ENDPOINTS.lookingForTeam, {
@@ -290,24 +300,22 @@ export function ProfileContainer() {
 
       {alert && <AlertBanner type={alert.type} message={alert.message} />}
 
-      {!profileData.teamCode && (
-        <div className="flex flex-col gap-[8px] p-[16px] rounded-[12px] border border-[rgba(255,255,255,0.1)] bg-[rgba(138,138,138,0.05)]">
-            <div className="flex items-center gap-[12px]">
-              <Switch
-                id="profileLookingForTeam"
-                checked={profileData.isLooking}
-                onCheckedChange={handleToggleLooking}
-                className="data-[state=checked]:bg-[#ff4d00] border-[#ff4d00]"
-              />
-            <label htmlFor="profileLookingForTeam" className="text-[14px] font-semibold text-white cursor-pointer" style={{ fontFamily: 'var(--font-body)' }}>
-              Profile Public
-            </label>
-          </div>
-          <p className="text-[13px] text-[rgba(255,255,255,0.6)] ml-[32px]" style={{ fontFamily: 'var(--font-body)' }}>
-            Enable this to make your profile publicly visible and discoverable by other participants.
-          </p>
+      <div className="flex flex-col gap-[8px] p-[16px] rounded-[12px] border border-[rgba(255,255,255,0.1)] bg-[rgba(138,138,138,0.05)]">
+        <div className="flex items-center gap-[12px]">
+          <Switch
+            id="profileLookingForTeam"
+            checked={profileData.isLooking}
+            onCheckedChange={handleToggleLooking}
+            className="data-[state=checked]:bg-[#ff4d00] border-[#ff4d00]"
+          />
+          <label htmlFor="profileLookingForTeam" className="text-[14px] font-semibold text-white cursor-pointer" style={{ fontFamily: 'var(--font-body)' }}>
+            Profile Public
+          </label>
         </div>
-      )}
+        <p className="text-[13px] text-[rgba(255,255,255,0.6)] ml-[32px]" style={{ fontFamily: 'var(--font-body)' }}>
+          Enable this to make your profile publicly visible and discoverable by other participants.
+        </p>
+      </div>
 
       <form onSubmit={handleUpdateProfile} className="flex flex-col gap-[24px]">
         <div className={`flex flex-col gap-[24px] ${isProfileLocked ? 'opacity-70 pointer-events-none' : ''}`}>
