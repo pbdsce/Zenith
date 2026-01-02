@@ -9,6 +9,7 @@ import { FormInput } from "./form-input";
 import { FormTextarea } from "./form-textarea";
 import { FormSelect } from "./form-select";
 import { FormFileUpload } from "./form-file-upload";
+import { FormPhoneInput, isValidPhoneNumber } from "./form-phone-input";
 import { FormSection } from "./form-section";
 import { Button } from "./button";
 import { Card } from "./card";
@@ -179,7 +180,7 @@ export function RegistrationContainer({ onSuccess }: RegistrationContainerProps)
       password: "Password@123",
       confirmPassword: "Password@123",
       discord_username: "testuser.discord",
-      phone: "+1 555 123 4567",
+      phone: "+919876543210",
       age: "22",
       organisation: "Test University",
       bio: "I'm a passionate developer interested in AI, web development, and hackathons. Looking forward to participating in Zenith!",
@@ -240,10 +241,9 @@ export function RegistrationContainer({ onSuccess }: RegistrationContainerProps)
         if (!value.trim()) return "Discord username is required";
         break;
       case 'phone':
-        if (!value.trim()) return "Phone is required";
-        const phoneDigits = value.replace(/\D/g, '');
-        if (phoneDigits.length < 10 || phoneDigits.length > 13) {
-          return "Please enter a valid 10-digit phone number";
+        if (!value || !value.trim()) return "Phone is required";
+        if (!isValidPhoneNumber(value)) {
+          return "Please enter a valid phone number";
         }
         break;
       case 'age':
@@ -279,8 +279,10 @@ export function RegistrationContainer({ onSuccess }: RegistrationContainerProps)
     return null;
   };
 
-  const handleFieldBlur = (fieldName: string) => (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const value = e.target.value;
+  const handleFieldBlur = (fieldName: string) => (e?: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const value = fieldName === 'phone' 
+      ? registerData.phone 
+      : (e?.target.value || '');
     const error = validateField(fieldName, value);
     
     if (error) {
@@ -458,15 +460,15 @@ export function RegistrationContainer({ onSuccess }: RegistrationContainerProps)
           description: errorMessage,
         });
       } else {
-        setAlert({
-          type: "error",
+      setAlert({
+        type: "error",
           message: errorMessage,
         });
         toast({
           variant: "destructive",
           title: "Registration Failed",
           description: errorMessage,
-        });
+      });
       }
     } finally {
       setIsSubmitting(false);
@@ -623,7 +625,7 @@ export function RegistrationContainer({ onSuccess }: RegistrationContainerProps)
               <Zap className="w-4 h-4" />
               Auto-Fill (Debug)
             </Button>
-            <Button
+          <Button
               onClick={() => {
                 toast({
                   title: "Debug Toast",
@@ -631,11 +633,11 @@ export function RegistrationContainer({ onSuccess }: RegistrationContainerProps)
                   variant: "destructive",
                 });
               }}
-              variant="secondary"
-            >
-              <Zap className="w-4 h-4" />
+            variant="secondary"
+          >
+            <Zap className="w-4 h-4" />
               Show Toast (Debug)
-            </Button>
+          </Button>
           </>
         )}
       </div>
@@ -767,16 +769,15 @@ export function RegistrationContainer({ onSuccess }: RegistrationContainerProps)
               onBlur={handleFieldBlur('discord_username')}
               error={errors.discord_username}
               />
-              <FormInput
+              <FormPhoneInput
                 label="Phone"
-                type="tel"
-                placeholder="9876543210"
+                placeholder="Enter phone number"
                 required
                 value={registerData.phone}
-                onChange={(e) =>
+                onChange={(value) =>
                   setRegisterData({
                     ...registerData,
-                    phone: e.target.value,
+                    phone: value || "",
                   })
                 }
                 onBlur={handleFieldBlur('phone')}
