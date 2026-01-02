@@ -134,6 +134,24 @@ export default function ProblemStatementsPage() {
                             </Button>
                         </div>
 
+                        <div className="mb-8">
+                            <FormSection title="Common Guidelines & Critical Note">
+                                <div className="space-y-4 text-white/80 font-body">
+                                    <p>
+                                        Before selecting a track, please adhere to the following architectural requirement applicable to all problem statements:
+                                    </p>
+                                    <ul className="list-disc pl-5 space-y-2">
+                                        <li>
+                                            <strong className="text-white">All solutions submitted must be built from scratch.</strong> We are not looking for wrappers around existing third-party platforms.
+                                        </li>
+                                        <li>
+                                            Your solution must be architected as a <strong className="text-white">Plugin</strong>. It should be designed to be directly integratable into the Frai (Final Round AI) ecosystem, extending its core capabilities rather than functioning solely as a standalone silo.
+                                        </li>
+                                    </ul>
+                                </div>
+                            </FormSection>
+                        </div>
+
                         {problemStatements.length === 0 ? (
                             <FormSection title="No Active Problems">
                                 <p className="text-xl text-white/60 font-body text-center">No active problem statements found.</p>
