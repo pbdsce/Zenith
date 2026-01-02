@@ -71,10 +71,7 @@ export async function POST(request: NextRequest) {
     const authResult = await authenticateUser(request);
     
     if (!authResult.success) {
-      return NextResponse.json(
-        { message: authResult.error.message },
-        { status: authResult.status }
-      );
+      return createErrorResponse(authResult.error.message, 'auth_error', authResult.status);
     }
 
     const emailError = requireEmailVerified(authResult);
@@ -87,17 +84,11 @@ export async function POST(request: NextRequest) {
 
     // Validation
     if (!teamName?.trim()) {
-      return NextResponse.json(
-        { message: "Team name is required" },
-        { status: 400 }
-      );
+      return createErrorResponse("Team name is required", 'validation_error', 400);
     }
 
     if (teamName.length < 2 || teamName.length > 50) {
-      return NextResponse.json(
-        { message: "Team name must be 2-50 characters" },
-        { status: 400 }
-      );
+      return createErrorResponse("Team name must be 2-50 characters", 'validation_error', 400);
     }
 
     await dbConnect();
@@ -105,42 +96,27 @@ export async function POST(request: NextRequest) {
     // Check if user is already in a team
     const user = await User.findOne({ uid: authResult.user.uid });
     if (!user) {
-      return NextResponse.json(
-        { message: "User not found" },
-        { status: 404 }
-      );
+      return createErrorResponse("User not found", 'user_not_found', 404);
     }
 
     if (user.teamCode) {
-      return NextResponse.json(
-        { message: "User already in a team" },
-        { status: 400 }
-      );
+      return createErrorResponse("User already in a team", 'already_in_team', 400);
     }
 
     // Check team name uniqueness
     const isUnique = await isTeamNameUnique(teamName);
     if (!isUnique) {
-      return NextResponse.json(
-        { message: "Team name already exists" },
-        { status: 409 }
-      );
+      return createErrorResponse("Team name already exists", 'team_name_exists', 409);
     }
 
     // Validate problem statement if provided
     if (appliedFor) {
       const problemStatement = await ProblemStatement.findById(appliedFor);
       if (!problemStatement) {
-        return NextResponse.json(
-          { message: "Problem statement not found" },
-          { status: 404 }
-        );
+        return createErrorResponse("Problem statement not found", 'ps_not_found', 404);
       }
       if (!problemStatement.isActive) {
-        return NextResponse.json(
-          { message: "Problem statement is not active" },
-          { status: 400 }
-        );
+        return createErrorResponse("Problem statement is not active", 'ps_not_active', 400);
       }
     }
 
@@ -207,9 +183,11 @@ export async function POST(request: NextRequest) {
 
   } catch (error: any) {
     console.error("Create team error:", error);
-    return NextResponse.json(
-      { message: "Server error" },
-      { status: 500 }
+    return createErrorResponse(
+      error instanceof Error ? error.message : "Server error",
+      'server_error',
+      500,
+      process.env.NODE_ENV === 'development' ? String(error) : undefined
     );
   }
 }

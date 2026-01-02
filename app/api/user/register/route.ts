@@ -156,7 +156,11 @@ export async function POST(request: Request) {
     if (Object.keys(errors).length > 0) {
       console.error("Registration validation errors:", errors);
       return NextResponse.json(
-        { message: "Validation error", errors },
+        {
+          success: false,
+          message: "Validation error",
+          errors
+        },
         { status: 400 }
       );
     }
@@ -168,7 +172,11 @@ export async function POST(request: Request) {
     const existingUser = await User.findOne({ email: email.toLowerCase() });
     if (existingUser) {
       return NextResponse.json(
-        { message: "Email already exists" },
+        {
+          success: false,
+          message: "Email already exists",
+          error: { code: 'email_exists', message: "Email already exists" }
+        },
         { status: 409 }
       );
     }
@@ -177,7 +185,11 @@ export async function POST(request: Request) {
     const existingDiscord = await User.findOne({ discord_username });
     if (existingDiscord) {
       return NextResponse.json(
-        { message: "Discord username already exists" },
+        {
+          success: false,
+          message: "Discord username already exists",
+          error: { code: 'discord_exists', message: "Discord username already exists" }
+        },
         { status: 409 }
       );
     }
@@ -186,7 +198,11 @@ export async function POST(request: Request) {
     const existingPhone = await User.findOne({ phone });
     if (existingPhone) {
       return NextResponse.json(
-        { message: "Phone number already exists" },
+        {
+          success: false,
+          message: "Phone number already exists",
+          error: { code: 'phone_exists', message: "Phone number already exists" }
+        },
         { status: 409 }
       );
     }
@@ -202,13 +218,21 @@ export async function POST(request: Request) {
     } catch (firebaseError: any) {
       if (firebaseError.code === 'auth/email-already-in-use') {
         return NextResponse.json(
-          { message: "Email already exists" },
+          {
+            success: false,
+            message: "Email already exists",
+            error: { code: 'email_exists', message: "Email already exists" }
+          },
           { status: 409 }
         );
       }
       if (firebaseError.code === 'auth/weak-password') {
         return NextResponse.json(
-          { message: "Password is too weak" },
+          {
+            success: false,
+            message: "Password is too weak",
+            error: { code: 'weak_password', message: "Password is too weak" }
+          },
           { status: 400 }
         );
       }
@@ -280,7 +304,15 @@ export async function POST(request: Request) {
   } catch (error: any) {
     console.error("Registration error:", error);
     return NextResponse.json(
-      { message: "Server error" },
+      {
+        success: false,
+        message: error instanceof Error ? error.message : "Server error",
+        error: {
+          code: 'server_error',
+          message: error instanceof Error ? error.message : "Server error",
+          details: process.env.NODE_ENV === 'development' ? error : undefined
+        }
+      },
       { status: 500 }
     );
   }

@@ -16,11 +16,11 @@ function createSuccessResponse(message: string, data: any, status = 200) {
   }, { status });
 }
 
-function createErrorResponse(message: string, code: string, status: number) {
+function createErrorResponse(message: string, code: string, status: number, details?: string) {
   return NextResponse.json({
     success: false,
     message,
-    error: { code, message },
+    error: { code, message, details },
     timestamp: new Date().toISOString(),
   }, { status });
 }
@@ -33,10 +33,7 @@ export async function GET(request: NextRequest) {
   try {
     const authResult = await authenticateUser(request);
     if (!authResult.success) {
-      return NextResponse.json(
-        { message: authResult.error.message },
-        { status: authResult.status }
-      );
+      return createErrorResponse(authResult.error.message, 'auth_error', authResult.status);
     }
 
     const { searchParams } = new URL(request.url);
@@ -134,9 +131,11 @@ export async function GET(request: NextRequest) {
     });
   } catch (error: any) {
     console.error("Get looking-for-members error:", error);
-    return NextResponse.json(
-      { message: "Server error" },
-      { status: 500 }
+    return createErrorResponse(
+      error instanceof Error ? error.message : "Server error",
+      'server_error',
+      500,
+      process.env.NODE_ENV === 'development' ? String(error) : undefined
     );
   }
 }
@@ -149,10 +148,7 @@ export async function PUT(request: NextRequest) {
   try {
     const authResult = await authenticateUser(request);
     if (!authResult.success) {
-      return NextResponse.json(
-        { message: authResult.error.message },
-        { status: authResult.status }
-      );
+      return createErrorResponse(authResult.error.message, 'auth_error', authResult.status);
     }
 
     const emailError = requireEmailVerified(authResult);
@@ -164,35 +160,23 @@ export async function PUT(request: NextRequest) {
     const { teamCode, isLooking } = body;
 
     if (!teamCode) {
-      return NextResponse.json(
-        { message: "Team code is required" },
-        { status: 400 }
-      );
+      return createErrorResponse("Team code is required", 'validation_error', 400);
     }
 
     if (typeof isLooking !== 'boolean') {
-      return NextResponse.json(
-        { message: "isLooking must be a boolean" },
-        { status: 400 }
-      );
+      return createErrorResponse("isLooking must be a boolean", 'validation_error', 400);
     }
 
     await dbConnect();
 
     const team = await Team.findOne({ teamCode });
     if (!team) {
-      return NextResponse.json(
-        { message: "Team not found" },
-        { status: 404 }
-      );
+      return createErrorResponse("Team not found", 'team_not_found', 404);
     }
 
     // Check if user is team lead
     if (team.teamLead !== authResult.user.uid) {
-      return NextResponse.json(
-        { message: "User is not team lead" },
-        { status: 403 }
-      );
+      return createErrorResponse("User is not team lead", 'forbidden', 403);
     }
 
     const updatedTeam = await Team.findOneAndUpdate(
@@ -202,10 +186,7 @@ export async function PUT(request: NextRequest) {
     );
 
     if (!updatedTeam) {
-      return NextResponse.json(
-        { message: "Failed to update status" },
-        { status: 500 }
-      );
+      return createErrorResponse("Failed to update status", 'update_failed', 500);
     }
 
     return NextResponse.json({
@@ -218,9 +199,11 @@ export async function PUT(request: NextRequest) {
     });
   } catch (error: any) {
     console.error("Update looking-for-members error:", error);
-    return NextResponse.json(
-      { message: "Server error" },
-      { status: 500 }
+    return createErrorResponse(
+      error instanceof Error ? error.message : "Server error",
+      'server_error',
+      500,
+      process.env.NODE_ENV === 'development' ? String(error) : undefined
     );
   }
 }

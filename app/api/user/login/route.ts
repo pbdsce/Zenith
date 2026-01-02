@@ -14,9 +14,9 @@ async function authenticateUser(email: string, password: string, isAdminAttempt:
   try {
     return await signInWithEmailAndPassword(auth, email, password);
   } catch (authError: unknown) {
-    if (authError instanceof FirebaseError && isAdminAttempt && 
-        (authError.code === 'auth/invalid-credential' || 
-         authError.code === 'auth/user-not-found')) {
+    if (authError instanceof FirebaseError && isAdminAttempt &&
+      (authError.code === 'auth/invalid-credential' ||
+        authError.code === 'auth/user-not-found')) {
       // Create new admin account if login fails with valid admin domain
       return await createUserWithEmailAndPassword(auth, email, password);
     }
@@ -34,22 +34,22 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
-    
-    const isAdminAttempt = ADMIN_EMAIL_DOMAIN && SECRET_CODE && 
-                           email.endsWith(ADMIN_EMAIL_DOMAIN) && 
-                           password === SECRET_CODE;
-    
+
+    const isAdminAttempt = ADMIN_EMAIL_DOMAIN && SECRET_CODE &&
+      email.endsWith(ADMIN_EMAIL_DOMAIN) &&
+      password === SECRET_CODE;
+
     // Authentication phase
     const userCredential = await authenticateUser(email, password, isAdminAttempt);
     const firebaseUser = userCredential.user;
     const idToken = await firebaseUser.getIdToken();
-    
+
     await dbConnect();
     let user = await User.findOne({ uid: firebaseUser.uid });
     if (!user) {
       user = await User.findOne({ email: email.toLowerCase() });
     }
-    
+
     // Process based on user type
     if (isAdminAttempt) {
       // Admin login flow
@@ -58,7 +58,7 @@ export async function POST(request: Request) {
           await User.findByIdAndUpdate(user._id, { role: 'admin' });
           user.role = 'admin';
         }
-        
+
         return NextResponse.json({
           message: "Login successful",
           status: "success",
@@ -77,7 +77,7 @@ export async function POST(request: Request) {
         const adminName = email.split('@')[0].split('.')
           .map((s: string) => s.charAt(0).toUpperCase() + s.slice(1))
           .join(' ');
-        
+
         const newAdminUser = await new User({
           uid: firebaseUser.uid,
           name: adminName,
@@ -85,7 +85,7 @@ export async function POST(request: Request) {
           role: 'admin',
           isLooking: false
         }).save();
-        
+
         return NextResponse.json({
           message: "Login successful",
           status: "success",
@@ -108,7 +108,7 @@ export async function POST(request: Request) {
           { status: 404 }
         );
       }
-      
+
       return NextResponse.json({
         message: "Login successful",
         status: "success",
@@ -125,7 +125,7 @@ export async function POST(request: Request) {
     }
   } catch (error: unknown) {
     console.error("Login error:", error);
-    
+
     const errorCode = error instanceof FirebaseError ? error.code : undefined;
     let errorMessage = "Server error";
     let statusCode = 500;
@@ -158,7 +158,14 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json(
-      { message: errorMessage },
+      {
+        success: false,
+        message: errorMessage,
+        error: {
+          code: errorCode || 'server_error',
+          message: errorMessage
+        }
+      },
       { status: statusCode }
     );
   }
