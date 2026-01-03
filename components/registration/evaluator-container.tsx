@@ -12,6 +12,7 @@ import { Card } from "./card";
 import { StatusBadge } from "./status-badge";
 import { StickyAlert } from "./sticky-alert";
 import { Spinner } from "@/components/ui/spinner";
+import { ConfirmationDialog } from "./confirmation-dialog";
 
 interface AssignedTeam {
   teamCode: string;
@@ -46,6 +47,14 @@ export function EvaluatorContainer() {
     message: string;
   } | null>(null);
 
+  const [confirmation, setConfirmation] = useState<{
+    isOpen: boolean;
+    onConfirm: () => void | Promise<void>;
+  }>({
+    isOpen: false,
+    onConfirm: () => { },
+  });
+
   useEffect(() => {
     const fetchAssignedTeams = async () => {
       try {
@@ -62,8 +71,14 @@ export function EvaluatorContainer() {
 
         if (response.ok) {
           const data = await response.json();
-          if (data.success && data.data) {
-            setAssignedTeams(data.data);
+          if (data.success && data.data && Array.isArray(data.data.teams)) {
+            const mappedTeams = data.data.teams.map((team: any) => ({
+              teamCode: team.teamCode,
+              teamName: team.teamName,
+              problemStatement: team.appliedFor?.title || 'No Problem Statement',
+              status: team.isEvaluated ? 'evaluated' : 'pending'
+            }));
+            setAssignedTeams(mappedTeams);
           }
         } else {
           console.error("Failed to fetch assigned teams:", response.status);
@@ -86,8 +101,8 @@ export function EvaluatorContainer() {
     fetchAssignedTeams();
   }, [getToken]);
 
-  const handleEvaluationSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleEvaluationSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!selectedTeam) return;
 
     setIsSubmitting(true);
@@ -126,9 +141,9 @@ export function EvaluatorContainer() {
         });
         
         // Update team status
-        setAssignedTeams(prev => 
-          prev.map(team => 
-            team.teamCode === selectedTeam 
+        setAssignedTeams(prev =>
+          prev.map(team =>
+            team.teamCode === selectedTeam
               ? { ...team, status: 'evaluated' as const }
               : team
           )
@@ -185,12 +200,12 @@ export function EvaluatorContainer() {
                     <p className="font-['Inter',sans-serif] text-[13px] text-white opacity-70 mb-[8px]">
                       Problem: {team.problemStatement}
                     </p>
-                    <StatusBadge 
-                      status={team.status === 'evaluated' ? 'Evaluated' : 'Pending Evaluation'} 
-                      icon={team.status === 'evaluated' ? CheckCircle : Clock} 
+                    <StatusBadge
+                      status={team.status === 'evaluated' ? 'Evaluated' : 'Pending Evaluation'}
+                      icon={team.status === 'evaluated' ? CheckCircle : Clock}
                     />
                   </div>
-                  <Button 
+                  <Button
                     variant={team.status === 'evaluated' ? 'secondary' : 'primary'}
                     onClick={() => setSelectedTeam(team.teamCode)}
                   >
@@ -243,12 +258,27 @@ export function EvaluatorContainer() {
               rows={4}
             />
             <div className="flex gap-[12px]">
-              <Button type="submit" variant="primary" disabled={isSubmitting}>
+              <Button
+                type="button"
+                variant="primary"
+                disabled={isSubmitting}
+                onClick={() => {
+                  if (!evaluationData.innovation || !evaluationData.technical || !evaluationData.presentation || !evaluationData.impact) {
+                    setAlert({ type: "error", message: "Please fill all required fields before submitting." });
+                    return;
+                  }
+
+                  setConfirmation({
+                    isOpen: true,
+                    onConfirm: () => handleEvaluationSubmit()
+                  });
+                }}
+              >
                 {isSubmitting && <Spinner size="sm" className="mr-2" />}
                 Submit Evaluation
               </Button>
-              <Button 
-                type="button" 
+              <Button
+                type="button"
                 variant="secondary"
                 onClick={() => {
                   setSelectedTeam(null);
@@ -267,6 +297,19 @@ export function EvaluatorContainer() {
           </form>
         </FormSection>
       )}
+      <ConfirmationDialog
+        isOpen={confirmation.isOpen}
+        onClose={() => setConfirmation({ ...confirmation, isOpen: false })}
+        onConfirm={async () => {
+          const promise = confirmation.onConfirm();
+          if (promise instanceof Promise) {
+            await promise;
+          }
+          setConfirmation({ ...confirmation, isOpen: false });
+        }}
+        title="Submit Evaluation"
+        message="Are you sure you want to submit this evaluation? This action cannot be undone."
+      />
     </div>
   );
 }

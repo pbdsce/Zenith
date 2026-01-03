@@ -13,6 +13,8 @@ import { UserProfileModal, UserDetails } from "./user-profile-modal";
 import { Modal } from "./modal";
 import { FormTextarea } from "./form-textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { EvaluatorsTab } from "./evaluators-tab";
+import { ConfirmationDialog } from "./confirmation-dialog";
 import {
   Pagination,
   PaginationContent,
@@ -92,6 +94,20 @@ export function AdminContainer() {
   const [newPsTitle, setNewPsTitle] = useState("");
   const [newPsDescription, setNewPsDescription] = useState("");
   const [isAddingPs, setIsAddingPs] = useState(false);
+
+  // Confirmation Dialog State
+  const [confirmation, setConfirmation] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void | Promise<void>;
+    variant?: "default" | "danger";
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    onConfirm: () => { },
+  });
 
   // Fetch Stats
   useEffect(() => {
@@ -482,9 +498,10 @@ export function AdminContainer() {
       </FormSection>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="users">Manage Users</TabsTrigger>
           <TabsTrigger value="teams">Manage Teams</TabsTrigger>
+          <TabsTrigger value="evaluators">Evaluators</TabsTrigger>
           <TabsTrigger value="problems">Problem Statements</TabsTrigger>
         </TabsList>
 
@@ -599,7 +616,14 @@ export function AdminContainer() {
                           View
                         </Button>
                         {team.status === 'submitted' || team.status === 'under-review' ? (
-                          <Button variant="primary" onClick={() => handleShortlistTeam(team.teamCode)}>
+                          <Button variant="primary" onClick={() => {
+                            setConfirmation({
+                              isOpen: true,
+                              title: "Shortlist Team",
+                              message: `Are you sure you want to shortlist team "${team.teamName}"? This will move them to the next round.`,
+                              onConfirm: () => handleShortlistTeam(team.teamCode),
+                            });
+                          }}>
                             <Star className="w-4 h-4" />
                             Shortlist
                           </Button>
@@ -612,6 +636,10 @@ export function AdminContainer() {
               </div>
             )}
           </FormSection>
+        </TabsContent>
+
+        <TabsContent value="evaluators" className="mt-6">
+          <EvaluatorsTab />
         </TabsContent>
 
         <TabsContent value="problems" className="mt-6">
@@ -661,7 +689,14 @@ export function AdminContainer() {
               Cancel
             </Button>
             <Button
-              onClick={handleAddProblemStatement}
+              onClick={() => {
+                setConfirmation({
+                  isOpen: true,
+                  title: "Create Problem Statement",
+                  message: "Are you sure you want to create this problem statement? It will be visible to all users.",
+                  onConfirm: handleAddProblemStatement,
+                });
+              }}
               variant="primary"
               disabled={isAddingPs || !newPsTitle || !newPsDescription}
             >
@@ -671,6 +706,21 @@ export function AdminContainer() {
           </div>
         </div>
       </Modal>
+
+      <ConfirmationDialog
+        isOpen={confirmation.isOpen}
+        onClose={() => setConfirmation({ ...confirmation, isOpen: false })}
+        onConfirm={async () => {
+          const promise = confirmation.onConfirm();
+          if (promise instanceof Promise) {
+            await promise;
+          }
+          setConfirmation({ ...confirmation, isOpen: false });
+        }}
+        title={confirmation.title}
+        message={confirmation.message}
+        variant={confirmation.variant}
+      />
     </div>
   );
 }

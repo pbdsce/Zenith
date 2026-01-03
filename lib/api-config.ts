@@ -52,7 +52,7 @@ export const API_ENDPOINTS = {
   evaluatorTeamDetails: (teamCode: string) => `/api/evaluator/teams/${teamCode}`,  // GET
   evaluatorEvaluate: '/api/evaluator/evaluate',        // PUT
   evaluatorUpdateEvaluation: (teamCode: string) => `/api/evaluator/evaluate/${teamCode}/update`,  // PUT
-  
+  adminPromoteUser: '/api/admin/users/promote',        // PUT
   // ===== PROBLEM STATEMENT ENDPOINTS =====
   problemStatements: '/api/problem-statements',        // GET
   problemStatementDetails: (id: string) => `/api/problem-statements/${id}`,  // GET
