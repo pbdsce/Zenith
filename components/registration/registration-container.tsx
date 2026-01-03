@@ -273,6 +273,72 @@ export function RegistrationContainer({ onSuccess }: RegistrationContainerProps)
           return "Please enter a valid LinkedIn URL (e.g., https://linkedin.com/in/username)";
         }
         break;
+      case 'portfolio':
+        if (value.trim()) {
+          try {
+            new URL(value.trim());
+          } catch {
+            return "Please enter a valid portfolio URL";
+          }
+        }
+        break;
+      case 'leetcode':
+        if (value.trim()) {
+          try {
+            const url = new URL(value.trim());
+            if (!url.hostname.includes('leetcode.com')) {
+              return "Please enter a valid LeetCode URL (e.g., https://leetcode.com/username)";
+            }
+          } catch {
+            return "Please enter a valid LeetCode URL";
+          }
+        }
+        break;
+      case 'kaggle':
+        if (value.trim()) {
+          try {
+            const url = new URL(value.trim());
+            if (!url.hostname.includes('kaggle.com')) {
+              return "Please enter a valid Kaggle URL (e.g., https://kaggle.com/username)";
+            }
+          } catch {
+            return "Please enter a valid Kaggle URL";
+          }
+        }
+        break;
+      case 'codeforces':
+        if (value.trim()) {
+          try {
+            const url = new URL(value.trim());
+            if (!url.hostname.includes('codeforces.com')) {
+              return "Please enter a valid Codeforces URL (e.g., https://codeforces.com/profile/username)";
+            }
+          } catch {
+            return "Please enter a valid Codeforces URL";
+          }
+        }
+        break;
+      case 'ctf':
+        if (value.trim()) {
+          try {
+            new URL(value.trim());
+          } catch {
+            return "Please enter a valid CTF profile URL";
+          }
+        }
+        break;
+      case 'devfolio':
+        if (value.trim()) {
+          try {
+            const url = new URL(value.trim());
+            if (!url.hostname.includes('devfolio.co')) {
+              return "Please enter a valid Devfolio URL (e.g., https://devfolio.co/@username)";
+            }
+          } catch {
+            return "Please enter a valid Devfolio URL";
+          }
+        }
+        break;
       default:
         return null;
     }
@@ -296,34 +362,54 @@ export function RegistrationContainer({ onSuccess }: RegistrationContainerProps)
     }
   };
 
-  const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    setAlert(null);
-
-    const newErrors: Record<string, string> = {};
+  const validateAllFields = (): Record<string, string> => {
+    const validationErrors: Record<string, string> = {};
     
-    const fieldsToValidate: Array<keyof typeof registerData> = [
+    const requiredFields: Array<keyof typeof registerData> = [
       'name', 'email', 'password', 'confirmPassword', 'discord_username',
       'phone', 'age', 'organisation', 'bio', 'github', 'linkedin'
     ];
     
-    fieldsToValidate.forEach(field => {
+    requiredFields.forEach(field => {
       const error = validateField(field as string, registerData[field]);
       if (error) {
-        newErrors[field as string] = error;
+        validationErrors[field as string] = error;
+      }
+    });
+    
+    const optionalFields: Array<keyof typeof registerData> = [
+      'portfolio', 'leetcode', 'kaggle', 'devfolio', 'codeforces', 'ctf'
+    ];
+    
+    optionalFields.forEach(field => {
+      if (registerData[field] && registerData[field].trim()) {
+        const error = validateField(field as string, registerData[field]);
+        if (error) {
+          validationErrors[field as string] = error;
+        }
       }
     });
     
     if (!resume) {
-      newErrors.resume = "Resume is required";
+      validationErrors.resume = "Resume is required";
     }
     if (!acceptedCodeOfConduct) {
-      newErrors.codeOfConduct = "You must accept the Code of Conduct to register";
+      validationErrors.codeOfConduct = "You must accept the Code of Conduct to register";
     }
+    
+    return validationErrors;
+  };
+    const isFormValid = (): boolean => {
+    const validationErrors = validateAllFields();
+    return Object.keys(validationErrors).length === 0;
+  };
 
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    const validationErrors = validateAllFields();
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
       setIsSubmitting(false);
       // Save form data even when validation fails
       try {
@@ -340,6 +426,8 @@ export function RegistrationContainer({ onSuccess }: RegistrationContainerProps)
       return;
     }
 
+    setIsSubmitting(true);
+    setAlert(null);
     try {
       // Save form data before submission to ensure it's persisted
       try {
@@ -425,14 +513,20 @@ export function RegistrationContainer({ onSuccess }: RegistrationContainerProps)
       };
       
       if (error instanceof Error) {
-        errorMessage = error.message || errorMessage;
         const fieldErrorsFromApi = (error as any).fieldErrors;
-        if (fieldErrorsFromApi && typeof fieldErrorsFromApi === 'object') {
+        if (fieldErrorsFromApi && typeof fieldErrorsFromApi === 'object' && Object.keys(fieldErrorsFromApi).length > 0) {
           Object.keys(fieldErrorsFromApi).forEach((backendField) => {
             const frontendField = fieldNameMap[backendField] || backendField;
             fieldErrors[frontendField] = fieldErrorsFromApi[backendField];
           });
+          const errorKeys = Object.keys(fieldErrors);
+          if (errorKeys.length === 1) {
+            errorMessage = fieldErrors[errorKeys[0]];
+          } else {
+            errorMessage = error.message || errorMessage;
+          }
         } else {
+          errorMessage = error.message || errorMessage;
           const errorMsg = error.message.toLowerCase();
           if (errorMsg.includes('email already exists') || errorMsg.includes('email is already')) {
             fieldErrors.email = 'This email is already registered';
@@ -440,35 +534,124 @@ export function RegistrationContainer({ onSuccess }: RegistrationContainerProps)
             fieldErrors.discord_username = 'This Discord username is already registered';
           } else if (errorMsg.includes('phone number already exists') || errorMsg.includes('phone number is already')) {
             fieldErrors.phone = 'This phone number is already registered';
+          } else if (errorMsg.includes('invalid leetcode') || errorMsg.includes('leetcode profile')) {
+            fieldErrors.leetcode = 'Invalid LeetCode URL';
+          } else if (errorMsg.includes('invalid kaggle') || errorMsg.includes('kaggle profile')) {
+            fieldErrors.kaggle = 'Invalid Kaggle URL';
+          } else if (errorMsg.includes('invalid codeforces') || errorMsg.includes('codeforces profile')) {
+            fieldErrors.codeforces = 'Invalid Codeforces URL';
+          } else if (errorMsg.includes('invalid ctf') || errorMsg.includes('ctf profile')) {
+            fieldErrors.ctf = 'Invalid CTF profile URL';
+          } else if (errorMsg.includes('invalid devfolio') || errorMsg.includes('devfolio profile')) {
+            fieldErrors.devfolio = 'Invalid Devfolio URL';
+          } else if (errorMsg.includes('invalid portfolio') || errorMsg.includes('portfolio link')) {
+            fieldErrors.portfolio = 'Invalid Portfolio URL';
+          } else if (errorMsg.includes('invalid github') || errorMsg.includes('github profile')) {
+            fieldErrors.github = 'Invalid GitHub URL';
+          } else if (errorMsg.includes('invalid linkedin') || errorMsg.includes('linkedin profile')) {
+            fieldErrors.linkedin = 'Invalid LinkedIn URL';
           }
         }
       } else if (typeof error === 'string') {
         errorMessage = error;
+        const errorMsg = error.toLowerCase();
+        if (errorMsg.includes('invalid leetcode') || errorMsg.includes('leetcode profile')) {
+          fieldErrors.leetcode = 'Invalid LeetCode URL';
+        } else if (errorMsg.includes('invalid kaggle') || errorMsg.includes('kaggle profile')) {
+          fieldErrors.kaggle = 'Invalid Kaggle URL';
+        } else if (errorMsg.includes('invalid codeforces') || errorMsg.includes('codeforces profile')) {
+          fieldErrors.codeforces = 'Invalid Codeforces URL';
+        } else if (errorMsg.includes('invalid ctf') || errorMsg.includes('ctf profile')) {
+          fieldErrors.ctf = 'Invalid CTF profile URL';
+        } else if (errorMsg.includes('invalid devfolio') || errorMsg.includes('devfolio profile')) {
+          fieldErrors.devfolio = 'Invalid Devfolio URL';
+        } else if (errorMsg.includes('invalid portfolio') || errorMsg.includes('portfolio link')) {
+          fieldErrors.portfolio = 'Invalid Portfolio URL';
+        } else if (errorMsg.includes('invalid github') || errorMsg.includes('github profile')) {
+          fieldErrors.github = 'Invalid GitHub URL';
+        } else if (errorMsg.includes('invalid linkedin') || errorMsg.includes('linkedin profile')) {
+          fieldErrors.linkedin = 'Invalid LinkedIn URL';
+        }
       } else if (error && typeof error === 'object' && 'message' in error) {
         errorMessage = String(error.message);
+        const errorMsg = errorMessage.toLowerCase();
+        if (errorMsg.includes('invalid leetcode') || errorMsg.includes('leetcode profile')) {
+          fieldErrors.leetcode = 'Invalid LeetCode URL';
+        } else if (errorMsg.includes('invalid kaggle') || errorMsg.includes('kaggle profile')) {
+          fieldErrors.kaggle = 'Invalid Kaggle URL';
+        } else if (errorMsg.includes('invalid codeforces') || errorMsg.includes('codeforces profile')) {
+          fieldErrors.codeforces = 'Invalid Codeforces URL';
+        } else if (errorMsg.includes('invalid ctf') || errorMsg.includes('ctf profile')) {
+          fieldErrors.ctf = 'Invalid CTF profile URL';
+        } else if (errorMsg.includes('invalid devfolio') || errorMsg.includes('devfolio profile')) {
+          fieldErrors.devfolio = 'Invalid Devfolio URL';
+        } else if (errorMsg.includes('invalid portfolio') || errorMsg.includes('portfolio link')) {
+          fieldErrors.portfolio = 'Invalid Portfolio URL';
+        } else if (errorMsg.includes('invalid github') || errorMsg.includes('github profile')) {
+          fieldErrors.github = 'Invalid GitHub URL';
+        } else if (errorMsg.includes('invalid linkedin') || errorMsg.includes('linkedin profile')) {
+          fieldErrors.linkedin = 'Invalid LinkedIn URL';
+        }
       }
       
       if (Object.keys(fieldErrors).length > 0) {
         setErrors(fieldErrors);
+        const fieldErrorKeys = Object.keys(fieldErrors);
+        let toastMessage: string;
+        let alertMessage: string;
+        if (fieldErrorKeys.length === 1) {
+          toastMessage = fieldErrors[fieldErrorKeys[0]];
+          alertMessage = fieldErrors[fieldErrorKeys[0]];
+        } else {
+          const fieldDisplayNameMap: Record<string, string> = {
+            'leetcode': 'LeetCode',
+            'kaggle': 'Kaggle',
+            'codeforces': 'Codeforces',
+            'ctf': 'CTF Profile',
+            'devfolio': 'Devfolio',
+            'portfolio': 'Portfolio',
+            'github': 'GitHub',
+            'linkedin': 'LinkedIn',
+            'email': 'Email',
+            'password': 'Password',
+            'discord_username': 'Discord Username',
+            'phone': 'Phone',
+            'age': 'Age',
+            'organisation': 'Organisation',
+            'bio': 'Bio',
+            'name': 'Name',
+          };
+          
+          const errorList = fieldErrorKeys.map(key => {
+            const fieldDisplayName = fieldDisplayNameMap[key] || key
+              .replace(/_/g, ' ')
+              .replace(/\b\w/g, l => l.toUpperCase());
+            return `${fieldDisplayName}: ${fieldErrors[key]}`;
+          }).join(', ');
+          
+          toastMessage = `Validation errors: ${errorList}`;
+          alertMessage = `Please fix ${fieldErrorKeys.length} error(s) highlighted in red below.`;
+        }
+        
         setAlert({
           type: "error",
-          message: "Please fix the errors highlighted in red below.",
+          message: alertMessage,
         });
         toast({
           variant: "destructive",
           title: "Registration Failed",
-          description: errorMessage,
+          description: toastMessage,
         });
       } else {
-      setAlert({
-        type: "error",
+        setAlert({
+          type: "error",
           message: errorMessage,
         });
         toast({
           variant: "destructive",
           title: "Registration Failed",
           description: errorMessage,
-      });
+        });
       }
     } finally {
       setIsSubmitting(false);
@@ -902,6 +1085,8 @@ export function RegistrationContainer({ onSuccess }: RegistrationContainerProps)
                     portfolio: e.target.value,
                   })
                 }
+                onBlur={handleFieldBlur('portfolio')}
+                error={errors.portfolio}
               />
               <FormInput
                 label="LeetCode"
@@ -913,6 +1098,8 @@ export function RegistrationContainer({ onSuccess }: RegistrationContainerProps)
                     leetcode: e.target.value,
                   })
                 }
+                onBlur={handleFieldBlur('leetcode')}
+                error={errors.leetcode}
               />
               <FormInput
                 label="Kaggle"
@@ -924,6 +1111,8 @@ export function RegistrationContainer({ onSuccess }: RegistrationContainerProps)
                     kaggle: e.target.value,
                   })
                 }
+                onBlur={handleFieldBlur('kaggle')}
+                error={errors.kaggle}
               />
               <FormInput
                 label="Devfolio"
@@ -935,6 +1124,8 @@ export function RegistrationContainer({ onSuccess }: RegistrationContainerProps)
                     devfolio: e.target.value,
                   })
                 }
+                onBlur={handleFieldBlur('devfolio')}
+                error={errors.devfolio}
               />
               <FormInput
                 label="Codeforces"
@@ -946,6 +1137,8 @@ export function RegistrationContainer({ onSuccess }: RegistrationContainerProps)
                     codeforces: e.target.value,
                   })
                 }
+                onBlur={handleFieldBlur('codeforces')}
+                error={errors.codeforces}
               />
               <FormInput
                 label="CTF Profile"
@@ -957,6 +1150,8 @@ export function RegistrationContainer({ onSuccess }: RegistrationContainerProps)
                     ctf: e.target.value,
                   })
                 }
+                onBlur={handleFieldBlur('ctf')}
+                error={errors.ctf}
               />
               <FormInput
                 label="Referral Code"
@@ -1025,7 +1220,7 @@ export function RegistrationContainer({ onSuccess }: RegistrationContainerProps)
             <Button 
               type="submit" 
               variant="primary" 
-              disabled={isSubmitting || !acceptedCodeOfConduct}
+              disabled={isSubmitting || !isFormValid()}
             >
               {isSubmitting && <Spinner size="sm" className="mr-2" />}
               {isSubmitting ? "Creating Account..." : "Create Account"}

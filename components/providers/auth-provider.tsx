@@ -186,7 +186,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             if (!response.ok) {
                 setLoading(false); // Stop loading on error
                 // Extract error message from response - handle both message and error fields
-                const errorMessage = data?.message || data?.error || `Registration failed with status ${response.status}. Please try again.`;
+                let errorMessage = data?.message || data?.error || `Registration failed with status ${response.status}. Please try again.`;
+                if (data?.errors && typeof data.errors === 'object' && Object.keys(data.errors).length > 0) {
+                    const errorKeys = Object.keys(data.errors);
+                    if (errorKeys.length === 1) {
+                        errorMessage = data.errors[errorKeys[0]];
+                    }
+                }
                 
                 const error = new Error(errorMessage);
                 
