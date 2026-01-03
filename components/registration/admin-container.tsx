@@ -139,7 +139,7 @@ export function AdminContainer() {
             totalUsers: usersData.data?.stats?.totalParticipants || 0,
             totalTeams: teamsData.data?.stats?.totalTeams || 0,
             totalSubmissions: teamsData.data?.stats?.submitted || 0,
-            totalEvaluated: teamsData.data?.stats?.shortlisted || 0,
+            totalEvaluated: teamsData.data?.stats?.evaluated || 0,
           });
         }
 

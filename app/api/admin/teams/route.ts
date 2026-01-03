@@ -91,10 +91,11 @@ export async function GET(request: NextRequest) {
     ]);
 
     // Get stats
-    const [submitted, shortlisted, rsvped] = await Promise.all([
-      Team.countDocuments({ teamStatus: 'submitted' }),
+    const [submitted, shortlisted, rsvped, evaluated] = await Promise.all([
+      Team.countDocuments({ submittedAt: { $exists: true, $ne: null } }),
       Team.countDocuments({ isShortlisted: true }),
       Team.countDocuments({ teamStatus: 'rsvped' }),
+      Team.countDocuments({ isEvaluated: true }),
     ]);
 
     const formattedTeams = teams.map(team => {
@@ -129,6 +130,7 @@ export async function GET(request: NextRequest) {
         submitted,
         shortlisted,
         rsvped,
+        evaluated,
         pending: totalTeams - submitted,
       },
     });

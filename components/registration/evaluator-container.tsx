@@ -3,9 +3,9 @@
 import { useState, useEffect } from "react";
 import { useAuth } from '@/hooks/use-auth';
 import { API_ENDPOINTS } from "@/lib/api-config";
-import { Eye, Clock, CheckCircle, Settings } from "lucide-react";
+import { Eye, Clock, CheckCircle, Youtube, FileText, Link as LinkIcon, ExternalLink } from "lucide-react";
 import { FormSection } from "./form-section";
-import { FormSelect } from "./form-select";
+import { CustomDropdown } from "./custom-dropdown";
 import { FormTextarea } from "./form-textarea";
 import { Button } from "./button";
 import { Card } from "./card";
@@ -19,13 +19,17 @@ interface AssignedTeam {
   teamName: string;
   problemStatement: string;
   status: 'pending' | 'evaluated';
+  submissionLinks?: {
+    videoURL?: string;
+    submissionPDF?: string;
+    anyOtherLink?: string;
+  };
 }
 
 interface EvaluationCriteria {
-  innovation: string;
-  technical: string;
+  tech: string;
+  ux: string;
   presentation: string;
-  impact: string;
   comments: string;
 }
 
@@ -34,10 +38,9 @@ export function EvaluatorContainer() {
   const [assignedTeams, setAssignedTeams] = useState<AssignedTeam[]>([]);
   const [selectedTeam, setSelectedTeam] = useState<string | null>(null);
   const [evaluationData, setEvaluationData] = useState<EvaluationCriteria>({
-    innovation: '',
-    technical: '',
+    tech: '',
+    ux: '',
     presentation: '',
-    impact: '',
     comments: '',
   });
   const [isLoading, setIsLoading] = useState(true);
@@ -76,7 +79,12 @@ export function EvaluatorContainer() {
               teamCode: team.teamCode,
               teamName: team.teamName,
               problemStatement: team.appliedFor?.title || 'No Problem Statement',
-              status: team.isEvaluated ? 'evaluated' : 'pending'
+              status: team.isEvaluated ? 'evaluated' : 'pending',
+              submissionLinks: {
+                videoURL: team.videoURL,
+                submissionPDF: team.submissionPDF,
+                anyOtherLink: team.anyOtherLink
+              }
             }));
             setAssignedTeams(mappedTeams);
           }
@@ -101,6 +109,26 @@ export function EvaluatorContainer() {
     fetchAssignedTeams();
   }, [getToken]);
 
+  const handleDownload = async (url: string, filename: string) => {
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(blobUrl);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('Error downloading file:', error);
+      window.open(url, '_blank');
+    }
+  };
+
+
+
   const handleEvaluationSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!selectedTeam) return;
@@ -120,10 +148,11 @@ export function EvaluatorContainer() {
         },
         body: JSON.stringify({
           teamCode: selectedTeam,
-          innovation: parseInt(evaluationData.innovation),
-          technical: parseInt(evaluationData.technical),
-          presentation: parseInt(evaluationData.presentation),
-          impact: parseInt(evaluationData.impact),
+          scores: {
+            tech: parseInt(evaluationData.tech),
+            ux: parseInt(evaluationData.ux),
+            presentation: parseInt(evaluationData.presentation),
+          },
           comments: evaluationData.comments,
         }),
       });
@@ -151,10 +180,9 @@ export function EvaluatorContainer() {
         
         // Reset form
         setEvaluationData({
-          innovation: '',
-          technical: '',
+          tech: '',
+          ux: '',
           presentation: '',
-          impact: '',
           comments: '',
         });
         setSelectedTeam(null);
@@ -170,6 +198,8 @@ export function EvaluatorContainer() {
       setIsSubmitting(false);
     }
   };
+
+  const activeTeam = assignedTeams.find(t => t.teamCode === selectedTeam);
 
   return (
     <div className="flex flex-col gap-[24px] w-full">
@@ -200,17 +230,28 @@ export function EvaluatorContainer() {
                     <p className="font-['Inter',sans-serif] text-[13px] text-white opacity-70 mb-[8px]">
                       Problem: {team.problemStatement}
                     </p>
-                    <StatusBadge
-                      status={team.status === 'evaluated' ? 'Evaluated' : 'Pending Evaluation'}
-                      icon={team.status === 'evaluated' ? CheckCircle : Clock}
-                    />
+                    <div className="mt-2 w-fit">
+                      <StatusBadge
+                        status={team.status === 'evaluated' ? 'Evaluated' : 'Pending Evaluation'}
+                        icon={team.status === 'evaluated' ? CheckCircle : Clock}
+                      />
+                    </div>
                   </div>
                   <Button
                     variant={team.status === 'evaluated' ? 'secondary' : 'primary'}
-                    onClick={() => setSelectedTeam(team.teamCode)}
+                    onClick={() => {
+                      setSelectedTeam(team.teamCode);
+                      // Pre-fill if already evaluated? Or clean...
+                      setEvaluationData({
+                        tech: '',
+                        ux: '',
+                        presentation: '',
+                        comments: '',
+                      });
+                    }}
                   >
                     <Eye className="w-4 h-4" />
-                    {team.status === 'evaluated' ? 'View' : 'Evaluate'}
+                    {team.status === 'evaluated' ? 'View/Update' : 'Evaluate'}
                   </Button>
                 </div>
               </Card>
@@ -219,83 +260,121 @@ export function EvaluatorContainer() {
         )}
       </FormSection>
 
-      {selectedTeam && (
-        <FormSection title="Evaluate Team">
-          <form onSubmit={handleEvaluationSubmit} className="flex flex-col gap-[20px]">
-            <FormSelect
-              label="Innovation (1-10)"
-              options={['1', '2', '3', '4', '5', '6', '7', '8', '9', '10']}
-              required
-              value={evaluationData.innovation}
-              onChange={(e) => setEvaluationData({ ...evaluationData, innovation: e.target.value })}
-            />
-            <FormSelect
-              label="Technical Implementation (1-10)"
-              options={['1', '2', '3', '4', '5', '6', '7', '8', '9', '10']}
-              required
-              value={evaluationData.technical}
-              onChange={(e) => setEvaluationData({ ...evaluationData, technical: e.target.value })}
-            />
-            <FormSelect
-              label="Presentation (1-10)"
-              options={['1', '2', '3', '4', '5', '6', '7', '8', '9', '10']}
-              required
-              value={evaluationData.presentation}
-              onChange={(e) => setEvaluationData({ ...evaluationData, presentation: e.target.value })}
-            />
-            <FormSelect
-              label="Impact & Usefulness (1-10)"
-              options={['1', '2', '3', '4', '5', '6', '7', '8', '9', '10']}
-              required
-              value={evaluationData.impact}
-              onChange={(e) => setEvaluationData({ ...evaluationData, impact: e.target.value })}
-            />
-            <FormTextarea
-              label="Additional Comments"
-              placeholder="Provide detailed feedback for the team..."
-              value={evaluationData.comments}
-              onChange={(e) => setEvaluationData({ ...evaluationData, comments: e.target.value })}
-              rows={4}
-            />
-            <div className="flex gap-[12px]">
-              <Button
-                type="button"
-                variant="primary"
-                disabled={isSubmitting}
-                onClick={() => {
-                  if (!evaluationData.innovation || !evaluationData.technical || !evaluationData.presentation || !evaluationData.impact) {
-                    setAlert({ type: "error", message: "Please fill all required fields before submitting." });
-                    return;
-                  }
+      {selectedTeam && activeTeam && (
+        <div className="flex flex-col gap-[24px]">
 
-                  setConfirmation({
-                    isOpen: true,
-                    onConfirm: () => handleEvaluationSubmit()
-                  });
-                }}
-              >
-                {isSubmitting && <Spinner size="sm" className="mr-2" />}
-                Submit Evaluation
-              </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() => {
-                  setSelectedTeam(null);
-                  setEvaluationData({
-                    innovation: '',
-                    technical: '',
-                    presentation: '',
-                    impact: '',
-                    comments: '',
-                  });
-                }}
-              >
-                Cancel
-              </Button>
-            </div>
-          </form>
-        </FormSection>
+          {(activeTeam.submissionLinks?.videoURL || activeTeam.submissionLinks?.submissionPDF || activeTeam.submissionLinks?.anyOtherLink) && (
+            <FormSection title="Submission Artifacts">
+              <div className="flex flex-wrap gap-[12px]">
+                {activeTeam.submissionLinks.videoURL && (
+                  <a
+                    href={activeTeam.submissionLinks.videoURL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-[8px] bg-[#FF0000]/10 border border-[#FF0000]/20 px-[16px] py-[10px] rounded-[8px] hover:bg-[#FF0000]/20 transition-all group"
+                  >
+                    <Youtube className="w-5 h-5 text-[#FF0000] group-hover:scale-110 transition-transform" />
+                    <span className="text-white text-[14px]">Watch Video Pitch</span>
+                    <ExternalLink className="w-3 h-3 text-white/40" />
+                  </a>
+                )}
+                {activeTeam.submissionLinks.submissionPDF && (
+                  <button
+                    onClick={() => handleDownload(activeTeam.submissionLinks!.submissionPDF!, 'presentation.pdf')}
+                    className="flex items-center gap-[8px] bg-blue-500/10 border border-blue-500/20 px-[16px] py-[10px] rounded-[8px] hover:bg-blue-500/20 transition-all group cursor-pointer"
+                  >
+                    <FileText className="w-5 h-5 text-blue-400 group-hover:scale-110 transition-transform" />
+                    <span className="text-white text-[14px]">Download Presentation PDF</span>
+                    <ExternalLink className="w-3 h-3 text-white/40" />
+                  </button>
+                )}
+                {activeTeam.submissionLinks.anyOtherLink && (
+                  <a
+                    href={activeTeam.submissionLinks.anyOtherLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-[8px] bg-white/5 border border-white/10 px-[16px] py-[10px] rounded-[8px] hover:bg-white/10 transition-all group"
+                  >
+                    <LinkIcon className="w-5 h-5 text-white/70 group-hover:scale-110 transition-transform" />
+                    <span className="text-white text-[14px]">Additional Link</span>
+                    <ExternalLink className="w-3 h-3 text-white/40" />
+                  </a>
+                )}
+              </div>
+            </FormSection>
+          )}
+
+          <FormSection title={`Evaluate: ${activeTeam.teamName}`}>
+            <form onSubmit={handleEvaluationSubmit} className="flex flex-col gap-[24px]">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-[24px]">
+                <CustomDropdown
+                  label="Technical Implementation"
+                  options={['1', '2', '3', '4', '5', '6', '7', '8', '9', '10']}
+                  required
+                  value={evaluationData.tech}
+                  onChange={(value) => setEvaluationData({ ...evaluationData, tech: value })}
+                />
+                <CustomDropdown
+                  label="User Experience (UX)"
+                  options={['1', '2', '3', '4', '5', '6', '7', '8', '9', '10']}
+                  required
+                  value={evaluationData.ux}
+                  onChange={(value) => setEvaluationData({ ...evaluationData, ux: value })}
+                />
+                <CustomDropdown
+                  label="Presentation"
+                  options={['1', '2', '3', '4', '5', '6', '7', '8', '9', '10']}
+                  required
+                  value={evaluationData.presentation}
+                  onChange={(value) => setEvaluationData({ ...evaluationData, presentation: value })}
+                />
+              </div>
+              <FormTextarea
+                label="Evaluator Comments"
+                placeholder="Provide constructive feedback (required for low scores)..."
+                value={evaluationData.comments}
+                onChange={(e) => setEvaluationData({ ...evaluationData, comments: e.target.value })}
+                rows={4}
+              />
+              <div className="flex gap-[12px] justify-end border-t border-white/5 pt-6">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => {
+                    setSelectedTeam(null);
+                    setEvaluationData({
+                      tech: '',
+                      ux: '',
+                      presentation: '',
+                      comments: '',
+                    });
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  variant="primary"
+                  disabled={isSubmitting}
+                  onClick={() => {
+                    if (!evaluationData.tech || !evaluationData.ux || !evaluationData.presentation) {
+                      setAlert({ type: "error", message: "Please rate all criteria before submitting." });
+                      return;
+                    }
+
+                    setConfirmation({
+                      isOpen: true,
+                      onConfirm: () => handleEvaluationSubmit()
+                    });
+                  }}
+                >
+                  {isSubmitting && <Spinner size="sm" className="mr-2" />}
+                  Submit Evaluation
+                </Button>
+              </div>
+            </form>
+          </FormSection>
+        </div>
       )}
       <ConfirmationDialog
         isOpen={confirmation.isOpen}
