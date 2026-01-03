@@ -2,7 +2,7 @@ import { useState } from "react";
 import { FormSection } from "@/components/registration/form-section";
 import { Button } from "@/components/registration/button";
 import { DotPattern } from "@/components/registration/dot-pattern";
-import { LogOut, RefreshCw, Mail } from "lucide-react";
+import { LogOut, RefreshCw, Mail, AlertCircle } from "lucide-react";
 import { StickyAlert } from "@/components/registration/sticky-alert";
 import { Spinner } from "@/components/ui/spinner";
 
@@ -70,8 +70,11 @@ export function VerifyEmail({ email, onResend, onLogout }: VerifyEmailProps) {
                                     You must verify your email to access the dashboard.
                                 </p>
 
-                                <div className="bg-white/5 p-3 rounded-lg text-xs text-white opacity-60">
-                                    <p>Don't see it? Check your spam folder.</p>
+                                <div className="bg-[#ff4d00]/10 border border-[#ff4d00]/30 p-4 rounded-xl flex items-center gap-3 backdrop-blur-[2.5px]">
+                                    <AlertCircle className="h-5 w-5 text-[#ff4d00] flex-shrink-0" />
+                                    <p className="text-sm text-white font-medium">
+                                        Don't see it? Check your <span className="text-[#ff4d00] font-semibold">spam </span>folder.
+                                    </p>
                                 </div>
 
                                 {sent && (
