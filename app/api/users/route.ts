@@ -1,9 +1,22 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/db";
 import User from "@/models/User";
+import { authenticateUser, createAuthErrorResponse, requireAdmin } from "@/lib/middleware/auth";
 
-export async function GET() {
+export const dynamic = 'force-dynamic';
+
+export async function GET(req: NextRequest) {
   try {
+    const authResult = await authenticateUser(req);
+    if (!authResult.success) {
+      return createAuthErrorResponse(authResult);
+    }
+
+    const adminError = requireAdmin(authResult);
+    if (adminError) {
+      return createAuthErrorResponse(adminError);
+    }
+
     await dbConnect();
     const users = await User.find({}).select('-__v');
     const formattedUsers = users.map(user => ({

@@ -1,10 +1,12 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { cloudinaryV2 } from "@/c";
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import dbConnect from "@/lib/db";
 import User from "@/models/User";
+import { authenticateUser, createAuthErrorResponse, requireAdmin, requireEmailVerified } from "@/lib/middleware/auth";
+
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs'; // specify nodejs runtime
 export const preferredRegion = 'auto'; // or specify regions if needed
@@ -127,25 +129,30 @@ const parseForm = async (req: Request): Promise<{ fields: Record<string, any>, f
   return { fields, files };
 };
 
-export async function GET(req: Request, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const authHeader = req.headers.get('Authorization');
-    
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      console.warn("Authorization header missing or invalid, proceeding anyway for development");
+    const authResult = await authenticateUser(req);
+    if (!authResult.success) {
+      return createAuthErrorResponse(authResult);
     }
     
     await dbConnect();
     
     let user = await User.findOne({ uid: params.id });
     if (!user && params.id.includes('@')) {
+      // Searching by email
       user = await User.findOne({ email: params.id });
+    } else if (!user) {
+      try {
+        user = await User.findById(params.id);
+      } catch (e) {
+      }
     }
     
     if (!user) {
-      return NextResponse.json({ 
-        message: "User not found", 
-        status: "error" 
+      return NextResponse.json({
+        message: "User not found",
+        status: "error"
       }, { status: 404 });
     }
     
@@ -177,37 +184,64 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     });
   } catch (error) {
     console.error("Error fetching user:", error);
-    return NextResponse.json({ 
-      message: "Failed to fetch user", 
-      error: String(error), 
-      status: "error" 
+    return NextResponse.json({
+      message: "Failed to fetch user",
+      error: String(error),
+      status: "error"
     }, { status: 500 });
   }
 }
 
-export async function PUT(req: Request, { params }: { params: { id: string } }) {
+export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
   try {
+    const authResult = await authenticateUser(req);
+    if (!authResult.success) {
+      return createAuthErrorResponse(authResult);
+    }
+
     const { fields, files } = await parseForm(req);
     const updates: Record<string, any> = { ...fields };
-    
-    // Check if name update is attempted (not allowed)
-    if (updates.name) {
-      return NextResponse.json({ 
-        message: "Name cannot be updated", 
-        status: "error" 
-      }, { status: 400 });
-    }
-    
+
     await dbConnect();
-    
-    const user = await User.findById(params.id);
+
+    let user = null;
+    try {
+      user = await User.findById(params.id);
+    } catch (e) {
+      // Ignore invalid ObjectId
+    }
+
     if (!user) {
-      return NextResponse.json({ 
-        message: "User not found", 
-        status: "error" 
+      // Try finding by uid
+      user = await User.findOne({ uid: params.id });
+    }
+
+    if (!user) {
+      return NextResponse.json({
+        message: "User not found",
+        status: "error"
       }, { status: 404 });
     }
-    
+
+    // Authorization Check
+    const isSelf = user.uid === authResult.user.uid;
+    const isAdmin = authResult.user.role === 'admin';
+
+    if (!isSelf && !isAdmin) {
+      return NextResponse.json({
+        message: "Unauthorized: You can only update your own profile",
+        status: "error"
+      }, { status: 403 });
+    }
+
+    // Check if name update is attempted (not allowed)
+    if (updates.name) {
+      return NextResponse.json({
+        message: "Name cannot be updated",
+        status: "error"
+      }, { status: 400 });
+    }
+
     // Handle resume update if provided
     if (files.resume) {
       const resumeFile = files.resume;
@@ -326,63 +360,57 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     }
     
     const updatedUser = await User.findByIdAndUpdate(params.id, updateData, { new: true });
-    
-    return NextResponse.json({ 
+
+    return NextResponse.json({
       message: "User updated successfully",
       id: updatedUser?._id.toString(),
       uid: updatedUser?.uid,
-      status: "success" 
+      status: "success"
     });
   } catch (error) {
     console.error("Error updating user:", error);
-    return NextResponse.json({ 
-      message: "Failed to update user", 
-      error: String(error), 
-      status: "error" 
+    return NextResponse.json({
+      message: "Failed to update user",
+      error: String(error),
+      status: "error"
     }, { status: 500 });
   }
 }
 
-export async function DELETE(req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const { uid } = await req.json();
-    
-    if (!uid) {
-      return NextResponse.json({ 
-        message: "Unauthorized: Missing UID", 
-        status: "error" 
-      }, { status: 401 });
+    const authResult = await authenticateUser(req);
+    if (!authResult.success) {
+      return createAuthErrorResponse(authResult);
+    }
+
+    const adminError = requireAdmin(authResult);
+    if (adminError) {
+      return createAuthErrorResponse(adminError);
     }
     
     await dbConnect();
-    
-    const adminUser = await User.findOne({ uid: uid });
-    if (!adminUser || adminUser.role !== 'admin') {
-      return NextResponse.json({ 
-        message: "Unauthorized: Not an admin", 
-        status: "error" 
-      }, { status: 403 });
-    }
+
     const targetUser = await User.findById(params.id);
     if (!targetUser) {
-      return NextResponse.json({ 
-        message: "User not found", 
-        status: "error" 
+      return NextResponse.json({
+        message: "User not found",
+        status: "error"
       }, { status: 404 });
     }
     
     await User.findByIdAndDelete(params.id);
-    
-    return NextResponse.json({ 
-      message: "User deleted successfully", 
-      status: "success" 
+
+    return NextResponse.json({
+      message: "User deleted successfully",
+      status: "success"
     });
   } catch (error) {
     console.error("Error deleting user:", error);
-    return NextResponse.json({ 
-      message: "Failed to delete user", 
-      error: String(error), 
-      status: "error" 
+    return NextResponse.json({
+      message: "Failed to delete user",
+      error: String(error),
+      status: "error"
     }, { status: 500 });
   }
 }

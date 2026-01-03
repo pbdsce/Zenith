@@ -94,6 +94,7 @@ export async function GET(
       teamName: team.teamName,
       teamLead: {
         id: members.find(u => u.uid === team.teamLead)?._id.toString(),
+        uid: members.find(u => u.uid === team.teamLead)?.uid,
         name: members.find(u => u.uid === team.teamLead)?.name,
         email: members.find(u => u.uid === team.teamLead)?.email,
         discord_username: members.find(u => u.uid === team.teamLead)?.discord_username,
