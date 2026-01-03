@@ -14,13 +14,24 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { user, isAuthenticated, isLoading, logout } = useAuth();
+  const { user, isAuthenticated, isLoading, logout, refreshUser } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const [alert, setAlert] = useState<{
     type: "success" | "error" | "warning" | "info";
     message: string;
   } | null>(null);
+  const [hasRefreshed, setHasRefreshed] = useState(false);
+  useEffect(() => {
+    if (!isLoading && isAuthenticated && user && !hasRefreshed) {
+      refreshUser().then(() => {
+        setHasRefreshed(true);
+      }).catch((error) => {
+        console.error("Error refreshing user:", error);
+        setHasRefreshed(true);
+      });
+    }
+  }, [isLoading, isAuthenticated, user, hasRefreshed, refreshUser]);
 
   useEffect(() => {
     if (isLoading) return;
