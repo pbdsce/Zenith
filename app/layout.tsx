@@ -20,7 +20,7 @@ export const metadata: Metadata = {
     template: '%s | Zenith',
     default: 'Zenith'
   },
-  description: 'A 36-hour programming contest featuring CTF, Kaggle, Hackathon, and DSA',
+  description: 'Zenith is a 24-hour hackathon that brings together innovators, developers, designers, and problem-solvers to collaborate intensively on real-world challenges. Participants work continuously over a 24-hour period to ideate, build, and present innovative technical solutions, fostering creativity, teamwork, and rapid problem-solving in a high-energy environment.',
   viewport: 'width=device-width, initial-scale=1',
   themeColor: '#171717',
   icons: {
