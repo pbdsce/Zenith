@@ -375,6 +375,23 @@ export function SubmissionContainer() {
           <p className="text-[13px] text-[rgba(255,255,255,0.6)]" style={{ fontFamily: 'var(--font-body)' }}>
             Upload a pitch video explaining your project idea and solution.
           </p>
+
+          <div className="bg-white/5 border border-white/10 rounded-[12px] p-[16px] flex flex-col gap-[8px]">
+            <h4 className="text-[14px] font-semibold text-white" style={{ fontFamily: 'var(--font-body)' }}>
+              Pitch Video Guidelines
+            </h4>
+            <ul className="flex flex-col gap-[4px] list-disc pl-[16px]">
+              <li className="text-[13px] text-[rgba(255,255,255,0.8)] leading-relaxed" style={{ fontFamily: 'var(--font-body)' }}>
+                We’d love to see and hear from every member of the team in the pitch video.
+              </li>
+              <li className="text-[13px] text-[rgba(255,255,255,0.8)] leading-relaxed" style={{ fontFamily: 'var(--font-body)' }}>
+                Please ensure that each team member appears on camera for their portion of the pitch. Recordings may be done individually and combined in any format that works best for your team.
+              </li>
+              <li className="text-[13px] text-[rgba(255,255,255,0.8)] leading-relaxed" style={{ fontFamily: 'var(--font-body)' }}>
+                There is no time limit on the pitch video. Teams may choose the length that best suits their presentation.
+              </li>
+            </ul>
+          </div>
           <FormFileUpload
             label="Project Documentation (PDF)"
             accept=".pdf"
