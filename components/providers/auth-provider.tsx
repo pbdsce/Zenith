@@ -287,8 +287,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     }, []);
 
-    // Show VerifyEmail component if logged in but email not verified
-    const showVerificationScreen = !loading && user && !user.emailVerified;
+    // Show VerifyEmail component if logged in but email not verified (admin users skip verification)
+    const showVerificationScreen = !loading && user && !user.emailVerified && user.role !== 'admin';
 
     const contextValue = useMemo(() => ({
         user,

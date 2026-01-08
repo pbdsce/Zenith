@@ -4,6 +4,7 @@ import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from "fire
 import { FirebaseError } from "firebase/app";
 import dbConnect from "@/lib/db";
 import User from "@/models/User";
+import { getAuth } from "@/lib/firebase-admin";
 
 const ADMIN_EMAIL_DOMAIN = process.env.ADMIN_EMAIL_DOMAIN;
 const SECRET_CODE = process.env.SECRET_CODE;
@@ -58,6 +59,13 @@ export async function POST(request: Request) {
           await User.findByIdAndUpdate(user._id, { role: 'admin' });
           user.role = 'admin';
         }
+        try {
+          await getAuth().updateUser(firebaseUser.uid, {
+            emailVerified: true
+          });
+        } catch (verifyError) {
+          console.error('Failed to verify admin email:', verifyError);
+        }
 
         return NextResponse.json({
           message: "Login successful",
@@ -85,6 +93,14 @@ export async function POST(request: Request) {
           role: 'admin',
           isLooking: false
         }).save();
+          try {
+          await getAuth().updateUser(firebaseUser.uid, {
+            emailVerified: true
+          });
+          await getAuth().setCustomUserClaims(firebaseUser.uid, { role: 'admin' });
+        } catch (adminError) {
+          console.error('Failed to verify admin email or set claims:', adminError);
+        }
 
         return NextResponse.json({
           message: "Login successful",

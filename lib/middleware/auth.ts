@@ -156,6 +156,10 @@ export function requireEvaluator(authResult: AuthResult): AuthError | null {
  * Check if authenticated user has verified email
  */
 export function requireEmailVerified(authResult: AuthResult): AuthError | null {
+  if (authResult.user.role === 'admin') {
+    return null;
+  }
+  
   if (authResult.firebaseToken.email_verified !== true) {
     return {
       success: false,

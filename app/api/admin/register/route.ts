@@ -125,8 +125,11 @@ export async function POST(request: Request) {
 
     try {
       await getAuth().setCustomUserClaims(firebaseUser.uid, { role: 'admin' });
+      await getAuth().updateUser(firebaseUser.uid, {
+        emailVerified: true
+      });
     } catch (claimsError) {
-      console.error('Failed to set custom claims:', claimsError);
+      console.error('Failed to set custom claims or verify email:', claimsError);
     }
 
     return NextResponse.json({
