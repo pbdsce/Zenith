@@ -1,0 +1,15 @@
+name: Trigger Stats Storage
+
+on:
+  schedule:
+    - cron: '30 18 * * *'
+  workflow_dispatch:
+
+jobs:
+  trigger-cron:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call API Endpoint
+        run: |
+          curl -X GET ${{ secrets.NEXT_PUBLIC_APP_URL }}/api/cron/frai-stats \
+          -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"

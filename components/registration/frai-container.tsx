@@ -14,35 +14,11 @@ interface AdminStats {
     totalEvaluated: number;
 }
 
-const REGISTRATION_DATA = [
-    { name: 'Jan 1', users: 45 },
-    { name: 'Jan 2', users: 98 },
-    { name: 'Jan 3', users: 156 },
-    { name: 'Jan 4', users: 180 },
-    { name: 'Jan 5', users: 202 },
-    { name: 'Jan 6', users: 243 },
-    { name: 'Jan 7', users: 301 },
-    { name: 'Jan 8', users: 378 },
-];
 
-const TEAM_STATUS_DATA = [
-    { name: 'Registered', value: 91 },
-    { name: 'Submitted', value: 4 },
-    { name: 'Evaluated', value: 1 },
-    { name: 'Shortlisted', value: 0 },
-];
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
 
-const SUBMISSION_ACTIVITY = [
-    { time: '10:00', submissions: 0 },
-    { time: '11:00', submissions: 1 },
-    { time: '12:00', submissions: 0 },
-    { time: '13:00', submissions: 2 },
-    { time: '14:00', submissions: 0 },
-    { time: '15:00', submissions: 1 },
-    { time: '16:00', submissions: 0 },
-];
+
 
 
 import { API_ENDPOINTS } from "@/lib/api-config";
@@ -57,6 +33,10 @@ export function FraiContainer() {
         totalSubmissions: 0,
         totalEvaluated: 0,
     });
+
+    const [registrationData, setRegistrationData] = useState<any[]>([]);
+    const [teamStatusData, setTeamStatusData] = useState<any[]>([]);
+    const [submissionData, setSubmissionData] = useState<any[]>([]);
 
     const [alert, setAlert] = useState<{
         type: "success" | "error" | "warning" | "info";
@@ -83,6 +63,25 @@ export function FraiContainer() {
                             totalSubmissions: result.data.totalSubmissions || 0,
                             totalEvaluated: result.data.totalEvaluated || 0,
                         });
+
+                        if (result.data.history) {
+                            const chartData = result.data.history.map((item: any) => {
+                                const date = new Date(item.date);
+                                return {
+                                    name: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+                                    users: item.totalUsers
+                                };
+                            });
+                            setRegistrationData(chartData);
+                        }
+
+                        if (result.data.teamDistribution) {
+                            setTeamStatusData(result.data.teamDistribution);
+                        }
+
+                        if (result.data.submissionActivity) {
+                            setSubmissionData(result.data.submissionActivity);
+                        }
                     }
                 }
             } catch (error) {
@@ -151,7 +150,7 @@ export function FraiContainer() {
                                 </div>
                                 <div className="h-[300px] w-full">
                                     <ResponsiveContainer width="100%" height="100%">
-                                        <LineChart data={REGISTRATION_DATA}>
+                                        <LineChart data={registrationData}>
                                             <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
                                             <XAxis dataKey="name" stroke="rgba(255,255,255,0.5)" />
                                             <YAxis stroke="rgba(255,255,255,0.5)" />
@@ -174,7 +173,7 @@ export function FraiContainer() {
                                     <ResponsiveContainer width="100%" height="100%">
                                         <PieChart>
                                             <Pie
-                                                data={TEAM_STATUS_DATA}
+                                                data={teamStatusData}
                                                 cx="50%"
                                                 cy="50%"
                                                 innerRadius={60}
@@ -183,7 +182,7 @@ export function FraiContainer() {
                                                 paddingAngle={5}
                                                 dataKey="value"
                                             >
-                                                {TEAM_STATUS_DATA.map((entry, index) => (
+                                                {teamStatusData.map((entry, index) => (
                                                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                                 ))}
                                             </Pie>
@@ -210,7 +209,7 @@ export function FraiContainer() {
                                 </div>
                                 <div className="h-[300px] w-full">
                                     <ResponsiveContainer width="100%" height="100%">
-                                        <BarChart data={SUBMISSION_ACTIVITY}>
+                                        <BarChart data={submissionData}>
                                             <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
                                             <XAxis dataKey="time" stroke="rgba(255,255,255,0.5)" />
                                             <YAxis stroke="rgba(255,255,255,0.5)" />
