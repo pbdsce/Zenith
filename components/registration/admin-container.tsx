@@ -465,7 +465,7 @@ export function AdminContainer() {
       )}
 
       <FormSection title="Platform Statistics">
-        <div className="grid grid-cols-4 gap-[16px]">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-[16px]">
           <Card>
             <div className="flex flex-col items-center gap-[8px] text-center">
               <UserCircle className="w-8 h-8 text-[#ff4d00]" />
@@ -498,7 +498,7 @@ export function AdminContainer() {
       </FormSection>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 h-auto">
           <TabsTrigger value="users">Manage Users</TabsTrigger>
           <TabsTrigger value="teams">Manage Teams</TabsTrigger>
           <TabsTrigger value="evaluators">Evaluators</TabsTrigger>
@@ -508,7 +508,7 @@ export function AdminContainer() {
         <TabsContent value="users" className="mt-6">
           <FormSection title="Users">
             <div className="flex flex-col gap-[12px] mb-6">
-              <div className="flex gap-[12px]">
+              <div className="flex flex-col sm:flex-row gap-[12px]">
                 <div className="flex-1">
                   <FormInput
                     label=""
@@ -539,17 +539,17 @@ export function AdminContainer() {
               <div className="flex flex-col gap-[12px]">
                 {users.map((user) => (
                   <Card key={user.id}>
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                       <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-full bg-[rgba(255,255,255,0.1)] flex items-center justify-center">
+                        <div className="w-10 h-10 rounded-full bg-[rgba(255,255,255,0.1)] flex items-center justify-center shrink-0">
                           <UserCircle className="w-6 h-6 text-white opacity-90" />
                         </div>
                         <div>
                           <h3 className="font-['Inter',sans-serif] text-[16px] text-white">{user.name}</h3>
-                          <p className="font-['Inter',sans-serif] text-[13px] text-white opacity-90">{user.email}</p>
+                          <p className="font-['Inter',sans-serif] text-[13px] text-white opacity-90 break-all">{user.email}</p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-4 pl-[56px] sm:pl-0 w-full sm:w-auto justify-between sm:justify-end">
                         {user.teamName && (
                           <div className="bg-[rgba(255,255,255,0.05)] px-3 py-1 rounded-full">
                             <span className="text-[12px] text-white opacity-90">Team: {user.teamName}</span>
@@ -572,7 +572,7 @@ export function AdminContainer() {
         <TabsContent value="teams" className="mt-6">
           <FormSection title="Teams">
             <div className="flex flex-col gap-[12px] mb-6">
-              <div className="flex gap-[12px]">
+              <div className="flex flex-col sm:flex-row gap-[12px]">
                 <div className="flex-1">
                   <FormInput
                     label=""
@@ -603,14 +603,14 @@ export function AdminContainer() {
               <div className="flex flex-col gap-[16px]">
                 {teams.map((team) => (
                   <Card key={team.teamCode}>
-                    <div className="flex items-start justify-between">
+                    <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
                       <div className="flex-1">
                         <h3 className="font-['Inter',sans-serif] text-[16px] text-white mb-[4px]">{team.teamName}</h3>
                         <p className="font-['Inter',sans-serif] text-[13px] text-white opacity-90 mb-[8px]">
                           Problem: {team.problemStatement} • Members: {team.memberCount} • Status: {team.status}
                         </p>
                       </div>
-                      <div className="flex gap-[8px]">
+                      <div className="flex gap-[8px] w-full sm:w-auto justify-end">
                         <Button variant="secondary" onClick={() => handleViewTeam(team.teamCode)}>
                           <Eye className="w-4 h-4" />
                           View

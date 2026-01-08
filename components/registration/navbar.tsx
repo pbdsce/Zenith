@@ -24,7 +24,7 @@ export function NavBar({
   return (
     <div className="bg-gradient-to-t from-[rgba(23,23,23,0)] to-[#171717] h-[78px] w-full sticky top-0 z-50">
       <div className="flex items-center justify-center size-full pt-[16px]">
-        <div className="flex items-center justify-between px-[40px] max-w-[1200px] w-full">
+        <div className="flex items-center justify-between px-4 md:px-[40px] max-w-[1200px] w-full">
           <div 
             className="cursor-pointer" 
             onClick={() => onNavigate && onNavigate('landing')}
@@ -41,7 +41,7 @@ export function NavBar({
                 className="backdrop-blur-[2.5px] backdrop-filter bg-[rgba(138,138,138,0.3)] flex items-center gap-[8px] justify-center overflow-clip px-[18px] py-[8px] rounded-[20px] relative cursor-pointer hover:bg-[rgba(138,138,138,0.4)] transition-all"
               >
                 <FileText className="w-4 h-4" />
-                <p className="text-[13.6px] text-white leading-[16.8px]" style={{ fontFamily: 'var(--font-body)' }}>
+                <p className="hidden sm:block text-[13.6px] text-white leading-[16.8px]" style={{ fontFamily: 'var(--font-body)' }}>
                   Problem Statements
                 </p>
                 <div className="absolute inset-0 rounded-[20px]">
@@ -54,7 +54,7 @@ export function NavBar({
                 className="backdrop-blur-[2.5px] backdrop-filter bg-[rgba(138,138,138,0.3)] flex items-center gap-[8px] justify-center overflow-clip px-[18px] py-[8px] rounded-[20px] relative cursor-pointer hover:bg-[rgba(138,138,138,0.4)] transition-all"
               >
                 <LogOut className="w-4 h-4" />
-                <p className="text-[13.6px] text-white leading-[16.8px]" style={{ fontFamily: 'var(--font-body)' }}>
+                <p className="hidden sm:block text-[13.6px] text-white leading-[16.8px]" style={{ fontFamily: 'var(--font-body)' }}>
                   Logout
                 </p>
                 <div className="absolute inset-0 rounded-[20px]">
@@ -70,7 +70,7 @@ export function NavBar({
                 className="backdrop-blur-[2.5px] backdrop-filter bg-[rgba(138,138,138,0.3)] flex items-center gap-[8px] justify-center overflow-clip px-[18px] py-[8px] rounded-[20px] relative cursor-pointer hover:bg-[rgba(138,138,138,0.4)] transition-all"
               >
                 <LogIn className="w-4 h-4" />
-                <p className="text-[13.6px] text-white leading-[16.8px]" style={{ fontFamily: 'var(--font-body)' }}>
+                <p className="hidden sm:block text-[13.6px] text-white leading-[16.8px]" style={{ fontFamily: 'var(--font-body)' }}>
                   Login
                 </p>
                 <div className="absolute inset-0 rounded-[20px]">
