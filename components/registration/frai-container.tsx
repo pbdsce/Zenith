@@ -45,15 +45,17 @@ const SUBMISSION_ACTIVITY = [
 ];
 
 
+import { API_ENDPOINTS } from "@/lib/api-config";
+
 export function FraiContainer() {
     const { getToken } = useAuth();
     const [activeTab, setActiveTab] = useState("analytics");
 
     const [stats, setStats] = useState<AdminStats>({
-        totalUsers: 378,
-        totalTeams: 96,
-        totalSubmissions: 4,
-        totalEvaluated: 1,
+        totalUsers: 0,
+        totalTeams: 0,
+        totalSubmissions: 0,
+        totalEvaluated: 0,
     });
 
     const [alert, setAlert] = useState<{
@@ -63,8 +65,33 @@ export function FraiContainer() {
 
     // Fetch Stats
     useEffect(() => {
-        // Stats are for Frai Dashboard as per requirements
-    }, []);
+        const fetchStats = async () => {
+            try {
+                const token = await getToken();
+                if (!token) return;
+
+                const response = await fetch('/api/frai-data', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    if (result.success && result.data) {
+                        setStats({
+                            totalUsers: result.data.totalUsers || 0,
+                            totalTeams: result.data.totalTeams || 0,
+                            totalSubmissions: result.data.totalSubmissions || 0,
+                            totalEvaluated: result.data.totalEvaluated || 0,
+                        });
+                    }
+                }
+            } catch (error) {
+                console.error("Failed to fetch stats", error);
+            }
+        };
+
+        fetchStats();
+    }, [getToken]);
 
     return (
         <div className="flex flex-col gap-[24px] w-full">
