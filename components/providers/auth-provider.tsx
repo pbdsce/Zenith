@@ -23,7 +23,7 @@ interface UserProfile {
     uid: string;
     name: string;
     email: string;
-    role: "user" | "admin" | "evaluator";
+    role: "user" | "admin" | "evaluator" | "frai";
     teamCode?: string;
     isLooking: boolean;
     profile_picture?: string;

@@ -47,6 +47,8 @@ export default function DashboardLayout({
         router.push("/dashboard/admin");
       } else if (user.role === 'evaluator') {
         router.push("/dashboard/evaluator");
+      } else if (user.role === 'frai') {
+        router.push("/dashboard/frai");
       }
     }
   }, [isAuthenticated, user, isLoading, router, pathname]);
