@@ -9,7 +9,7 @@ export interface AuthenticatedUser {
   uid: string;
   email: string;
   name: string;
-  role: 'user' | 'admin' | 'evaluator';
+  role: 'user' | 'admin' | 'evaluator' | 'frai';
   teamCode?: string;
   isLooking: boolean;
   _id: string;
