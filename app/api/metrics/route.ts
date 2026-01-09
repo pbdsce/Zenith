@@ -8,11 +8,21 @@ import { NextResponse } from "next/server";
 export async function GET(request: Request) {
     try {
 
-        const secret = request.headers.get("x-metrics-secret");
-        if (secret !== process.env.METRICS_API_SECRET) {
+       const authHeader = request.headers.get("authorization");
+
+        if (!authHeader || !authHeader.startsWith("Bearer ")) {
             return NextResponse.json(
                 { error: "Unauthorized" },
                 { status: 401 }
+            );
+        }
+
+        const token = authHeader.split(" ")[1];
+
+        if (token !== process.env.METRICS_API_TOKEN) {
+            return NextResponse.json(
+                { error: "Invalid token" },
+                { status: 403 }
             );
         }
 
