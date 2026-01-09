@@ -7,6 +7,15 @@ import { NextResponse } from "next/server";
 
 export async function GET(request: Request) {
     try {
+
+        const secret = request.headers.get("x-metrics-secret");
+        if (secret !== process.env.METRICS_API_SECRET) {
+            return NextResponse.json(
+                { error: "Unauthorized" },
+                { status: 401 }
+            );
+        }
+
         await dbConnect();
 
         const { searchParams } = new URL(request.url);
