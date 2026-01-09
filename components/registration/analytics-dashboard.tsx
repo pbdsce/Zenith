@@ -23,7 +23,7 @@ const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
 
 import { API_ENDPOINTS } from "@/lib/api-config";
 
-export function FraiContainer() {
+export function AnalyticsDashboard() {
     const { getToken } = useAuth();
     const [activeTab, setActiveTab] = useState("analytics");
 
@@ -50,7 +50,7 @@ export function FraiContainer() {
                 const token = await getToken();
                 if (!token) return;
 
-                const response = await fetch('/api/frai-data', {
+                const response = await fetch('/api/analytics', {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
 
@@ -93,7 +93,7 @@ export function FraiContainer() {
     }, [getToken]);
 
     return (
-        <div className="flex flex-col gap-[24px] w-full">
+        <div className="flex flex-col text-white gap-[24px] w-full">
             {alert && (
                 <StickyAlert
                     type={alert.type}
@@ -135,9 +135,9 @@ export function FraiContainer() {
                 </div>
             </FormSection>
 
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="grid w-full grid-cols-1 h-auto">
-                    <TabsTrigger value="analytics">Analytics</TabsTrigger>
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full text-white">
+                <TabsList className="grid w-full grid-cols-1 h-auto bg-transparent border-b border-white/10 p-0">
+                    <TabsTrigger value="analytics" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary rounded-none border-b-2 border-transparent data-[state=active]:border-primary transition-all pb-2">Analytics</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="analytics" className="mt-6">

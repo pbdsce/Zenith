@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-const FraiDataSchema = new mongoose.Schema({
+const AnalyticsSchema = new mongoose.Schema({
     date: {
         type: Date,
         required: true,
@@ -24,4 +24,4 @@ const FraiDataSchema = new mongoose.Schema({
     },
 }, { timestamps: true });
 
-export default mongoose.models.FraiData || mongoose.model("FraiData", FraiDataSchema);
+export default mongoose.models.Analytics || mongoose.model("Analytics", AnalyticsSchema);

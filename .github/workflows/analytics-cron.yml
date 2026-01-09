@@ -11,5 +11,5 @@ jobs:
     steps:
       - name: Call API Endpoint
         run: |
-          curl -X GET ${{ secrets.NEXT_PUBLIC_APP_URL }}/api/cron/frai-stats \
+          curl -X GET ${{ secrets.NEXT_PUBLIC_APP_URL }}/api/cron/analytics-update \
           -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"

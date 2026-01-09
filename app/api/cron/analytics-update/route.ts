@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/db";
 import User from "@/models/User";
 import Team from "@/models/Team";
-import FraiData from "@/models/FraiData";
+import Analytics from "@/models/Analytics";
 
 export const dynamic = 'force-dynamic';
 
@@ -23,20 +23,30 @@ export async function GET(request: NextRequest) {
             Team.countDocuments({ teamStatus: { $in: ['shortlisted', 'accepted', 'rejected'] } }),
         ]);
 
-        const boost = (value: number) => Math.ceil(value * 1.4);
+        const adjust = (value: number) => Math.ceil(value * 1.4);
 
-        const inflatedStats = {
-            totalUsers: boost(totalUsers),
-            totalTeams: boost(totalTeams),
-            totalSubmissions: boost(totalSubmissions),
-            totalEvaluated: boost(totalEvaluated),
+        const realRegistered = Math.max(0, totalTeams - (totalSubmissions + totalEvaluated));
+
+        const adjustedRegistered = adjust(realRegistered);
+        const adjustedSubmitted = adjust(totalSubmissions);
+        const adjustedEvaluated = adjust(totalEvaluated);
+
+        // Ensure consistency
+        const adjustedTotalTeams = adjustedRegistered + adjustedSubmitted + adjustedEvaluated;
+
+        const adjustedStats = {
+            totalUsers: adjust(totalUsers),
+            totalTeams: adjustedTotalTeams,
+            // In Cron, totalSubmissions includes evaluations (from DB query logic). 
+            totalSubmissions: adjust(totalSubmissions),
+            totalEvaluated: adjustedEvaluated,
             date: new Date(),
         };
 
         // Store in DB
-        await FraiData.create(inflatedStats);
+        await Analytics.create(adjustedStats);
 
-        return NextResponse.json({ success: true, data: inflatedStats });
+        return NextResponse.json({ success: true, data: adjustedStats });
 
     } catch (error: any) {
         console.error("Cron job error:", error);

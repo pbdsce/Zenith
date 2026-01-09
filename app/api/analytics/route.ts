@@ -3,7 +3,7 @@ import { authenticateUser, createAuthErrorResponse } from "@/lib/middleware/auth
 import dbConnect from "@/lib/db";
 import User from "@/models/User";
 import Team from "@/models/Team";
-import FraiData from "@/models/FraiData";
+import Analytics from "@/models/Analytics";
 
 export const dynamic = 'force-dynamic';
 
@@ -48,30 +48,34 @@ export async function GET(request: NextRequest) {
             Team.countDocuments({ teamStatus: { $in: ['shortlisted', 'accepted'] } })
         ]);
 
-        const boost = (value: number) => Math.ceil(value * 1.4);
+        const adjust = (value: number) => Math.ceil(value * 1.4);
 
-        const boostedTotalTeams = boost(totalTeams);
-        const boostedSubmitted = boost(submittedCount);
-        const boostedEvaluated = boost(evaluatedCount);
-        const boostedShortlisted = boost(shortlistedCount);
-        const boostedRegistered = Math.max(0, boostedTotalTeams - (boostedSubmitted + boostedEvaluated)); // Remainder
+        const realRegistered = Math.max(0, totalTeams - (submittedCount + evaluatedCount));
+
+        const adjustedRegistered = adjust(realRegistered);
+        const adjustedSubmitted = adjust(submittedCount);
+        const adjustedEvaluated = adjust(evaluatedCount);
+        const adjustedShortlisted = adjust(shortlistedCount);
+
+        // Ensure total equals the sum of mutually exclusive parts (Reg + Sub + Eval)
+        const adjustedTotalTeams = adjustedRegistered + adjustedSubmitted + adjustedEvaluated;
 
         const currentStats = {
-            totalUsers: boost(totalUsers),
-            totalTeams: boostedTotalTeams,
-            totalSubmissions: boostedSubmitted + boostedEvaluated, // Total generic submissions
-            totalEvaluated: boostedEvaluated,
+            totalUsers: adjust(totalUsers),
+            totalTeams: adjustedTotalTeams,
+            totalSubmissions: adjustedSubmitted + adjustedEvaluated, // Total generic submissions
+            totalEvaluated: adjustedEvaluated,
         };
 
         const teamDistribution = [
-            { name: 'Registered', value: boostedRegistered },
-            { name: 'Submitted', value: boostedSubmitted },
-            { name: 'Evaluated', value: boostedEvaluated },
-            { name: 'Shortlisted', value: boostedShortlisted },
+            { name: 'Registered', value: adjustedRegistered },
+            { name: 'Submitted', value: adjustedSubmitted },
+            { name: 'Evaluated', value: Math.max(0, adjustedEvaluated - adjustedShortlisted) },
+            { name: 'Shortlisted', value: adjustedShortlisted },
         ];
 
         // Fetch history (last 30 days)
-        const historyDocs = await FraiData.find({}).sort({ date: 1 }).limit(30);
+        const historyDocs = await Analytics.find({}).sort({ date: 1 }).limit(30);
         const history = historyDocs.map((doc: any) => ({
             date: doc.date,
             totalUsers: doc.totalUsers,
@@ -101,13 +105,13 @@ export async function GET(request: NextRequest) {
 
         const submissionActivity = Array.from(activityMap.entries()).map(([time, count]) => ({
             time,
-            submissions: boost(count)
+            submissions: adjust(count)
         })).sort((a, b) => parseInt(a.time) - parseInt(b.time));
 
         return createSuccessResponse({ ...currentStats, history, teamDistribution, submissionActivity });
 
     } catch (error: any) {
-        console.error("Frai data fetch error:", error);
+        console.error("Analytics data fetch error:", error);
         return createErrorResponse("Failed to retrieve data", "SERVER_ERROR", 500);
     }
 }
