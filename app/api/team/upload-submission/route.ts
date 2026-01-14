@@ -22,6 +22,7 @@ function isValidYouTubeURL(url: string): boolean {
   const patterns = [
     /^(https?:\/\/)?(www\.)?youtube\.com\/watch\?v=[\w-]+/,
     /^(https?:\/\/)?(www\.)?youtu\.be\/[\w-]+/,
+    /^(https?:\/\/)?(www\.)?youtube\.com\/shorts\/[\w-]+/,
   ];
   return patterns.some(pattern => pattern.test(url));
 }
