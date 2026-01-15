@@ -61,7 +61,13 @@ export async function GET(request: NextRequest) {
     if (isShortlisted === 'false') query.isShortlisted = false;
     if (isEvaluated === 'true') query.isEvaluated = true;
     if (isEvaluated === 'false') query.isEvaluated = false;
+    if (isEvaluated === 'true') query.isEvaluated = true;
+    if (isEvaluated === 'false') query.isEvaluated = false;
     if (appliedFor) query.appliedFor = appliedFor;
+
+    if (searchParams.get('isSubmitted') === 'true') {
+      query.submittedAt = { $exists: true, $ne: null };
+    }
 
     if (search) {
       query.$or = [
@@ -114,6 +120,9 @@ export async function GET(request: NextRequest) {
         scores: team.scores || null,
         createdAt: team.createdAt,
         submittedAt: team.submittedAt || null,
+        videoURL: team.videoURL || null,
+        submissionPDF: team.submissionPDF || null,
+        anyOtherLink: team.anyOtherLink || null,
       };
     });
 
