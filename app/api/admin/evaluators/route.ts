@@ -55,11 +55,13 @@ export async function GET(request: NextRequest) {
     const formatted = evaluators.map(ev => {
       const assignedTeams = ev.assignedTeams.map((assignment: any) => {
         const team = teamsMap.get(assignment.teamCode);
+        // Find evaluation by THIS evaluator
+        const specificEvaluation = team?.evaluations?.find((e: any) => e.evaluatorId === ev.uid);
         return {
           teamCode: assignment.teamCode,
           teamName: team?.teamName || 'Unknown Team',
-          isEvaluated: team?.isEvaluated || false,
-          totalScore: team?.scores?.total || null,
+          isEvaluated: !!specificEvaluation,
+          tier: specificEvaluation?.tier || null,
         };
       });
 
@@ -72,7 +74,6 @@ export async function GET(request: NextRequest) {
         assignedCount: ev.assignedCount,
         evaluatedCount: ev.evaluatedCount,
         pendingCount: ev.assignedCount - ev.evaluatedCount,
-        averageScore: ev.stats?.averageScore || 0,
         stats: ev.stats,
         createdAt: ev.createdAt,
         lastEvaluationAt: ev.lastEvaluationAt || null,

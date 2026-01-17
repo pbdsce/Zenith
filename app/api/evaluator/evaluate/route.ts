@@ -41,26 +41,16 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { teamCode, scores, comments } = body;
+    const { teamCode, tier, comment } = body;
 
     // Validation
     if (!teamCode) {
       return createErrorResponse("Team code is required", "VALIDATION_ERROR", 400);
     }
 
-    if (!scores || typeof scores !== 'object') {
-      return createErrorResponse("Scores object is required", "VALIDATION_ERROR", 400);
-    }
-
-    const { tech, ux, presentation } = scores;
-    
-    if (tech === undefined || ux === undefined || presentation === undefined) {
-      return createErrorResponse("All score fields (tech, ux, presentation) are required", "VALIDATION_ERROR", 400);
-    }
-
-    // Validate scores are 0-100
-    if (tech < 0 || tech > 100 || ux < 0 || ux > 100 || presentation < 0 || presentation > 100) {
-      return createErrorResponse("Scores must be between 0 and 100", "INVALID_SCORES", 400);
+    const validTiers = ["strongly_accepted", "accepted", "borderline", "rejected"];
+    if (!tier || !validTiers.includes(tier)) {
+      return createErrorResponse("Invalid tier selected", "VALIDATION_ERROR", 400);
     }
 
     await dbConnect();
@@ -83,43 +73,51 @@ export async function PUT(request: NextRequest) {
       return createErrorResponse("Team not found", "NOT_FOUND", 404);
     }
 
-    // Calculate total score
-    const total = tech + ux + presentation;
-
-    // Update team with scores
+    // Update Team: Remove existing evaluation from this evaluator if any, and push new one
     await Team.findOneAndUpdate(
       { teamCode },
       {
-        isEvaluated: true,
-        scores: { tech, ux, presentation, total },
-        comments: comments || '',
-        evaluatedAt: new Date(),
+        $pull: { evaluations: { evaluatorId: authResult.user.uid } }
       }
     );
 
-    // Update evaluator assignment
+    const newEvaluation = {
+      evaluatorId: authResult.user.uid,
+      name: authResult.user.name || evaluator.name, // Fallback to evaluator name
+      tier,
+      comment: comment || '',
+      createdAt: new Date()
+    };
+
+    const updatedTeam = await Team.findOneAndUpdate(
+      { teamCode },
+      {
+        $push: { evaluations: newEvaluation },
+        $set: {
+          isEvaluated: true, // Mark global evaluated flag (optional, or based on some logic)
+          evaluatedAt: new Date()
+        }
+      },
+      { new: true }
+    );
+
+    // Update evaluator assignment status
     evaluator.assignedTeams[assignmentIndex].isEvaluated = true;
     evaluator.lastEvaluationAt = new Date();
-    
+
     // Update stats
     if (evaluator.stats) {
-      const allScores = await Team.find({
-        teamCode: { $in: evaluator.assignedTeams.map((t: any) => t.teamCode) },
-        isEvaluated: true,
-      }).select('scores.total');
-      
-      const scoreValues = allScores.map(t => t.scores?.total || 0);
-      evaluator.stats.averageScore = scoreValues.length > 0
-        ? scoreValues.reduce((a, b) => a + b, 0) / scoreValues.length
-        : 0;
+      // Re-calculate stats
+      evaluator.evaluatedCount = evaluator.assignedTeams.filter((t: any) => t.isEvaluated).length;
+      evaluator.stats.evaluationsCompleted = evaluator.evaluatedCount;
+      evaluator.stats.evaluationsPending = evaluator.assignedCount - evaluator.evaluatedCount;
     }
 
     await evaluator.save();
 
     return createSuccessResponse("Evaluation submitted successfully", {
       teamCode,
-      scores: { tech, ux, presentation, total },
-      evaluatedAt: new Date().toISOString(),
+      evaluation: newEvaluation,
       evaluatorStats: {
         evaluated: evaluator.evaluatedCount,
         pending: evaluator.assignedCount - evaluator.evaluatedCount,

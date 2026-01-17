@@ -7,7 +7,6 @@ export interface IAssignedTeam {
 }
 
 export interface IEvaluatorStats {
-  averageScore: number;
   evaluationsCompleted: number;
   evaluationsPending: number;
 }
@@ -41,7 +40,6 @@ const AssignedTeamSchema = new Schema(
 
 const StatsSchema = new Schema(
   {
-    averageScore: { type: Number, default: 0 },
     evaluationsCompleted: { type: Number, default: 0 },
     evaluationsPending: { type: Number, default: 0 },
   },
@@ -84,7 +82,6 @@ const EvaluatorSchema: Schema = new Schema(
     stats: {
       type: StatsSchema,
       default: () => ({
-        averageScore: 0,
         evaluationsCompleted: 0,
         evaluationsPending: 0,
       }),

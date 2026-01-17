@@ -103,8 +103,8 @@ export async function GET(
       submissionPDF: team.submissionPDF || null,
       anyOtherLink: team.anyOtherLink || null,
       isEvaluated: team.isEvaluated,
-      scores: team.scores || null,
-      comments: team.comments || null,
+      evaluations: team.evaluations || [],
+      votes: team.votes || [],
       submittedAt: team.submittedAt || null,
     });
   } catch (error: any) {

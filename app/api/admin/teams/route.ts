@@ -117,7 +117,7 @@ export async function GET(request: NextRequest) {
         appliedFor: ps ? { id: ps._id.toString(), title: ps.title } : null,
         isEvaluated: team.isEvaluated,
         isShortlisted: team.isShortlisted,
-        scores: team.scores || null,
+        evaluationCount: team.evaluations?.length || 0,
         createdAt: team.createdAt,
         submittedAt: team.submittedAt || null,
         videoURL: team.videoURL || null,

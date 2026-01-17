@@ -13,11 +13,19 @@ export interface IMemberRSVP {
   rsvpedAt: Date;
 }
 
-export interface IScores {
-  tech: number;
-  ux: number;
-  presentation: number;
-  total: number;
+export interface IEvaluation {
+  evaluatorId: string;
+  name: string;
+  tier: "strongly_accepted" | "accepted" | "borderline" | "rejected";
+  comment: string;
+  createdAt: Date;
+}
+
+export interface IVote {
+  evaluatorId: string;
+  vote: "up" | "down";
+  comment?: string;
+  createdAt: Date;
 }
 
 export type TeamStatus =
@@ -43,9 +51,8 @@ export interface ITeam extends Document {
   anyOtherLink?: string;
 
   isEvaluated: boolean;
-  evaluator?: string;
-  scores?: IScores;
-  comments?: string;
+  evaluations: IEvaluation[];
+  votes: IVote[];
 
   isShortlisted: boolean;
   memberRSVPs: IMemberRSVP[];
@@ -81,15 +88,7 @@ const MemberRSVPSchema = new Schema(
   { _id: false }
 );
 
-const ScoresSchema = new Schema(
-  {
-    tech: { type: Number, min: 0, max: 100 },
-    ux: { type: Number, min: 0, max: 100 },
-    presentation: { type: Number, min: 0, max: 100 },
-    total: { type: Number, min: 0, max: 300 },
-  },
-  { _id: false }
-);
+
 
 const TeamSchema: Schema = new Schema(
   {
@@ -148,12 +147,29 @@ const TeamSchema: Schema = new Schema(
       default: false,
       index: true,
     },
-    evaluator: {
-      type: String,
-      index: true,
-    },
-    scores: ScoresSchema,
-    comments: { type: String },
+    // evaluations: stores detailed reviews by assigned evaluators
+    evaluations: [
+      {
+        evaluatorId: { type: String, required: true },
+        name: { type: String, required: true },
+        tier: {
+          type: String,
+          enum: ["strongly_accepted", "accepted", "borderline", "rejected"],
+          required: true
+        },
+        comment: { type: String },
+        createdAt: { type: Date, default: Date.now }
+      }
+    ],
+    // votes: stores up/down votes by community evaluators
+    votes: [
+      {
+        evaluatorId: { type: String, required: true },
+        vote: { type: String, enum: ["up", "down"], required: true },
+        comment: { type: String },
+        createdAt: { type: Date, default: Date.now }
+      }
+    ],
 
     isShortlisted: {
       type: Boolean,
@@ -172,7 +188,7 @@ const TeamSchema: Schema = new Schema(
   }
 );
 
-TeamSchema.index({ "scores.total": -1 });
+TeamSchema.index({ "evaluations.tier": 1 });
 TeamSchema.index({ "memberRSVPs.uid": 1 });
 TeamSchema.index({ createdAt: -1 });
 

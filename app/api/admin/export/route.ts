@@ -85,7 +85,7 @@ export async function GET(request: NextRequest) {
         videoURL: team.videoURL,
         submissionPDF: team.submissionPDF,
         isEvaluated: team.isEvaluated,
-        scores: team.scores,
+        evaluations: team.evaluations?.map((e: any) => e.tier),
         isShortlisted: team.isShortlisted,
         createdAt: team.createdAt,
         submittedAt: team.submittedAt,
@@ -94,12 +94,12 @@ export async function GET(request: NextRequest) {
 
     if (exportType === 'shortlisted' || exportType === 'all') {
       const shortlisted = await Team.find({ isShortlisted: true })
-        .sort({ 'scores.total': -1 });
+        .sort({ shortlistedAt: -1 });
       exportData.shortlistedTeams = shortlisted.map((team, rank) => ({
         rank: rank + 1,
         teamCode: team.teamCode,
         teamName: team.teamName,
-        scores: team.scores,
+        evaluations: team.evaluations?.map((e: any) => e.tier),
         teamStatus: team.teamStatus,
         memberCount: team.memberCount,
       }));

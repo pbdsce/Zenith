@@ -97,8 +97,6 @@ export async function GET(
         submissionPDF: team.submissionPDF || null,
         anyOtherLink: team.anyOtherLink || null,
         isEvaluated: team.isEvaluated,
-        scores: team.scores || null,
-        comments: team.comments || null,
         isShortlisted: team.isShortlisted,
         memberRSVPs: formattedRSVPs,
         createdAt: team.createdAt instanceof Date ? team.createdAt.toISOString() : team.createdAt,

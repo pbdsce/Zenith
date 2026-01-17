@@ -67,15 +67,9 @@ export async function GET(
     }
 
     // Get evaluator info
-    let evaluatorInfo = null;
-    if (team.evaluator) {
-      const evaluator = await Evaluator.findOne({ uid: team.evaluator });
-      if (evaluator) {
-        if (evaluator) {
-          evaluatorInfo = { id: evaluator._id.toString(), uid: evaluator.uid, name: evaluator.name, email: evaluator.email };
-        }
-      }
-    }
+    // Fetch all evaluators who are assigned to this team
+    const assignedEvaluators = await Evaluator.find({ "assignedTeams.teamCode": team.teamCode })
+      .select('name email uid assignedTeams');
 
     const formattedMembers = team.teamMembers.map((member: any) => {
       const userInfo = members.find(u => u.uid === member.uid);
@@ -111,13 +105,9 @@ export async function GET(
       submissionPDF: team.submissionPDF || null,
       anyOtherLink: team.anyOtherLink || null,
       isEvaluated: team.isEvaluated,
-      evaluator: evaluatorInfo ? {
-        id: evaluatorInfo.id,
-        name: evaluatorInfo.name,
-        email: evaluatorInfo.email,
-      } : null,
-      scores: team.scores || null,
-      comments: team.comments || null,
+      evaluations: team.evaluations || [],
+      votes: team.votes || [],
+      assignedEvaluators: assignedEvaluators,
       isShortlisted: team.isShortlisted,
       memberRSVPs: team.memberRSVPs,
       createdAt: team.createdAt,
@@ -178,14 +168,6 @@ export async function PUT(
       updateData.teamStatus = teamStatus;
     }
 
-    if (comments !== undefined) {
-      updateData.comments = comments;
-    }
-
-    if (adminNotes !== undefined) {
-      updateData.comments = adminNotes;
-    }
-
     const updatedTeam = await Team.findOneAndUpdate(
       { teamCode: params.teamCode },
       { $set: updateData },
@@ -197,7 +179,6 @@ export async function PUT(
       teamName: updatedTeam!.teamName,
       teamStatus: updatedTeam!.teamStatus,
       isShortlisted: updatedTeam!.isShortlisted,
-      comments: updatedTeam!.comments || null,
       updatedAt: updatedTeam!.updatedAt,
     });
   } catch (error: any) {
