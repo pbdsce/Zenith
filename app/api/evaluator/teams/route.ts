@@ -81,8 +81,8 @@ export async function GET(request: NextRequest) {
         voteCount: { $size: { $ifNull: ["$votes", []] } },
         isSubmitted: {
           $or: [
-            { $ne: ["$submissionPDF", null] },
-            { $ne: ["$videoURL", null] }
+            { $gt: [{ $strLenCP: { $ifNull: ["$submissionPDF", ""] } }, 0] },
+            { $gt: [{ $strLenCP: { $ifNull: ["$videoURL", ""] } }, 0] }
           ]
         }
       }
@@ -118,6 +118,12 @@ export async function GET(request: NextRequest) {
     // @ts-ignore
     const problemStatements = await ProblemStatement.find({ _id: { $in: problemIds } });
 
+    // Fetch User Details (Members)
+    const allMemberUids = rawTeams.flatMap((t: any) => t.teamMembers.map((m: any) => m.uid));
+    const uniqueMemberUids = [...new Set(allMemberUids)] as string[];
+    const users = await User.find({ uid: { $in: uniqueMemberUids } }).select('uid name organisation');
+    const userMap = new Map(users.map((u: any) => [u.uid, u]));
+
     // Helper to format team
     const formatTeam = (team: any) => {
       const ps = problemStatements.find(p => p._id.toString() === team.appliedFor);
@@ -128,9 +134,21 @@ export async function GET(request: NextRequest) {
       const myEvaluation = team.evaluations?.find((e: any) => e.evaluatorId === authResult.user.uid);
       const myVote = team.votes?.find((v: any) => v.evaluatorId === authResult.user.uid);
 
+      // Hydrate members
+      const hydratedMembers = team.teamMembers.map((m: any) => {
+        const user = userMap.get(m.uid);
+        return {
+          uid: m.uid,
+          role: m.role,
+          name: user?.name || "Unknown User",
+          organisation: user?.organisation || "N/A"
+        };
+      });
+
       return {
         teamCode: team.teamCode,
         teamName: team.teamName,
+        teamMembers: hydratedMembers,
         memberCount: team.memberCount,
         appliedFor: ps ? { id: ps._id.toString(), title: ps.title } : null,
         videoURL: team.videoURL || null,

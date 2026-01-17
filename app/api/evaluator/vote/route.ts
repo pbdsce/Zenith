@@ -72,7 +72,25 @@ export async function POST(request: NextRequest) {
             return createErrorResponse("Team not found", "NOT_FOUND", 404);
         }
 
-        // Update Team: Remove existing vote from this evaluator if any, and push new one
+        // Check if THIS evaluator has already voted
+        const existingVote = team.votes.find((v: any) => v.evaluatorId === authResult.user.uid);
+
+        // Scenario 1: Toggle OFF (Same vote type)
+        if (existingVote && existingVote.vote === vote) {
+            await Team.findOneAndUpdate(
+                { teamCode },
+                {
+                    $pull: { votes: { evaluatorId: authResult.user.uid } }
+                }
+            );
+            return createSuccessResponse("Vote removed", {
+                teamCode,
+                vote: null // specific signal that vote was removed
+            });
+        }
+
+        // Scenario 2 & 3: Switch Vote OR New Vote
+        // First remove any existing vote by this evaluator
         await Team.findOneAndUpdate(
             { teamCode },
             {

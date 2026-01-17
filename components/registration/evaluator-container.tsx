@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useAuth } from '@/hooks/use-auth';
 import { API_ENDPOINTS } from "@/lib/api-config";
 import { Spinner } from "@/components/ui/spinner";
+import { Skeleton } from "@/components/ui/skeleton";
 import { LayoutGrid, CheckCircle2, Vote, Search, ChevronLeft, ChevronRight, Layers } from "lucide-react";
 import { FormSection } from "@/components/registration/form-section";
 import { StickyAlert } from "@/components/registration/sticky-alert";
@@ -43,6 +44,22 @@ interface Team {
 
 type Tab = 'pending' | 'evaluated' | 'community' | 'tier_view';
 type Tier = 'strongly_accepted' | 'accepted' | 'borderline' | 'rejected';
+
+// Skeleton Component for Team Card
+const TeamCardSkeleton = () => (
+    <div className="bg-white/5 border border-white/10 rounded-xl p-5 flex flex-col gap-3">
+        <div className="flex justify-between items-start gap-4">
+            <Skeleton className="h-6 w-3/4 bg-white/10" />
+            <Skeleton className="h-5 w-16 bg-white/5" />
+        </div>
+        <Skeleton className="h-4 w-full bg-white/5" />
+        <Skeleton className="h-4 w-2/3 bg-white/5" />
+        <div className="mt-auto pt-4 border-t border-white/5 flex items-center justify-between">
+            <Skeleton className="h-3 w-24 bg-white/5" />
+            <Skeleton className="h-5 w-20 bg-white/10" />
+        </div>
+    </div>
+);
 
 export function EvaluatorContainer() {
     const { getToken, user } = useAuth();
@@ -153,16 +170,18 @@ export function EvaluatorContainer() {
         setTimeout(() => setAlert(null), 3000);
     };
 
-    const handleVoteSuccess = (teamCode: string, vote: Vote) => {
+    const handleVoteSuccess = (teamCode: string, vote: Vote | null) => {
         setTeams(prev => prev.map(t =>
             t.teamCode === teamCode ? {
                 ...t,
-                myVote: vote,
-                votes: [...t.votes.filter(v => v.evaluatorId !== vote.evaluatorId), vote]
+                myVote: vote || undefined,
+                votes: vote
+                    ? [...t.votes.filter(v => v.evaluatorId !== vote.evaluatorId), vote]
+                    : t.votes.filter(v => v.evaluatorId !== user?.uid)
             } : t
         ));
         setSelectedTeam(null);
-        setAlert({ type: "success", message: "Vote submitted!" });
+        setAlert({ type: "success", message: vote ? "Vote submitted!" : "Vote removed!" });
         setTimeout(() => setAlert(null), 3000);
     }
 
@@ -174,14 +193,7 @@ export function EvaluatorContainer() {
         }
     };
 
-    if (isLoading && page === 1 && teams.length === 0) {
-        return (
-            <div className="flex justify-center items-center py-20 min-h-[400px]">
-                <Spinner size="lg" />
-            </div>
-        );
-    }
-
+    // If a team is selected, show detail view (replaces grid)
     if (selectedTeam) {
         return (
             <TeamDetailView
@@ -288,8 +300,8 @@ export function EvaluatorContainer() {
                                     key={tier.id}
                                     onClick={() => setSelectedTier(tier.id as Tier)}
                                     className={`px-4 py-2 rounded-full text-xs font-medium border transition-all whitespace-nowrap ${selectedTier === tier.id
-                                            ? tier.color + ' border-opacity-50 ring-1 ring-offset-1 ring-offset-[#1a1a1a] ring-white/10'
-                                            : 'bg-white/5 text-white/50 border-white/5 hover:bg-white/10'
+                                        ? tier.color + ' border-opacity-50 ring-1 ring-offset-1 ring-offset-[#1a1a1a] ring-white/10'
+                                        : 'bg-white/5 text-white/50 border-white/5 hover:bg-white/10'
                                         }`}
                                 >
                                     {tier.label}
@@ -313,10 +325,12 @@ export function EvaluatorContainer() {
                         </div>
                     </div>
 
-                    {/* Team List with Pagination Spinner */}
+                    {/* Team List or Skeleton */}
                     {isLoading ? (
-                        <div className="flex justify-center py-10">
-                            <Spinner size="md" />
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {[1, 2, 3, 4, 5, 6].map((i) => (
+                                <TeamCardSkeleton key={i} />
+                            ))}
                         </div>
                     ) : filteredTeams.length === 0 ? (
                         <div className="text-center py-20 border border-dashed border-white/10 rounded-xl bg-white/5">
@@ -371,9 +385,9 @@ export function EvaluatorContainer() {
                                         )}
                                         {activeTab === 'tier_view' && (
                                             <span className={`px-2 py-0.5 rounded border capitalize ${selectedTier === 'strongly_accepted' ? 'bg-green-500/20 border-green-500/30 text-green-400' :
-                                                    selectedTier === 'accepted' ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-400' :
-                                                        selectedTier === 'borderline' ? 'bg-yellow-500/20 border-yellow-500/30 text-yellow-400' :
-                                                            'bg-red-500/20 border-red-500/30 text-red-400'
+                                                selectedTier === 'accepted' ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-400' :
+                                                    selectedTier === 'borderline' ? 'bg-yellow-500/20 border-yellow-500/30 text-yellow-400' :
+                                                        'bg-red-500/20 border-red-500/30 text-red-400'
                                                 }`} style={{ fontFamily: 'var(--font-body)' }}>
                                                 {selectedTier.replace('_', ' ')}
                                             </span>

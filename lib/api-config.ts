@@ -16,7 +16,8 @@ export const API_ENDPOINTS = {
   lookingForTeam: '/api/user/looking-for-team',        // GET, PUT
   userRsvp: '/api/user/rsvp',                          // PUT
   userRsvpStatus: '/api/user/rsvp-status',             // GET
-  
+  users: '/api/users',                                 // GET (by ID)
+
   // ===== TEAM ENDPOINTS =====
   createTeam: '/api/team/create',                      // POST
   lookingForMembers: '/api/team/looking-for-members',  // GET, PUT

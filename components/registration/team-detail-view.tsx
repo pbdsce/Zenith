@@ -9,6 +9,8 @@ import { StickyAlert } from "@/components/registration/sticky-alert";
 import { Spinner } from "@/components/ui/spinner";
 import { FormSection } from "@/components/registration/form-section";
 
+import { UserProfileModal, UserDetails } from "./user-profile-modal";
+
 interface TeamDetailViewProps {
     team: any;
     onBack: () => void;
@@ -22,15 +24,40 @@ export function TeamDetailView({ team, onBack, onEvaluationSuccess, onVoteSucces
     const [tier, setTier] = useState<string>(team.myEvaluation?.tier || "");
     const [comment, setComment] = useState<string>(team.myEvaluation?.comment || "");
 
-    // PDF State
-    const [isPdfOpen, setIsPdfOpen] = useState(false);
-
     // Voting state
     const [voteComment, setVoteComment] = useState<string>(team.myVote?.comment || "");
 
     const [error, setError] = useState<string | null>(null);
 
+    // Profile Modal State
+    const [isProfileOpen, setIsProfileOpen] = useState(false);
+    const [selectedUser, setSelectedUser] = useState<UserDetails | null>(null);
+    const [isLoadingProfile, setIsLoadingProfile] = useState(false);
+
     const isAssigned = team.isAssigned;
+
+    const handleMemberClick = async (uid: string) => {
+        setIsLoadingProfile(true);
+        setIsProfileOpen(true);
+        setSelectedUser(null); // Reset
+        try {
+            const token = await getToken();
+            const response = await fetch(`${API_ENDPOINTS.users}/${uid}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await response.json();
+            if (response.ok && data.user) {
+                setSelectedUser(data.user);
+            } else {
+                setError("Failed to load user profile");
+            }
+        } catch (err) {
+            console.error(err);
+            setError("Network error loading profile");
+        } finally {
+            setIsLoadingProfile(false);
+        }
+    };
 
     const handleEvaluationSubmit = async () => {
         if (!tier) {
@@ -89,6 +116,7 @@ export function TeamDetailView({ team, onBack, onEvaluationSuccess, onVoteSucces
 
             const data = await response.json();
             if (response.ok) {
+                // data.data.vote will be null if removed, or object if added/switched
                 onVoteSuccess(team.teamCode, data.data.vote);
             } else {
                 setError(data.message || "Failed to submit vote.");
@@ -102,6 +130,13 @@ export function TeamDetailView({ team, onBack, onEvaluationSuccess, onVoteSucces
 
     return (
         <div className="flex flex-col gap-6 h-full">
+            <UserProfileModal
+                isOpen={isProfileOpen}
+                onClose={() => setIsProfileOpen(false)}
+                userDetails={selectedUser}
+                isLoading={isLoadingProfile}
+            />
+
             <div className="flex items-center gap-4">
                 <Button variant="secondary" onClick={onBack}>
                     <ChevronLeft className="w-4 h-4 mr-1" />
@@ -135,6 +170,24 @@ export function TeamDetailView({ team, onBack, onEvaluationSuccess, onVoteSucces
                                         <ExternalLink className="w-3 h-3 ml-1 opacity-50" />
                                     </a>
                                 )}
+                                {team.submissionPDF ? (
+                                    <a
+                                        href={team.submissionPDF}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex items-center gap-2 px-4 py-3 bg-white/5 text-white border border-white/10 rounded-lg hover:bg-white/10 transition-colors"
+                                        style={{ fontFamily: 'var(--font-body)' }}
+                                    >
+                                        <FileText className="w-5 h-5" />
+                                        View Submission PDF
+                                        <ExternalLink className="w-3 h-3 ml-1 opacity-50" />
+                                    </a>
+                                ) : (
+                                    <div className="flex items-center gap-2 px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white/40 cursor-not-allowed">
+                                        <FileText className="w-5 h-5 opacity-50" />
+                                        No PDF Submission
+                                    </div>
+                                )}
                                 {team.anyOtherLink && (
                                     <a
                                         href={team.anyOtherLink}
@@ -148,37 +201,30 @@ export function TeamDetailView({ team, onBack, onEvaluationSuccess, onVoteSucces
                                     </a>
                                 )}
                             </div>
+                        </div>
+                    </FormSection>
 
-                            {/* PDF Viewer Toggle */}
-                            {team.submissionPDF ? (
-                                <div className="flex flex-col gap-2">
-                                    <button
-                                        onClick={() => setIsPdfOpen(!isPdfOpen)}
-                                        className="flex items-center justify-between w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 transition-colors text-white text-left"
-                                    >
-                                        <span className="flex items-center gap-2 font-medium" style={{ fontFamily: 'var(--font-body)' }}>
-                                            <FileText className="w-4 h-4" />
-                                            Submission PDF
-                                        </span>
-                                        {isPdfOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                                    </button>
-
-                                    {isPdfOpen && (
-                                        <div className="w-full h-[600px] bg-white rounded-lg overflow-hidden border border-white/10 animate-in fade-in zoom-in-95 duration-200">
-                                            <iframe
-                                                src={`${team.submissionPDF}#view=FitH`}
-                                                className="w-full h-full"
-                                                title="Submission PDF"
-                                            />
-                                        </div>
-                                    )}
+                    {/* Team Members Section */}
+                    <FormSection title="Team Members">
+                        <div className="flex flex-col gap-3">
+                            {team.teamMembers?.map((member: any) => (
+                                <div
+                                    key={member.uid}
+                                    onClick={() => handleMemberClick(member.uid)}
+                                    className="flex items-center justify-between p-3 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 cursor-pointer transition-colors group"
+                                >
+                                    <div className="flex flex-col">
+                                        <span className="text-sm font-medium text-white group-hover:text-[#ff4d00] transition-colors" style={{ fontFamily: 'var(--font-body)' }}>{member.name}</span>
+                                        <span className="text-xs text-white/50" style={{ fontFamily: 'var(--font-body)' }}>{member.organisation}</span>
+                                    </div>
+                                    <span className={`text-[10px] uppercase px-2 py-1 rounded border ${member.role === 'Team Lead'
+                                            ? 'bg-[#ff4d00]/10 text-[#ff4d00] border-[#ff4d00]/20'
+                                            : 'bg-white/5 text-white/40 border-white/5'
+                                        }`} style={{ fontFamily: 'var(--font-body)' }}>
+                                        {member.role}
+                                    </span>
                                 </div>
-                            ) : (
-                                <div className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white/40 flex items-center gap-2">
-                                    <FileText className="w-4 h-4 opacity-50" />
-                                    No PDF Submission available
-                                </div>
-                            )}
+                            ))}
                         </div>
                     </FormSection>
                 </div>
