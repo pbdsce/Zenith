@@ -111,13 +111,6 @@ export default function EvaluatorLoginPage() {
                                 <div className="flex flex-col items-center gap-2 mt-2">
                                     <button
                                         type="button"
-                                        onClick={() => router.push("/evaluator/register")}
-                                        className="text-[13px] text-white/50 hover:text-[#ff4d00] transition-colors"
-                                    >
-                                        Register as new Evaluator
-                                    </button>
-                                    <button
-                                        type="button"
                                         onClick={() => router.push("/login")}
                                         className="text-[13px] text-white/30 hover:text-white transition-colors"
                                     >

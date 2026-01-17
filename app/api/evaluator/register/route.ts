@@ -3,6 +3,7 @@ import { authenticateUser, createAuthErrorResponse } from "@/lib/middleware/auth
 import dbConnect from "@/lib/db";
 import Evaluator from "@/models/Evaluator";
 import User from "@/models/User";
+import { getAuth } from "@/lib/firebase-admin";
 
 export const dynamic = 'force-dynamic';
 
@@ -40,10 +41,27 @@ export async function POST(request: NextRequest) {
         const uid = authResult.user.uid;
         const email = authResult.user.email;
         const body = await request.json();
-        const { name } = body;
+        const { name, evaluatorCode } = body;
 
         if (!name) {
             return createErrorResponse("Name is required", "VALIDATION_ERROR", 400);
+        }
+
+        const expectedCode = process.env.EVALUATOR_CODE;
+        if (!expectedCode) {
+            console.error("EVALUATOR_CODE not set on server");
+            return createErrorResponse("Server configuration error", "CONFIG_ERROR", 500);
+        }
+
+        if (evaluatorCode !== expectedCode) {
+            // Delete the unauthorized user from Firebase Auth
+            try {
+                await getAuth().deleteUser(uid);
+                console.log(`Deleted unauthorized user ${uid} due to invalid evaluator code`);
+            } catch (deleteError) {
+                console.error(`Failed to delete unauthorized user ${uid}:`, deleteError);
+            }
+            return createErrorResponse("Invalid evaluator code", "INVALID_CODE", 403);
         }
 
         await dbConnect();

@@ -11,14 +11,17 @@ import { DotPattern } from "@/components/registration/dot-pattern";
 import { Spinner } from "@/components/ui/spinner";
 import { ShieldPlus } from "lucide-react";
 import { API_ENDPOINTS } from "@/lib/api-config";
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
+import { auth } from "@/Firebase";
 
 export default function EvaluatorRegisterPage() {
-    const { register, isAuthenticated, isLoading, user, getToken } = useAuth();
+    const { isAuthenticated, isLoading, user } = useAuth();
     const [formData, setFormData] = useState({
         name: "",
         email: "",
         password: "",
         confirmPassword: "",
+        evaluatorCode: "",
     });
     const [error, setError] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -46,15 +49,21 @@ export default function EvaluatorRegisterPage() {
             return;
         }
 
+        if (!formData.evaluatorCode.trim()) {
+            setError("Evaluator code is required");
+            setIsSubmitting(false);
+            return;
+        }
+
         try {
-            const registrationData = new FormData();
-            registrationData.append('name', formData.name);
-            registrationData.append('email', formData.email);
-            registrationData.append('password', formData.password);
+            // Create user in Firebase directly to avoid /api/registration requirements
+            const userCredential = await createUserWithEmailAndPassword(
+                auth,
+                formData.email,
+                formData.password
+            );
 
-            await register(registrationData);
-
-            const token = await getToken();
+            const token = await userCredential.user.getIdToken();
 
             if (token) {
                 const response = await fetch(API_ENDPOINTS.evaluatorRegister || '/api/evaluator/register', {
@@ -63,20 +72,43 @@ export default function EvaluatorRegisterPage() {
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${token}`
                     },
-                    body: JSON.stringify({ name: formData.name })
+                    body: JSON.stringify({
+                        name: formData.name,
+                        evaluatorCode: formData.evaluatorCode
+                    })
                 });
 
                 if (!response.ok) {
-                    console.error("Evaluator profile creation failed");
+                    const data = await response.json();
+                    setError(data.message || "Evaluator profile creation failed");
+
+                    // Force logout if backend failed
+                    // This clears local state so they can retry
+                    await auth.signOut();
+
+                    setIsSubmitting(false);
+                    return;
                 }
             }
 
+            // Force reload to get updated custom claims (role)
+            await userCredential.user.reload();
             router.push("/dashboard/evaluator");
 
         } catch (err: any) {
-            setError(err?.message || "Registration failed. Please try again.");
-        } finally {
+            console.error("Registration error:", err);
+            let msg = "Registration failed.";
+            if (err.code === 'auth/email-already-in-use') {
+                msg = "Email already in use. Please login.";
+            } else if (err.code === 'auth/weak-password') {
+                msg = "Password is too weak.";
+            } else {
+                msg = err?.message || "Registration failed.";
+            }
+            setError(msg);
             setIsSubmitting(false);
+        } finally {
+            // setIsSubmitting(false); // Done inside catch/if blocks or before redirect
         }
     };
 
@@ -126,6 +158,14 @@ export default function EvaluatorRegisterPage() {
                                     required
                                     value={formData.name}
                                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                />
+                                <FormInput
+                                    label="Evaluator Code"
+                                    type="password"
+                                    placeholder="Enter access code"
+                                    required
+                                    value={formData.evaluatorCode}
+                                    onChange={(e) => setFormData({ ...formData, evaluatorCode: e.target.value })}
                                 />
                                 <FormInput
                                     label="Email Address"
