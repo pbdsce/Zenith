@@ -118,10 +118,16 @@ export async function GET(request: NextRequest) {
     // @ts-ignore
     const problemStatements = await ProblemStatement.find({ _id: { $in: problemIds } });
 
-    // Fetch User Details (Members)
-    const allMemberUids = rawTeams.flatMap((t: any) => t.teamMembers.map((m: any) => m.uid));
-    const uniqueMemberUids = [...new Set(allMemberUids)] as string[];
-    const users = await User.find({ uid: { $in: uniqueMemberUids } }).select('uid name organisation');
+    // Fetch User Details (Members + Evaluators + Voters)
+    const teamMemberUids = rawTeams.flatMap((t: any) => t.teamMembers.map((m: any) => m.uid));
+    const evaluatorUids = rawTeams.flatMap((t: any) => (t.evaluations || []).map((e: any) => e.evaluatorId));
+    const voterUids = rawTeams.flatMap((t: any) => (t.votes || []).map((v: any) => v.evaluatorId));
+
+    const uniqueUids = [...new Set([...teamMemberUids, ...evaluatorUids, ...voterUids])] as string[];
+
+    // Fetch users for members, evaluators, and voters
+    const users = await User.find({ uid: { $in: uniqueUids } }).select('uid name organisation');
+
     const userMap = new Map(users.map((u: any) => [u.uid, u]));
 
     // Helper to format team
@@ -131,8 +137,8 @@ export async function GET(request: NextRequest) {
       const assignment = isAssigned ? evaluator?.assignedTeams.find((a: any) => a.teamCode === team.teamCode) : null;
 
       // Check if THIS evaluator has evaluated/voted
-      const myEvaluation = team.evaluations?.find((e: any) => e.evaluatorId === authResult.user.uid);
-      const myVote = team.votes?.find((v: any) => v.evaluatorId === authResult.user.uid);
+      const myEvaluationRaw = team.evaluations?.find((e: any) => e.evaluatorId === authResult.user.uid);
+      const myVoteRaw = team.votes?.find((v: any) => v.evaluatorId === authResult.user.uid);
 
       // Hydrate members
       const hydratedMembers = team.teamMembers.map((m: any) => {
@@ -144,6 +150,18 @@ export async function GET(request: NextRequest) {
           organisation: user?.organisation || "N/A"
         };
       });
+
+      // Hydrate Evaluations
+      const hydratedEvaluations = (team.evaluations || []).map((e: any) => ({
+        ...e,
+        name: userMap.get(e.evaluatorId)?.name || "Unknown Evaluator"
+      }));
+
+      // Hydrate Votes
+      const hydratedVotes = (team.votes || []).map((v: any) => ({
+        ...v,
+        name: userMap.get(v.evaluatorId)?.name || "Community Member"
+      }));
 
       return {
         teamCode: team.teamCode,
@@ -160,12 +178,12 @@ export async function GET(request: NextRequest) {
         assignedAt: assignment?.assignedAt || null,
 
         // My Actions
-        myEvaluation: myEvaluation || null,
-        myVote: myVote || null,
+        myEvaluation: myEvaluationRaw ? { ...myEvaluationRaw, name: userMap.get(myEvaluationRaw.evaluatorId)?.name } : null,
+        myVote: myVoteRaw ? { ...myVoteRaw, name: userMap.get(myVoteRaw.evaluatorId)?.name } : null,
 
         // Public Data
-        evaluations: team.evaluations || [],
-        votes: team.votes || [],
+        evaluations: hydratedEvaluations,
+        votes: hydratedVotes,
         voteCount: team.voteCount, // Included for debugging/display
 
         // Legacy/Global status

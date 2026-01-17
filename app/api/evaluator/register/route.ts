@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { authenticateUser, createAuthErrorResponse } from "@/lib/middleware/auth";
+import { createAuthErrorResponse } from "@/lib/middleware/auth";
 import dbConnect from "@/lib/db";
 import Evaluator from "@/models/Evaluator";
 import User from "@/models/User";
@@ -32,14 +32,21 @@ function createErrorResponse(message: string, code: string, status: number) {
  */
 export async function POST(request: NextRequest) {
     try {
-        const authResult = await authenticateUser(request);
-        if (!authResult.success) {
-            return createAuthErrorResponse(authResult);
+        const authHeader = request.headers.get('authorization');
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return createErrorResponse("Authentication required", "AUTH_REQUIRED", 401);
         }
 
-        // We expect the user to have been created in Firebase.
-        const uid = authResult.user.uid;
-        const email = authResult.user.email;
+        const token = authHeader.split('Bearer ')[1];
+        let decodedToken;
+        try {
+            decodedToken = await getAuth().verifyIdToken(token);
+        } catch (error) {
+            return createErrorResponse("Invalid or expired token", "TOKEN_INVALID", 401);
+        }
+
+        const uid = decodedToken.uid;
+        const email = decodedToken.email || "";
         const body = await request.json();
         const { name, evaluatorCode } = body;
 

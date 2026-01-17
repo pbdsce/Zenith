@@ -180,7 +180,18 @@ export function EvaluatorContainer() {
                     : t.votes.filter(v => v.evaluatorId !== user?.uid)
             } : t
         ));
-        setSelectedTeam(null);
+
+        // We need to update selectedTeam as well since it's passed as prop
+        if (selectedTeam?.teamCode === teamCode) {
+            setSelectedTeam(prev => prev ? ({
+                ...prev,
+                myVote: vote || undefined,
+                votes: vote
+                    ? [...prev.votes.filter(v => v.evaluatorId !== vote.evaluatorId), vote]
+                    : prev.votes.filter(v => v.evaluatorId !== user?.uid)
+            }) : null);
+        }
+
         setAlert({ type: "success", message: vote ? "Vote submitted!" : "Vote removed!" });
         setTimeout(() => setAlert(null), 3000);
     }

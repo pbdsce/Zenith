@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
         }
 
         const body = await request.json();
-        const { teamCode, vote, comment } = body;
+        const { teamCode, vote, comment, skipToggle } = body;
 
         // Validation
         if (!teamCode) {
@@ -75,8 +75,8 @@ export async function POST(request: NextRequest) {
         // Check if THIS evaluator has already voted
         const existingVote = team.votes.find((v: any) => v.evaluatorId === authResult.user.uid);
 
-        // Scenario 1: Toggle OFF (Same vote type)
-        if (existingVote && existingVote.vote === vote) {
+        // Scenario 1: Toggle OFF (Same vote type) - UNLESS skipToggle is true (comment update)
+        if (existingVote && existingVote.vote === vote && !skipToggle) {
             await Team.findOneAndUpdate(
                 { teamCode },
                 {
