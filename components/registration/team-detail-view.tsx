@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/registration/button";
 import { ChevronLeft, FileText, Youtube, ExternalLink, ThumbsUp, ThumbsDown, MessageSquare, ChevronDown, ChevronUp, User } from "lucide-react";
 import { useAuth } from '@/hooks/use-auth';
@@ -101,6 +101,22 @@ export function TeamDetailView({ team, onBack, onEvaluationSuccess, onVoteSucces
             setIsSubmitting(false);
         }
     };
+
+    // Optimistic UI for Counts
+    const { displayUpvotes, displayDownvotes } = useMemo(() => {
+        let u = team.upvoteCount || 0;
+        let d = team.downvoteCount || 0;
+
+        // Subtract original vote if it existed
+        if (team.myVote?.vote === 'up') u--;
+        if (team.myVote?.vote === 'down') d--;
+
+        // Add current local vote
+        if (localVote?.vote === 'up') u++;
+        if (localVote?.vote === 'down') d++;
+
+        return { displayUpvotes: Math.max(0, u), displayDownvotes: Math.max(0, d) };
+    }, [team.upvoteCount, team.downvoteCount, team.myVote, localVote?.vote]);
 
     const handleVoteSubmit = async (voteType: 'up' | 'down', isCommentUpdate = false) => {
         // Optimistic Update
@@ -329,7 +345,18 @@ export function TeamDetailView({ team, onBack, onEvaluationSuccess, onVoteSucces
                                                 </div>
                                             )}
                                         </div>
-                                        <div className="flex justify-end">
+                                        <div className="flex items-center justify-between mt-2">
+                                            <div className="flex items-center gap-3 bg-white/5 px-3 py-1.5 rounded-lg border border-white/5 select-none">
+                                                <div className="flex items-center gap-1.5 text-xs text-green-400 font-medium">
+                                                    <ThumbsUp className="w-3.5 h-3.5" />
+                                                    {displayUpvotes}
+                                                </div>
+                                                <div className="w-[1px] h-3 bg-white/10" />
+                                                <div className="flex items-center gap-1.5 text-xs text-red-400 font-medium">
+                                                    <ThumbsDown className="w-3.5 h-3.5" />
+                                                    {displayDownvotes}
+                                                </div>
+                                            </div>
                                             <Button
                                                 variant="secondary"
                                                 onClick={() => handleVoteSubmit(localVote?.vote as 'up' | 'down', true)} // true = isCommentUpdate

@@ -78,7 +78,25 @@ export async function GET(request: NextRequest) {
 
     pipeline.push({
       $addFields: {
-        voteCount: { $size: { $ifNull: ["$votes", []] } },
+        voteCount: { $size: { $ifNull: ["$votes", []] } }, // Total votes
+        upvoteCount: {
+          $size: {
+            $filter: {
+              input: { $ifNull: ["$votes", []] },
+              as: "v",
+              cond: { $eq: ["$$v.vote", "up"] }
+            }
+          }
+        },
+        downvoteCount: {
+          $size: {
+            $filter: {
+              input: { $ifNull: ["$votes", []] },
+              as: "v",
+              cond: { $eq: ["$$v.vote", "down"] }
+            }
+          }
+        },
         isSubmitted: {
           $or: [
             { $gt: [{ $strLenCP: { $ifNull: ["$submissionPDF", ""] } }, 0] },
@@ -93,7 +111,8 @@ export async function GET(request: NextRequest) {
     }
 
     if (sort === 'votes') {
-      pipeline.push({ $sort: { voteCount: -1, createdAt: -1 } });
+      // Sort by upvoteCount as requested
+      pipeline.push({ $sort: { upvoteCount: -1, createdAt: -1 } });
     } else {
       pipeline.push({ $sort: { createdAt: -1 } });
     }
@@ -184,7 +203,9 @@ export async function GET(request: NextRequest) {
         // Public Data
         evaluations: hydratedEvaluations,
         votes: hydratedVotes,
-        voteCount: team.voteCount, // Included for debugging/display
+        voteCount: team.voteCount,
+        upvoteCount: team.upvoteCount,
+        downvoteCount: team.downvoteCount,
 
         // Legacy/Global status
         isEvaluated: team.isEvaluated,

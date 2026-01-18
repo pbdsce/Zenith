@@ -5,7 +5,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { API_ENDPOINTS } from "@/lib/api-config";
 import { Spinner } from "@/components/ui/spinner";
 import { Skeleton } from "@/components/ui/skeleton";
-import { LayoutGrid, CheckCircle2, Vote, Search, ChevronLeft, ChevronRight, Layers } from "lucide-react";
+import { LayoutGrid, CheckCircle2, Vote, Search, ChevronLeft, ChevronRight, Layers, ThumbsUp, ThumbsDown } from "lucide-react";
 import { FormSection } from "@/components/registration/form-section";
 import { StickyAlert } from "@/components/registration/sticky-alert";
 import { TeamDetailView } from "./team-detail-view";
@@ -39,6 +39,8 @@ interface Team {
     evaluations: Evaluation[];
     votes: Vote[];
     voteCount?: number;
+    upvoteCount?: number;
+    downvoteCount?: number;
     isEvaluated: boolean;
 }
 
@@ -360,10 +362,16 @@ export function EvaluatorContainer() {
                                             {team.teamName}
                                         </h3>
                                         <div className="flex items-center gap-2">
-                                            {activeTab === 'community' && (
-                                                <span className="text-[10px] text-white/50 bg-white/5 px-2 py-1 rounded border border-white/5 flex items-center gap-1">
-                                                    <Vote className="w-3 h-3" /> {team.voteCount || 0}
-                                                </span>
+                                            {(activeTab === 'community' || activeTab === 'tier_view') && (
+                                                <div className="flex items-center gap-1.5 bg-white/5 px-2 py-1 rounded border border-white/5">
+                                                    <div className="flex items-center gap-1 text-[10px] text-green-400">
+                                                        <ThumbsUp className="w-3 h-3" /> {team.upvoteCount || 0}
+                                                    </div>
+                                                    <div className="w-[1px] h-3 bg-white/10" />
+                                                    <div className="flex items-center gap-1 text-[10px] text-red-400">
+                                                        <ThumbsDown className="w-3 h-3" /> {team.downvoteCount || 0}
+                                                    </div>
+                                                </div>
                                             )}
                                             {team.isAssigned && (
                                                 <span className="text-[10px] uppercase bg-blue-500/20 text-blue-400 px-2 py-1 rounded border border-blue-500/20">
