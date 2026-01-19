@@ -169,10 +169,10 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const maxSize = 10 * 1024 * 1024;
+      const maxSize = 4.5 * 1024 * 1024;
       if (submissionPDF.size > maxSize) {
         return NextResponse.json(
-          { message: "PDF file size must be under 10MB" },
+          { message: "PDF file size must be under 4.5MB" },
           { status: 400 }
         );
       }

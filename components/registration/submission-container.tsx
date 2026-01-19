@@ -264,13 +264,13 @@ export function SubmissionContainer() {
 
         if (!uploadResponse.ok) {
           let errorMessage = 'Failed to upload submission';
+          const errorText = await uploadResponse.text();
           try {
-            const uploadData = await uploadResponse.json();
+            const uploadData = JSON.parse(errorText);
             errorMessage = uploadData.message || errorMessage;
           } catch (e) {
-            // If JSON parsing fails, try to get text response
-            const textError = await uploadResponse.text();
-            errorMessage = textError || errorMessage;
+            // If JSON parsing fails, use the text response
+            errorMessage = errorText || errorMessage;
           }
           throw new Error(errorMessage);
         }
@@ -404,14 +404,14 @@ export function SubmissionContainer() {
             label="Project Documentation (PDF)"
             accept=".pdf"
             required
-            maxSizeMB={10}
+            maxSizeMB={4.5}
             onChange={(e) => {
               if (e.target.files && e.target.files[0]) {
                 const file = e.target.files[0];
-                if (file.size > 10 * 1024 * 1024) {
+                if (file.size > 4.5 * 1024 * 1024) {
                   setAlert({
                     type: "error",
-                    message: "File size must be less than 10MB",
+                    message: "File size must be less than 4.5MB",
                   });
                   e.target.value = ""; // Clear input
                   setDocumentationFile(null);
