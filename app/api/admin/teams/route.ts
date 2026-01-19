@@ -4,6 +4,7 @@ import dbConnect from "@/lib/db";
 import User from "@/models/User";
 import Team from "@/models/Team";
 import ProblemStatement from "@/models/ProblemStatement";
+import Evaluator from "@/models/Evaluator";
 
 export const dynamic = 'force-dynamic';
 
@@ -76,6 +77,17 @@ export async function GET(request: NextRequest) {
       ];
     }
 
+    if (searchParams.get('excludeAssigned') === 'true') {
+      // Find all team codes that are already assigned to any evaluator
+      const evaluators = await Evaluator.find({}, 'assignedTeams.teamCode');
+      const assignedTeamCodes = evaluators.flatMap((e: any) => e.assignedTeams.map((t: any) => t.teamCode));
+
+      // Add exclusion to query
+      if (assignedTeamCodes.length > 0) {
+        query.teamCode = { $nin: assignedTeamCodes };
+      }
+    }
+
     const skip = (page - 1) * limit;
     const sortObj: any = { [sortBy]: sortOrder };
 
@@ -90,6 +102,20 @@ export async function GET(request: NextRequest) {
     // Get team leads and problem statements
     const teamLeadUids = teams.map(t => t.teamLead);
     const problemIds = teams.map(t => t.appliedFor).filter((id): id is string => Boolean(id));
+
+    // Get Assignments for these teams
+    const pageTeamCodes = teams.map(t => t.teamCode);
+    const evaluatorsWithTeams = await Evaluator.find({ 'assignedTeams.teamCode': { $in: pageTeamCodes } });
+
+    // Create Map: TeamCode -> { uid, name }
+    const assignmentMap = new Map<string, { uid: string, name: string }>();
+    evaluatorsWithTeams.forEach(ev => {
+      ev.assignedTeams.forEach((at: any) => {
+        if (pageTeamCodes.includes(at.teamCode)) {
+          assignmentMap.set(at.teamCode, { uid: ev.uid, name: ev.name });
+        }
+      });
+    });
 
     const [teamLeads, problemStatements] = await Promise.all([
       User.find({ uid: { $in: teamLeadUids } }).select('uid name email'),
@@ -107,7 +133,8 @@ export async function GET(request: NextRequest) {
     const formattedTeams = teams.map(team => {
       const lead = teamLeads.find(u => u.uid === team.teamLead);
       const ps = problemStatements.find(p => p._id.toString() === team.appliedFor);
-      
+      const assignedEvaluator = assignmentMap.get(team.teamCode);
+
       return {
         teamCode: team.teamCode,
         teamName: team.teamName,
@@ -116,6 +143,7 @@ export async function GET(request: NextRequest) {
         teamStatus: team.teamStatus,
         appliedFor: ps ? { id: ps._id.toString(), title: ps.title } : null,
         isEvaluated: team.isEvaluated,
+        evaluator: assignedEvaluator || null,
         isShortlisted: team.isShortlisted,
         evaluationCount: team.evaluations?.length || 0,
         createdAt: team.createdAt,

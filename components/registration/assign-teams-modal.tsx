@@ -38,6 +38,8 @@ export function AssignTeamsModal({
     const [isLoading, setIsLoading] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [search, setSearch] = useState("");
+    const [page, setPage] = useState(1);
+    const [hasMore, setHasMore] = useState(true);
     const [alert, setAlert] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
     const [confirmation, setConfirmation] = useState({
@@ -47,20 +49,46 @@ export function AssignTeamsModal({
 
     useEffect(() => {
         if (isOpen) {
-            fetchTeams();
+            setPage(1);
+            setTeams([]);
+            setHasMore(true);
             setSelectedTeams(new Set());
             setSearch("");
             setAlert(null);
+            fetchTeams(1, "");
         }
     }, [isOpen]);
 
-    const fetchTeams = async () => {
+    // Debounce search
+    useEffect(() => {
+        if (!isOpen) return;
+        const timeoutId = setTimeout(() => {
+            if (search) {
+                setPage(1);
+                setTeams([]);
+                fetchTeams(1, search);
+            } else if (page === 1 && teams.length === 0) {
+                fetchTeams(1, "");
+            }
+        }, 500);
+        return () => clearTimeout(timeoutId);
+    }, [search]);
+
+    const fetchTeams = async (pageNum: number, searchQuery: string) => {
         setIsLoading(true);
         try {
             const token = await getToken();
             if (!token) return;
 
-            const response = await fetch(`${API_ENDPOINTS.adminTeams}?limit=100`, {
+            const queryParams = new URLSearchParams({
+                limit: '50', // Chunk size
+                page: pageNum.toString(),
+                search: searchQuery,
+                isSubmitted: 'true',
+                excludeAssigned: 'true'
+            });
+
+            const response = await fetch(`${API_ENDPOINTS.adminTeams}?${queryParams}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
 
@@ -74,7 +102,14 @@ export function AssignTeamsModal({
                         assignedToName: t.evaluator?.name,
                         problemStatement: t.appliedFor?.title || "No Problem Statement"
                     }));
-                    setTeams(mappedTeams);
+
+                    if (pageNum === 1) {
+                        setTeams(mappedTeams);
+                    } else {
+                        setTeams(prev => [...prev, ...mappedTeams]);
+                    }
+
+                    setHasMore(data.data.pagination.currentPage < data.data.pagination.totalPages);
                 }
             }
         } catch (error) {
@@ -83,6 +118,12 @@ export function AssignTeamsModal({
         } finally {
             setIsLoading(false);
         }
+    };
+
+    const handleLoadMore = () => {
+        const nextPage = page + 1;
+        setPage(nextPage);
+        fetchTeams(nextPage, search);
     };
 
     const handleToggleTeam = (teamCode: string) => {
@@ -134,10 +175,7 @@ export function AssignTeamsModal({
     };
 
     // Filter teams based on search
-    const filteredTeams = teams.filter(t =>
-        t.teamName.toLowerCase().includes(search.toLowerCase()) ||
-        t.teamCode.toLowerCase().includes(search.toLowerCase())
-    );
+    const filteredTeams = teams;
 
     return (
         <Modal
@@ -154,7 +192,7 @@ export function AssignTeamsModal({
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-white/50" />
                     <input
                         type="text"
-                        placeholder="Search teams..."
+                        placeholder="Search teams by name or code..."
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                         className="w-full bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.1)] rounded-[8px] pl-9 pr-4 py-2 text-white text-[14px] focus:outline-none focus:border-[#ff4d00]"
@@ -199,6 +237,15 @@ export function AssignTeamsModal({
                                 </div>
                             </div>
                         ))
+                    )}
+                    {hasMore && !isLoading && filteredTeams.length > 0 && (
+                        <Button
+                            variant="secondary"
+                            onClick={handleLoadMore}
+                            className="w-full mt-2"
+                        >
+                            Load More
+                        </Button>
                     )}
                 </div>
 

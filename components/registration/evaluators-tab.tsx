@@ -11,6 +11,7 @@ import { UserCircle } from "lucide-react";
 import { StickyAlert } from "./sticky-alert";
 import { AssignTeamsModal } from "./assign-teams-modal";
 import { AddEvaluatorModal } from "./add-evaluator-modal";
+import { Trash2 } from "lucide-react";
 
 interface Evaluator {
     id: string;
@@ -75,6 +76,39 @@ export function EvaluatorsTab() {
         setTimeout(() => setAlert(null), 3000);
     };
 
+    const handlePruneAssignments = async () => {
+        const confirmed = window.confirm("Are you sure you want to remove all assignments for teams that have not yet submitted? This action cannot be undone.");
+        if (!confirmed) return;
+
+        try {
+            const token = await getToken();
+            if (!token) return;
+
+            const response = await fetch(`${API_ENDPOINTS.adminEvaluators}/prune`, {
+                method: "POST",
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                setAlert({
+                    type: "success",
+                    message: `Cleanup successful! Removed ${data.data.prunedCount} invalid assignments.`
+                });
+                fetchEvaluators();
+            } else {
+                setAlert({ type: "error", message: "Failed to prune assignments" });
+            }
+        } catch (error) {
+            console.error("Prune error:", error);
+            setAlert({ type: "error", message: "An error occurred during cleanup" });
+        } finally {
+            setTimeout(() => setAlert(null), 5000);
+        }
+    };
+
     const filteredEvaluators = evaluators.filter(ev =>
         ev.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         ev.email.toLowerCase().includes(searchQuery.toLowerCase())
@@ -100,6 +134,10 @@ export function EvaluatorsTab() {
                         <Button variant="secondary" onClick={() => setIsAddModalOpen(true)}>
                             <UserPlus className="w-4 h-4" />
                             Add Evaluator
+                        </Button>
+                        <Button variant="danger" onClick={handlePruneAssignments}>
+                            <Trash2 className="w-4 h-4" />
+                            Clean Invalid Assignments
                         </Button>
                     </div>
                 </div>
