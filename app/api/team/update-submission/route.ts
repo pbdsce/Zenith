@@ -90,17 +90,15 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const SUBMISSION_DEADLINE = process.env.SUBMISSION_DEADLINE 
-      ? new Date(process.env.SUBMISSION_DEADLINE) 
-      : new Date('2026-01-21T10:00:00+05:30');
+    const SUBMISSION_DEADLINE = new Date('2026-01-21T00:00:00+05:30');
     
     if (new Date() > SUBMISSION_DEADLINE) {
       return NextResponse.json(
         {
-          message: "Submission deadline has passed. No updates allowed.",
+          message: "Submissions are closed. No updates allowed.",
           error: {
             code: 'DEADLINE_PASSED',
-            message: 'Submission deadline has passed. No updates allowed.',
+            message: 'Submissions are closed. No updates allowed.',
             deadline: SUBMISSION_DEADLINE.toISOString()
           }
         },
