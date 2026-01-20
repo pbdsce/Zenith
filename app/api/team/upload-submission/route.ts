@@ -100,8 +100,8 @@ export async function POST(request: NextRequest) {
       return createAuthErrorResponse(emailError);
     }
 
-    // Check if submission deadline has passed (submissions are CLOSED)
-    const SUBMISSION_DEADLINE = new Date('2026-01-21T00:00:00+05:30');
+    // Check if submission deadline has passed (Extended)
+    const SUBMISSION_DEADLINE = new Date('2026-01-21T10:00:00+05:30');
     if (new Date() > SUBMISSION_DEADLINE) {
       return NextResponse.json(
         { message: "Submissions are closed. No new submissions are being accepted." },

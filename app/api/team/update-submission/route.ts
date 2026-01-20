@@ -90,7 +90,7 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const SUBMISSION_DEADLINE = new Date('2026-01-21T00:00:00+05:30');
+    const SUBMISSION_DEADLINE = new Date('2026-01-21T10:00:00+05:30');
     
     if (new Date() > SUBMISSION_DEADLINE) {
       return NextResponse.json(
