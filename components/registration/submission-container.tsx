@@ -48,6 +48,7 @@ export function SubmissionContainer() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [alert, setAlert] = useState<{ type: "success" | "error" | "warning" | "info"; message: string } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isDeadlineExpired, setIsDeadlineExpired] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated || !user) {
@@ -60,6 +61,15 @@ export function SubmissionContainer() {
         setIsLoading(true);
         const token = await getToken();
         if (!token) return;
+        try {
+          const deadlineResponse = await fetch('/api/config/deadline');
+          const deadlineData = await deadlineResponse.json();
+          if (deadlineData.success && deadlineData.data) {
+            setIsDeadlineExpired(deadlineData.data.isExpired);
+          }
+        } catch (error) {
+          console.error("Error fetching deadline:", error);
+        }
 
         // Fetch user profile to get teamCode
         const userResponse = await fetch(API_ENDPOINTS.userProfile, {
@@ -368,6 +378,9 @@ export function SubmissionContainer() {
         <AlertBanner type="warning" message="Submission is locked. Changes are not allowed after evaluation phase." />
       )}
 
+      {isDeadlineExpired && (
+        <AlertBanner type="error" message="Submission deadline has passed. Submissions are no longer accepted." />
+      )}
       <form onSubmit={handleSubmitProject} className="flex flex-col gap-[24px]">
         <FormSection
           title="Project Details"
@@ -432,14 +445,20 @@ export function SubmissionContainer() {
             onChange={(e) => setSubmissionData({ ...submissionData, projectLink: e.target.value })}
           /> */}
           <p className="text-[13px] text-[rgba(255,255,255,0.6)] mt-[-8px]" style={{ fontFamily: 'var(--font-body)' }}>
-            Make sure all links are accessible and working before submitting. You can update your submission before the deadline.
+            {isDeadlineExpired 
+              ? "Submissions are now closed."
+              : "Make sure all links are accessible and working before submitting. You can update your submission before the deadline."}
           </p>
         </FormSection>
 
         <div className="flex gap-[12px]">
-          <Button type="submit" variant="primary" disabled={isLocked || isSubmitting}>
+          <Button type="submit" variant="primary" disabled={isLocked || isSubmitting || isDeadlineExpired}>
             <Upload className="w-4 h-4" />
-            {team.status === "submitted" ? "Update Submission" : "Submit Team"}
+            {isDeadlineExpired 
+              ? "Submissions Closed" 
+              : team.status === "submitted" 
+                ? "Update Submission" 
+                : "Submit Team"}
           </Button>
           {canWithdraw && (
             <Button onClick={() => setWithdrawDialogOpen(true)} variant="danger" disabled={isSubmitting}>

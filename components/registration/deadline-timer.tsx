@@ -23,6 +23,8 @@ export function DeadlineTimer({ teamStatus, hasSubmitted = false }: DeadlineTime
   const [isLoading, setIsLoading] = useState(true);
   const [serverOffset, setServerOffset] = useState(0);
   const [error, setError] = useState(false);
+  const [showRickroll, setShowRickroll] = useState(false);
+  const [showButton, setShowButton] = useState(false);
 
   // Fetch deadline and server time from API
   useEffect(() => {
@@ -48,6 +50,15 @@ export function DeadlineTimer({ teamStatus, hasSubmitted = false }: DeadlineTime
     };
 
     fetchDeadline();
+  }, []);
+
+  // Show button after 3 seconds
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowButton(true);
+    }, 3000);
+
+    return () => clearTimeout(timer);
   }, []);
 
   // Update countdown every second
@@ -84,7 +95,7 @@ export function DeadlineTimer({ teamStatus, hasSubmitted = false }: DeadlineTime
 
   if (isLoading) {
     return (
-      <div className="w-full p-[16px] rounded-[16px] bg-[rgba(138,138,138,0.1)] border border-[rgba(255,255,255,0.1)] animate-pulse">
+      <div className="w-full backdrop-blur-[2.5px] backdrop-filter bg-[rgba(138,138,138,0.15)] rounded-[16px] p-[20px] border border-[rgba(255,255,255,0.2)] animate-pulse">
         <div className="h-[60px] bg-[rgba(255,255,255,0.05)] rounded-[8px]" />
       </div>
     );
@@ -92,7 +103,7 @@ export function DeadlineTimer({ teamStatus, hasSubmitted = false }: DeadlineTime
 
   if (error) {
     return (
-      <div className="w-full p-[16px] rounded-[16px] bg-black/50 border border-[#ff4d00]">
+      <div className="w-full backdrop-blur-[2.5px] backdrop-filter bg-[rgba(138,138,138,0.15)] rounded-[16px] p-[20px] border border-[rgba(255,255,255,0.2)]">
         <p className="text-[14px] text-white text-center" style={{ fontFamily: 'var(--font-body)' }}>
           Failed to load deadline timer
         </p>
@@ -103,13 +114,12 @@ export function DeadlineTimer({ teamStatus, hasSubmitted = false }: DeadlineTime
   const submitted = hasSubmitted || teamStatus === 'submitted' || teamStatus === 'shortlisted' || teamStatus === 'rsvped';
 
   return (
-    <div className={`w-full p-[20px] rounded-[16px] border flex flex-col items-center justify-center text-center ${
-      isExpired 
-        ? 'bg-black/50 border-[#ff4d00]' 
-        : submitted
-          ? 'bg-[rgba(255,77,0,0.2)] border-[#ff4d00]'
-          : 'bg-[rgba(255,77,0,0.15)] border-[#ff8800]'
-    }`}>
+    <div className="w-full backdrop-blur-[2.5px] backdrop-filter bg-[rgba(138,138,138,0.15)] rounded-[16px] p-[20px] border border-[rgba(255,255,255,0.2)] flex flex-col items-center justify-center text-center relative">
+      <div className="absolute inset-0 rounded-[16px]">
+        <div className="absolute border border-[rgba(255,255,255,0.2)] border-solid inset-0 pointer-events-none rounded-[16px]" />
+      </div>
+      <div className="absolute inset-0 pointer-events-none shadow-[inset_0px_0px_8px_2px_rgba(138,138,138,0.2)] rounded-[16px]" />
+      <div className="relative z-10 w-full flex flex-col items-center justify-center">
       {/* Header */}
       <div className="flex items-center justify-center gap-[12px] mb-[16px] w-full">
         {isExpired ? (
@@ -126,7 +136,7 @@ export function DeadlineTimer({ teamStatus, hasSubmitted = false }: DeadlineTime
           style={{ fontFamily: 'var(--font-heading)' }}
         >
           {isExpired 
-            ? "Submission Deadline Passed" 
+            ? "Submissions Closed" 
             : submitted 
               ? "Submission Complete!"
               : "Submission Deadline"}
@@ -135,9 +145,45 @@ export function DeadlineTimer({ teamStatus, hasSubmitted = false }: DeadlineTime
 
       {/* Countdown or Status Message */}
       {isExpired ? (
-        <p className="text-[14px] text-white/80 text-center w-full" style={{ fontFamily: 'var(--font-body)' }}>
-          The submission deadline has passed. No new submissions are being accepted.
-        </p>
+        <div className="flex flex-col items-center gap-[12px] w-full">
+          <p className="text-[14px] text-white/80 text-center w-full" style={{ fontFamily: 'var(--font-body)' }}>
+            The submission deadline has passed. No new submissions are being accepted.
+          </p>
+          <p className="text-[15px] text-white font-medium text-center w-full" style={{ fontFamily: 'var(--font-body)' }}>
+            Results will be out soon :)
+          </p>
+          
+          {showRickroll ? (
+            <div className="flex flex-col items-center gap-[12px] w-full mt-[8px]">
+              <div className="w-full max-w-[560px] aspect-video rounded-[12px] overflow-hidden border-2 border-[rgba(255,255,255,0.2)]">
+                <iframe
+                  width="100%"
+                  height="100%"
+                  src="https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1"
+                  title="Results"
+                  frameBorder="0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                  className="rounded-[12px]"
+                />
+              </div>
+              <p className="text-[14px] text-white/90 font-medium text-center w-full mt-[8px]" style={{ fontFamily: 'var(--font-body)' }}>
+                🎉 Congratulations! You've been selected for the exclusive "Never Gonna Give You Up" award! 🎉
+              </p>
+              <p className="text-[12px] text-white/70 text-center w-full" style={{ fontFamily: 'var(--font-body)' }}>
+                Just kidding! Results are still being evaluated. <span className="text-[#ff4d00] font-bold">Check back later</span> for real updates! 😄
+              </p>
+            </div>
+          ) : showButton ? (
+            <button
+              onClick={() => setShowRickroll(true)}
+              className="mt-[8px] px-[24px] py-[12px] bg-gradient-to-r from-[#ff4d00] to-[#ff8800] hover:from-[#ff6600] hover:to-[#ff9900] text-white font-semibold rounded-[12px] transition-all duration-200 shadow-[0_0_15px_rgba(255,77,0,0.4)] hover:shadow-[0_0_20px_rgba(255,77,0,0.6)]"
+              style={{ fontFamily: 'var(--font-body)' }}
+            >
+              Check Result
+            </button>
+          ) : null}
+        </div>
       ) : (
         <div className="flex flex-col items-center w-full">
           {/* Countdown Display */}
@@ -189,6 +235,7 @@ export function DeadlineTimer({ teamStatus, hasSubmitted = false }: DeadlineTime
           </p>
         </div>
       )}
+      </div>
     </div>
   );
 }
