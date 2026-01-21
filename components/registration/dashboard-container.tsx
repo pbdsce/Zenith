@@ -79,6 +79,13 @@ interface Team {
   scores?: any;
   comments?: string;
   isShortlisted?: boolean;
+  evaluations?: Array<{
+    evaluatorId: string;
+    name: string;
+    tier: "strongly_accepted" | "accepted" | "borderline" | "rejected";
+    comment: string;
+    createdAt: Date | string;
+  }>;
   createdAt?: Date;
   submittedAt?: Date;
 }
@@ -251,6 +258,26 @@ export function DashboardContainer() {
                   const teamData = await teamResponse.json();
                   if (teamData.success && teamData.data) {
                     setTeam(teamData.data);
+                    try {
+                      const rsvpResponse = await fetch('/api/user/rsvp-status', {
+                        headers: {
+                          'Authorization': `Bearer ${token}`,
+                          'Content-Type': 'application/json'
+                        }
+                      });
+                      if (rsvpResponse.ok) {
+                        const rsvpData = await rsvpResponse.json();
+                        if (rsvpData.success && rsvpData.data) {
+                          if (rsvpData.data.userRSVP) {
+                            setRsvpStatus(rsvpData.data.userRSVP.rsvpStatus as "confirmed" | "declined");
+                          } else {
+                            setRsvpStatus("pending");
+                          }
+                        }
+                      }
+                    } catch (error) {
+                      console.error("Error fetching RSVP status:", error);
+                    }
 
                     // Fetch team requests if lead
                     const teamInfo = teamData.data;
@@ -280,9 +307,11 @@ export function DashboardContainer() {
                     }
                   } else {
                     setTeam(null);
+                    setRsvpStatus("pending");
                   }
                 } else {
                   setTeam(null);
+                  setRsvpStatus("pending");
                 }
               } catch (error) {
                 console.error('Error fetching team data:', error);
@@ -292,9 +321,11 @@ export function DashboardContainer() {
                   description: "Failed to load team details."
                 });
                 setTeam(null);
+                setRsvpStatus("pending");
               }
             } else {
               setTeam(null);
+              setRsvpStatus("pending");
             }
 
             // Always fetch invites (Team -> User) regardless of team status
@@ -339,6 +370,13 @@ export function DashboardContainer() {
 
   const getTeamStatus = (): "none" | "active" | "submitted" | "under-review" | "shortlisted" | "confirmed" | "declined" => {
     if (!team || !team.teamStatus) return "none";
+    const hasAcceptedEvaluation = team.evaluations?.some((evaluation: any) => 
+      evaluation.tier === 'accepted' || evaluation.tier === 'strongly_accepted'
+    );
+    if (hasAcceptedEvaluation && team.teamStatus === 'submitted') {
+      return 'shortlisted';
+    }
+    
     // Map teamStatus from API to component status
     const statusMap: Record<string, "none" | "active" | "submitted" | "under-review" | "shortlisted" | "confirmed" | "declined"> = {
       'pending': 'active',
@@ -351,6 +389,19 @@ export function DashboardContainer() {
     return statusMap[team.teamStatus] || 'active';
   };
 
+  const hasAcceptedEvaluations = (): boolean => {
+    return team?.evaluations?.some((evaluation: any) => 
+      evaluation.tier === 'accepted' || evaluation.tier === 'strongly_accepted'
+    ) ?? false;
+  };
+
+  const hasRejectedEvaluationsOnly = (): boolean => {
+    if (!team?.isEvaluated || !team?.evaluations) return false;
+    const hasRejected = team.evaluations.some((evaluation: any) => evaluation.tier === 'rejected');
+    const hasAccepted = hasAcceptedEvaluations();
+    return hasRejected && !hasAccepted;
+  };
+
   const isTeamLead = (): boolean => {
     if (!team || !user) return false;
     // Check if user is the team lead by checking teamMembers array
@@ -358,9 +409,50 @@ export function DashboardContainer() {
     return userMember?.role === 'Team Lead' || false;
   };
 
-  const handleRSVP = (status: "confirmed" | "declined") => {
-    setRsvpStatus(status);
-    // TODO: Call API to update RSVP status
+  const handleRSVP = async (status: "confirmed" | "declined") => {
+    if (!user) return;
+
+    try {
+      const token = await getToken();
+      if (!token) {
+        toast({
+          variant: "destructive",
+          title: "Authentication required",
+          description: "Please log in again to submit RSVP",
+        });
+        return;
+      }
+
+      const response = await fetch('/api/user/rsvp', {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ rsvpStatus: status }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to submit RSVP');
+      }
+
+      setRsvpStatus(status);
+      toast({
+        title: status === "confirmed" ? "RSVP Confirmed" : "RSVP Declined",
+        description: data.message || `You have ${status === "confirmed" ? "confirmed" : "declined"} your attendance.`,
+      });
+
+      setRefreshTrigger(prev => prev + 1);
+    } catch (error) {
+      console.error('Error submitting RSVP:', error);
+      toast({
+        variant: "destructive",
+        title: "Failed to submit RSVP",
+        description: error instanceof Error ? error.message : "Failed to submit RSVP",
+      });
+    }
   };
 
   /* 
@@ -770,7 +862,15 @@ export function DashboardContainer() {
       </div>
 
       {/* Submission Deadline Timer */}
-      <DeadlineTimer teamStatus={team?.teamStatus} hasSubmitted={teamStatus === 'submitted' || teamStatus === 'shortlisted' || teamStatus === 'confirmed'} />
+      <DeadlineTimer 
+        teamStatus={team?.teamStatus} 
+        hasSubmitted={teamStatus === 'submitted' || teamStatus === 'shortlisted' || teamStatus === 'confirmed'}
+        isEvaluated={team?.isEvaluated}
+        evaluations={team?.evaluations}
+        hasTeam={!!team}
+        rsvpStatus={rsvpStatus}
+        onRSVP={handleRSVP}
+      />
 
       {/* Two-Column Grid Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-[24px]">
@@ -830,10 +930,41 @@ export function DashboardContainer() {
             />
           )}
 
-          {/* Submission Status Card (for submitted/shortlisted teams) */}
-          {team && (teamStatus === "submitted" || teamStatus === "under-review" || teamStatus === "shortlisted" || teamStatus === "confirmed" || teamStatus === "declined") && (
+          {team && teamStatus === "submitted" && hasRejectedEvaluationsOnly() && (
+            <FormSection title="Team Status">
+              <div className="flex flex-col gap-[16px]">
+                <AlertBanner
+                  type="error"
+                  message="Unfortunately, your team was not selected for the next round. Thank you for participating!"
+                />
+                <div className="flex items-center gap-[12px] p-[16px] rounded-[12px] bg-[rgba(220,38,38,0.1)] border border-[rgba(220,38,38,0.2)]">
+                  <X className="w-6 h-6 text-red-400" />
+                  <div className="flex flex-col gap-[4px]">
+                    <span className="text-[16px] text-white font-medium" style={{ fontFamily: 'var(--font-body)' }}>
+                      Team Not Selected
+                    </span>
+                    <span className="text-[12px] text-white opacity-70" style={{ fontFamily: 'var(--font-body)' }}>
+                      Your submission has been evaluated but was not selected.
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </FormSection>
+          )}
+
+          {/* Show SubmissionStatusCard for submitted/under-review teams that are not selected (accepted) or rejected */}
+          {team && (teamStatus === "submitted" || teamStatus === "under-review") && !hasAcceptedEvaluations() && !hasRejectedEvaluationsOnly() && (
             <SubmissionStatusCard
-              status={teamStatus as "submitted" | "under-review" | "shortlisted" | "confirmed" | "declined"}
+              status={teamStatus as "submitted" | "under-review"}
+              rsvpStatus={rsvpStatus}
+              submittedAt={team.submittedAt}
+              onRSVP={handleRSVP}
+            />
+          )}
+          
+          {team && (teamStatus === "confirmed" || teamStatus === "declined") && (
+            <SubmissionStatusCard
+              status={teamStatus as "confirmed" | "declined"}
               rsvpStatus={rsvpStatus}
               submittedAt={team.submittedAt}
               onRSVP={handleRSVP}

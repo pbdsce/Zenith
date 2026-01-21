@@ -41,6 +41,20 @@ export async function PUT(request: NextRequest) {
         { status: 400 }
       );
     }
+    const RSVP_DEADLINE = new Date('2026-01-24T23:59:00+05:30');
+    const now = new Date();
+    if (now > RSVP_DEADLINE) {
+      return NextResponse.json(
+        {
+          message: "RSVP deadline has passed",
+          error: {
+            code: 'RSVP_DEADLINE_PASSED',
+            message: "The RSVP deadline was January 24, 2026, 11:59 PM IST. RSVP submissions are now closed."
+          }
+        },
+        { status: 400 }
+      );
+    }
 
     await dbConnect();
 
@@ -73,14 +87,16 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Check if team is shortlisted
-    if (!team.isShortlisted) {
+    const hasAcceptedEvaluation = team.evaluations && team.evaluations.some((evaluation: any) => 
+      evaluation.tier === 'accepted' || evaluation.tier === 'strongly_accepted'
+    );
+    if (!hasAcceptedEvaluation) {
       return NextResponse.json(
         {
-          message: "Team not shortlisted",
+          message: "Team not selected",
           error: {
-            code: 'TEAM_NOT_SHORTLISTED',
-            message: 'Team must be shortlisted before RSVP'
+            code: 'TEAM_NOT_SELECTED',
+            message: 'Team must be selected (have accepted or strongly_accepted evaluation) before RSVP'
           }
         },
         { status: 400 }
@@ -92,22 +108,23 @@ export async function PUT(request: NextRequest) {
     if (existingRSVP) {
       return NextResponse.json(
         {
-          message: "Already submitted RSVP",
+          message: "RSVP already submitted",
           error: {
             code: 'ALREADY_RSVPED',
-            message: 'You have already submitted your RSVP'
+            message: 'You have already submitted your RSVP. RSVP cannot be changed once submitted.'
           }
         },
         { status: 409 }
       );
     }
-
+    const rsvpDate = new Date();
+    
     // Add user's RSVP
     team.memberRSVPs.push({
       uid: authResult.user.uid,
       name: user.name,
       rsvpStatus,
-      rsvpedAt: new Date(),
+      rsvpedAt: rsvpDate,
     });
 
     // Check if all members have RSVPed
@@ -142,8 +159,7 @@ export async function PUT(request: NextRequest) {
       rsvpStatus: rsvp.rsvpStatus,
       rsvpedAt: rsvp.rsvpedAt instanceof Date ? rsvp.rsvpedAt.toISOString() : rsvp.rsvpedAt,
     }));
-
-    const rsvpDate = new Date();
+    
     return NextResponse.json({
       success: true,
       message: allConfirmed ? "RSVP submitted successfully. Your team is now fully confirmed!" : "RSVP submitted successfully",
