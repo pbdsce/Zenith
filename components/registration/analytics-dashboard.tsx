@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from '@/hooks/use-auth';
-import { UserCircle, Users, FileText, CheckCircle } from "lucide-react";
+import { UserCircle, Users, FileText, CheckCircle, Trophy, Search, Sparkles, ExternalLink } from "lucide-react";
 import { FormSection } from "./form-section";
 import { Card } from "./card";
 import { StickyAlert } from "./sticky-alert";
@@ -12,6 +12,26 @@ interface AdminStats {
     totalTeams: number;
     totalSubmissions: number;
     totalEvaluated: number;
+}
+
+interface ShortlistedTeam {
+    _id: string;
+    teamCode: string;
+    teamName: string;
+    teamLead: string;
+    appliedFor?: string;
+    memberCount: number;
+    submissionPdf?: string;
+    videoUrl?: string;
+    status: string;
+    createdAt: string;
+}
+
+interface ShortlistedStats {
+    totalTeams: number;
+    totalParticipants: number;
+    psDistribution: Record<string, number>;
+    statusDistribution: Record<string, number>;
 }
 
 
@@ -38,6 +58,17 @@ export function AnalyticsDashboard() {
     const [teamStatusData, setTeamStatusData] = useState<any[]>([]);
     const [submissionData, setSubmissionData] = useState<any[]>([]);
     const [psDistributionData, setPsDistributionData] = useState<any[]>([]);
+
+    // Shortlisted teams state
+    const [shortlistedTeams, setShortlistedTeams] = useState<ShortlistedTeam[]>([]);
+    const [shortlistedStats, setShortlistedStats] = useState<ShortlistedStats>({
+        totalTeams: 0,
+        totalParticipants: 0,
+        psDistribution: {},
+        statusDistribution: {},
+    });
+    const [shortlistedSearchQuery, setShortlistedSearchQuery] = useState('');
+    const [shortlistedLoading, setShortlistedLoading] = useState(false);
 
     const [alert, setAlert] = useState<{
         type: "success" | "error" | "warning" | "info";
@@ -97,6 +128,56 @@ export function AnalyticsDashboard() {
         fetchStats();
     }, [getToken]);
 
+    // Fetch Shortlisted Teams
+    useEffect(() => {
+        const fetchShortlistedTeams = async () => {
+            try {
+                setShortlistedLoading(true);
+                const token = await getToken();
+                if (!token) return;
+
+                const response = await fetch('/api/shortlisted-teams', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    if (result.success && result.data) {
+                        setShortlistedTeams(result.data.teams || []);
+                        setShortlistedStats(result.data.stats || {
+                            totalTeams: 0,
+                            totalParticipants: 0,
+                            psDistribution: {},
+                            statusDistribution: {},
+                        });
+                    }
+                }
+            } catch (error) {
+                console.error("Failed to fetch shortlisted teams", error);
+            } finally {
+                setShortlistedLoading(false);
+            }
+        };
+
+        fetchShortlistedTeams();
+    }, [getToken]);
+
+    // Filter shortlisted teams based on search query
+    const filteredShortlistedTeams = shortlistedTeams.filter(team =>
+        team.teamName.toLowerCase().includes(shortlistedSearchQuery.toLowerCase()) ||
+        team.teamCode.toLowerCase().includes(shortlistedSearchQuery.toLowerCase()) ||
+        team.teamLead.toLowerCase().includes(shortlistedSearchQuery.toLowerCase())
+    );
+
+    // Generate initials from team name
+    const getTeamInitials = (teamName: string) => {
+        const words = teamName.replace(/[^a-zA-Z0-9\s]/g, '').trim().split(/\s+/);
+        if (words.length === 1) {
+            return words[0].substring(0, 2).toUpperCase();
+        }
+        return (words[0][0] + words[1][0]).toUpperCase();
+    };
+
     return (
         <div className="flex flex-col text-white gap-[24px] w-full">
             {alert && (
@@ -141,8 +222,9 @@ export function AnalyticsDashboard() {
             </FormSection>
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full text-white">
-                <TabsList className="grid w-full grid-cols-1 h-auto bg-transparent border-b border-white/10 p-0">
+                <TabsList className="grid w-full grid-cols-2 h-auto bg-transparent border-b border-white/10 p-0">
                     <TabsTrigger value="analytics" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary rounded-none border-b-2 border-transparent data-[state=active]:border-primary transition-all pb-2">Analytics</TabsTrigger>
+                    <TabsTrigger value="shortlisted" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary rounded-none border-b-2 border-transparent data-[state=active]:border-primary transition-all pb-2">Shortlisted Teams</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="analytics" className="mt-6">
@@ -275,6 +357,214 @@ export function AnalyticsDashboard() {
                                 </div>
                             </Card>
                         </div>
+                    </FormSection>
+                </TabsContent>
+
+                <TabsContent value="shortlisted" className="mt-6">
+                    <FormSection title="Shortlisted Teams">
+                        {/* Stats Cards */}
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-[16px] mb-6">
+                            <Card>
+                                <div className="flex flex-col items-center gap-[8px] text-center">
+                                    <Trophy className="w-8 h-8 text-[#ff4d00]" />
+                                    <span className="font-['Inter',sans-serif] text-[24px] text-white">{shortlistedStats.totalTeams}</span>
+                                    <span className="font-['Inter',sans-serif] text-[13px] text-white opacity-90">Teams Selected</span>
+                                </div>
+                            </Card>
+                            <Card>
+                                <div className="flex flex-col items-center gap-[8px] text-center">
+                                    <Users className="w-8 h-8 text-[#ff4d00]" />
+                                    <span className="font-['Inter',sans-serif] text-[24px] text-white">{shortlistedStats.totalParticipants}</span>
+                                    <span className="font-['Inter',sans-serif] text-[13px] text-white opacity-90">Total Participants</span>
+                                </div>
+                            </Card>
+                            <Card>
+                                <div className="flex flex-col items-center gap-[8px] text-center">
+                                    <FileText className="w-8 h-8 text-[#ff4d00]" />
+                                    <span className="font-['Inter',sans-serif] text-[24px] text-white">{Object.keys(shortlistedStats.psDistribution).length}</span>
+                                    <span className="font-['Inter',sans-serif] text-[13px] text-white opacity-90">Problem Statements</span>
+                                </div>
+                            </Card>
+                        </div>
+
+                        {/* Search Bar */}
+                        <div className="mb-6">
+                            <div className="relative bg-[rgba(138,138,138,0.15)] border border-[rgba(255,255,255,0.2)] rounded-[15px] overflow-hidden max-w-md">
+                                <div className="absolute left-4 top-1/2 -translate-y-1/2 z-10">
+                                    <Search className="w-5 h-5 text-white/50" />
+                                </div>
+                                <input
+                                    type="text"
+                                    placeholder="Search teams by name, code, or leader..."
+                                    value={shortlistedSearchQuery}
+                                    onChange={(e) => setShortlistedSearchQuery(e.target.value)}
+                                    className="w-full pl-12 pr-4 py-3 bg-transparent text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-[#ff4d00]/50 transition-all text-sm"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Loading State */}
+                        {shortlistedLoading ? (
+                            <div className="flex items-center justify-center py-12">
+                                <div className="text-white/60">Loading shortlisted teams...</div>
+                            </div>
+                        ) : (
+                            <>
+                                {/* Teams Grid */}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                                    {filteredShortlistedTeams.map((team, index) => {
+                                        const initials = getTeamInitials(team.teamName);
+
+                                        return (
+                                            <div
+                                                key={team._id || team.teamCode}
+                                                className="group relative"
+                                            >
+                                                {/* Card */}
+                                                <div
+                                                    className="relative overflow-hidden rounded-[20px] p-[1px] transition-all duration-300 hover:-translate-y-2"
+                                                    style={{
+                                                        background: `linear-gradient(135deg, rgba(255, 77, 0, 0.4), transparent 50%, rgba(255, 77, 0, 0.4))`,
+                                                    }}
+                                                >
+                                                    {/* Inner card */}
+                                                    <div className="relative bg-[#1a1a1a] rounded-[19px] p-5 h-full overflow-hidden">
+                                                        {/* Glow effect on hover */}
+                                                        <div
+                                                            className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
+                                                            style={{
+                                                                background: `radial-gradient(circle at 50% 0%, rgba(255, 77, 0, 0.3), transparent 70%)`,
+                                                            }}
+                                                        />
+
+                                                        {/* Rank number */}
+                                                        <div className="absolute top-3 right-3 text-[10px] text-white/20 font-mono">
+                                                            #{String(index + 1).padStart(2, '0')}
+                                                        </div>
+
+                                                        {/* Content */}
+                                                        <div className="relative z-10 flex flex-col gap-4">
+                                                            {/* Avatar/Initials */}
+                                                            <div className="flex items-center gap-3">
+                                                                <div
+                                                                    className="w-12 h-12 rounded-xl flex items-center justify-center text-lg font-bold text-white shrink-0 transition-transform duration-300 group-hover:scale-110"
+                                                                    style={{
+                                                                        background: `linear-gradient(135deg, rgba(255, 77, 0, 0.15), rgba(255, 77, 0, 0.4))`,
+                                                                        boxShadow: `0 4px 20px rgba(255, 77, 0, 0.3)`
+                                                                    }}
+                                                                >
+                                                                    {initials}
+                                                                </div>
+
+                                                                <div className="flex-1 min-w-0">
+                                                                    {/* Team Name */}
+                                                                    <h3
+                                                                        className="text-white font-semibold text-base leading-tight truncate group-hover:text-white/90 transition-colors"
+                                                                        title={team.teamName}
+                                                                    >
+                                                                        {team.teamName}
+                                                                    </h3>
+
+                                                                    {/* Leader Name */}
+                                                                    <p
+                                                                        className="text-xs text-white/50 mt-0.5 truncate"
+                                                                        title={team.teamLead}
+                                                                    >
+                                                                        Led by {team.teamLead}
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+
+                                                            {/* Problem Statement Badge */}
+                                                            {team.appliedFor && (
+                                                                <div className="flex">
+                                                                    <span className="text-[10px] px-2 py-1 bg-[#ff4d00]/20 text-[#ff4d00] rounded-full border border-[#ff4d00]/30">
+                                                                        {team.appliedFor}
+                                                                    </span>
+                                                                </div>
+                                                            )}
+
+                                                            {/* Team Code & Member count row */}
+                                                            <div className="flex items-center gap-3">
+                                                                <span className="text-xs text-white/40 font-mono">
+                                                                    {team.teamCode}
+                                                                </span>
+                                                                <div className="flex items-center gap-1.5">
+                                                                    <Users className="w-3.5 h-3.5 text-white/40" />
+                                                                    <span className="text-xs text-white/60">
+                                                                        {team.memberCount}
+                                                                    </span>
+                                                                </div>
+                                                                {/* Finalist indicator */}
+                                                                <div className="flex items-center gap-1 ml-auto">
+                                                                    <Sparkles className="w-3.5 h-3.5 text-[#ff4d00]" />
+                                                                    <span className="text-[10px] text-[#ff4d00] uppercase tracking-wider font-medium">
+                                                                        Finalist
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+
+                                                            {/* Submission Links - Always visible buttons */}
+                                                            <div className="flex flex-col gap-2 pt-3 border-t border-white/10">
+                                                                {team.submissionPdf ? (
+                                                                    <a
+                                                                        href={team.submissionPdf}
+                                                                        target="_blank"
+                                                                        rel="noopener noreferrer"
+                                                                        className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 backdrop-blur-[2.5px] bg-[rgba(138,138,138,0.3)] hover:bg-[rgba(138,138,138,0.4)] border border-[rgba(255,255,255,0.38)] rounded-[12px] text-white text-xs font-medium transition-all"
+                                                                    >
+                                                                        <FileText className="w-3.5 h-3.5" />
+                                                                        View PDF
+                                                                    </a>
+                                                                ) : (
+                                                                    <div className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 bg-[rgba(138,138,138,0.2)] border border-[rgba(255,255,255,0.1)] rounded-[12px] text-[rgba(255,255,255,0.3)] text-xs cursor-not-allowed">
+                                                                        <FileText className="w-3.5 h-3.5" />
+                                                                        No PDF
+                                                                    </div>
+                                                                )}
+                                                                {team.videoUrl ? (
+                                                                    <a
+                                                                        href={team.videoUrl}
+                                                                        target="_blank"
+                                                                        rel="noopener noreferrer"
+                                                                        className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 bg-[rgba(255,255,255,0.85)] hover:bg-[rgba(255,255,255,0.95)] rounded-[12px] text-black text-xs font-medium transition-all"
+                                                                    >
+                                                                        <ExternalLink className="w-3.5 h-3.5" />
+                                                                        View Video
+                                                                    </a>
+                                                                ) : (
+                                                                    <div className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 bg-[rgba(138,138,138,0.2)] border border-[rgba(255,255,255,0.1)] rounded-[12px] text-[rgba(255,255,255,0.3)] text-xs cursor-not-allowed">
+                                                                        <ExternalLink className="w-3.5 h-3.5" />
+                                                                        No Video
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Decorative corner accent */}
+                                                        <div
+                                                            className="absolute -bottom-8 -right-8 w-24 h-24 rounded-full opacity-10 group-hover:opacity-20 transition-opacity duration-300"
+                                                            style={{ background: 'rgba(255, 77, 0, 0.4)' }}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+
+                                {/* No results message */}
+                                {filteredShortlistedTeams.length === 0 && !shortlistedLoading && (
+                                    <div className="text-center py-12">
+                                        <p className="text-white opacity-70 text-lg">
+                                            {shortlistedSearchQuery
+                                                ? `No teams found matching "${shortlistedSearchQuery}"`
+                                                : "No shortlisted teams found"}
+                                        </p>
+                                    </div>
+                                )}
+                            </>
+                        )}
                     </FormSection>
                 </TabsContent>
             </Tabs>
