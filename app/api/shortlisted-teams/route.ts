@@ -55,20 +55,12 @@ export async function GET(request: NextRequest) {
             return acc;
         }, {});
 
-        // Get distribution by status
-        const statusDistribution = teams.reduce((acc: Record<string, number>, team) => {
-            const status = team.status || 'shortlisted';
-            acc[status] = (acc[status] || 0) + 1;
-            return acc;
-        }, {});
-
         return createSuccessResponse({
             teams,
             stats: {
                 totalTeams,
                 totalParticipants,
                 psDistribution,
-                statusDistribution,
             }
         });
 

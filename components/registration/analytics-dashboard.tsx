@@ -31,7 +31,6 @@ interface ShortlistedStats {
     totalTeams: number;
     totalParticipants: number;
     psDistribution: Record<string, number>;
-    statusDistribution: Record<string, number>;
 }
 
 
@@ -65,7 +64,6 @@ export function AnalyticsDashboard() {
         totalTeams: 0,
         totalParticipants: 0,
         psDistribution: {},
-        statusDistribution: {},
     });
     const [shortlistedSearchQuery, setShortlistedSearchQuery] = useState('');
     const [shortlistedLoading, setShortlistedLoading] = useState(false);
@@ -148,7 +146,6 @@ export function AnalyticsDashboard() {
                             totalTeams: 0,
                             totalParticipants: 0,
                             psDistribution: {},
-                            statusDistribution: {},
                         });
                     }
                 }
