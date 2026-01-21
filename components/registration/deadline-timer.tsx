@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Clock, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Clock, AlertTriangle, CheckCircle2, Trophy, XCircle, Check, X } from "lucide-react";
+import { Button } from "./button";
 
 interface TimeRemaining {
   days: number;
@@ -14,17 +15,29 @@ interface TimeRemaining {
 interface DeadlineTimerProps {
   teamStatus?: string;
   hasSubmitted?: boolean;
+  isEvaluated?: boolean;
+  evaluations?: Array<{
+    evaluatorId: string;
+    name: string;
+    tier: "strongly_accepted" | "accepted" | "borderline" | "rejected";
+    comment: string;
+    createdAt: Date | string;
+  }>;
+  hasTeam?: boolean;
+  rsvpStatus?: "pending" | "confirmed" | "declined";
+  onRSVP?: (status: "confirmed" | "declined") => void;
 }
 
-export function DeadlineTimer({ teamStatus, hasSubmitted = false }: DeadlineTimerProps) {
+export function DeadlineTimer({ teamStatus, hasSubmitted = false, isEvaluated = false, evaluations = [], hasTeam = true, rsvpStatus = "pending", onRSVP }: DeadlineTimerProps) {
   const [timeRemaining, setTimeRemaining] = useState<TimeRemaining | null>(null);
   const [deadline, setDeadline] = useState<Date | null>(null);
   const [isExpired, setIsExpired] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [serverOffset, setServerOffset] = useState(0);
   const [error, setError] = useState(false);
-  const [showRickroll, setShowRickroll] = useState(false);
-  const [showButton, setShowButton] = useState(false);
+  const [rsvpDeadline, setRsvpDeadline] = useState<Date | null>(null);
+  const [rsvpTimeRemaining, setRsvpTimeRemaining] = useState<TimeRemaining | null>(null);
+  const [isRsvpExpired, setIsRsvpExpired] = useState(false);
 
   // Fetch deadline and server time from API
   useEffect(() => {
@@ -40,6 +53,10 @@ export function DeadlineTimer({ teamStatus, hasSubmitted = false }: DeadlineTime
           setServerOffset(serverTime - clientTime);
           setDeadline(new Date(data.data.deadline));
           setIsExpired(data.data.isExpired);
+          if (data.data.rsvpDeadline) {
+            setRsvpDeadline(new Date(data.data.rsvpDeadline));
+            setIsRsvpExpired(data.data.isRsvpExpired);
+          }
         }
       } catch (error) {
         console.error("Failed to fetch deadline:", error);
@@ -50,15 +67,6 @@ export function DeadlineTimer({ teamStatus, hasSubmitted = false }: DeadlineTime
     };
 
     fetchDeadline();
-  }, []);
-
-  // Show button after 3 seconds
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setShowButton(true);
-    }, 3000);
-
-    return () => clearTimeout(timer);
   }, []);
 
   // Update countdown every second
@@ -92,6 +100,33 @@ export function DeadlineTimer({ teamStatus, hasSubmitted = false }: DeadlineTime
 
     return () => clearInterval(timer);
   }, [deadline, serverOffset, isExpired]);
+  useEffect(() => {
+    if (!rsvpDeadline || isRsvpExpired) return;
+
+    const calculateRsvpTimeRemaining = (): TimeRemaining => {
+      // Use server-adjusted time
+      const now = Date.now() + serverOffset;
+      const total = rsvpDeadline.getTime() - now;
+
+      if (total <= 0) {
+        setIsRsvpExpired(true);
+        return { days: 0, hours: 0, minutes: 0, seconds: 0, total: 0 };
+      }
+
+      const seconds = Math.floor((total / 1000) % 60);
+      const minutes = Math.floor((total / 1000 / 60) % 60);
+      const hours = Math.floor((total / (1000 * 60 * 60)) % 24);
+      const days = Math.floor(total / (1000 * 60 * 60 * 24));
+
+      return { days, hours, minutes, seconds, total };
+    };
+
+    const timer = setInterval(() => {
+      setRsvpTimeRemaining(calculateRsvpTimeRemaining());
+    }, 1000);
+    setRsvpTimeRemaining(calculateRsvpTimeRemaining());
+    return () => clearInterval(timer);
+  }, [rsvpDeadline, serverOffset, isRsvpExpired]);
 
   if (isLoading) {
     return (
@@ -112,6 +147,8 @@ export function DeadlineTimer({ teamStatus, hasSubmitted = false }: DeadlineTime
   }
 
   const submitted = hasSubmitted || teamStatus === 'submitted' || teamStatus === 'shortlisted' || teamStatus === 'rsvped';
+  const hasRejectedEvaluation = evaluations.some(evaluation => evaluation.tier === 'rejected');
+  const hasAcceptedEvaluation = evaluations.some(evaluation => evaluation.tier === 'accepted' || evaluation.tier === 'strongly_accepted');
 
   return (
     <div className="w-full backdrop-blur-[2.5px] backdrop-filter bg-[rgba(138,138,138,0.15)] rounded-[16px] p-[20px] border border-[rgba(255,255,255,0.2)] flex flex-col items-center justify-center text-center relative">
@@ -122,7 +159,15 @@ export function DeadlineTimer({ teamStatus, hasSubmitted = false }: DeadlineTime
       <div className="relative z-10 w-full flex flex-col items-center justify-center">
       {/* Header */}
       <div className="flex items-center justify-center gap-[12px] mb-[16px] w-full">
-        {isExpired ? (
+        {isExpired && hasTeam && isEvaluated ? (
+          hasRejectedEvaluation ? (
+            <XCircle className="w-5 h-5 text-red-400" />
+          ) : hasAcceptedEvaluation ? (
+            <Trophy className="w-5 h-5 text-[#ffd700]" />
+          ) : (
+            <AlertTriangle className="w-5 h-5 text-[#ff4d00]" />
+          )
+        ) : isExpired ? (
           <AlertTriangle className="w-5 h-5 text-[#ff4d00]" />
         ) : submitted ? (
           <CheckCircle2 className="w-5 h-5 text-white" />
@@ -131,58 +176,185 @@ export function DeadlineTimer({ teamStatus, hasSubmitted = false }: DeadlineTime
         )}
         <h3 
           className={`text-[16px] font-semibold ${
-            isExpired ? 'text-[#ff4d00]' : submitted ? 'text-white' : 'text-white'
+            isExpired && hasTeam && isEvaluated
+              ? hasRejectedEvaluation
+                ? 'text-red-400'
+                : hasAcceptedEvaluation
+                  ? 'text-green-400'
+                  : 'text-[#ff4d00]'
+              : isExpired
+                ? 'text-[#ff4d00]'
+                : submitted
+                  ? 'text-white'
+                  : 'text-white'
           }`}
           style={{ fontFamily: 'var(--font-heading)' }}
         >
-          {isExpired 
-            ? "Submissions Closed" 
-            : submitted 
-              ? "Submission Complete!"
-              : "Submission Deadline"}
+          {isExpired && hasTeam && isEvaluated
+            ? hasRejectedEvaluation
+              ? "Team Not Selected"
+              : hasAcceptedEvaluation
+                ? "🎉 Your Team Has Been Selected!"
+                : "Submissions Closed"
+            : isExpired
+              ? "Submissions Closed"
+              : submitted
+                ? "Submission Complete!"
+                : "Submission Deadline"}
         </h3>
       </div>
 
       {/* Countdown or Status Message */}
       {isExpired ? (
         <div className="flex flex-col items-center gap-[12px] w-full">
-          <p className="text-[14px] text-white/80 text-center w-full" style={{ fontFamily: 'var(--font-body)' }}>
-            The submission deadline has passed. No new submissions are being accepted.
-          </p>
-          <p className="text-[15px] text-white font-medium text-center w-full" style={{ fontFamily: 'var(--font-body)' }}>
-            Results will be out soon :)
-          </p>
-          
-          {showRickroll ? (
-            <div className="flex flex-col items-center gap-[12px] w-full mt-[8px]">
-              <div className="w-full max-w-[560px] aspect-video rounded-[12px] overflow-hidden border-2 border-[rgba(255,255,255,0.2)]">
-                <iframe
-                  width="100%"
-                  height="100%"
-                  src="https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1"
-                  title="Results"
-                  frameBorder="0"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                  className="rounded-[12px]"
-                />
-              </div>
-              <p className="text-[14px] text-white/90 font-medium text-center w-full mt-[8px]" style={{ fontFamily: 'var(--font-body)' }}>
-                🎉 Congratulations! You've been selected for the exclusive "Never Gonna Give You Up" award! 🎉
+          {hasTeam ? (
+            isEvaluated ? (
+              hasRejectedEvaluation ? (
+                <>
+                  <p className="text-[16px] text-red-400 font-semibold text-center w-full" style={{ fontFamily: 'var(--font-body)' }}>
+                    Unfortunately, your team was not selected for the next round.
+                  </p>
+                  <p className="text-[14px] text-white/80 text-center w-full" style={{ fontFamily: 'var(--font-body)' }}>
+                    Thank you for participating! We appreciate your effort and dedication.
+                  </p>
+                </>
+              ) : hasAcceptedEvaluation ? (
+                <>
+                  <p className="text-[16px] text-green-400 font-semibold text-center w-full" style={{ fontFamily: 'var(--font-body)' }}>
+                    🎉 Congratulations! Your team has been selected for the next round!
+                  </p>
+                  <p className="text-[14px] text-white/80 text-center w-full" style={{ fontFamily: 'var(--font-body)' }}>
+                    Please confirm your participation:
+                  </p>
+                  
+                  {/* RSVP Deadline Timer */}
+                  {rsvpTimeRemaining && !isRsvpExpired && (
+                    <div className="w-full mb-[12px]">
+                      <p className="text-[12px] text-white/60 text-center mb-[8px]" style={{ fontFamily: 'var(--font-body)' }}>
+                        RSVP Deadline:
+                      </p>
+                      <div className="flex justify-center gap-[8px] w-full">
+                        {[
+                          { value: rsvpTimeRemaining.days, label: 'Days' },
+                          { value: rsvpTimeRemaining.hours, label: 'Hours' },
+                          { value: rsvpTimeRemaining.minutes, label: 'Mins' },
+                          { value: rsvpTimeRemaining.seconds, label: 'Secs' },
+                        ].map((item, index) => (
+                          <div 
+                            key={index}
+                            className="flex flex-col items-center justify-center min-w-[50px] p-[8px] rounded-[8px] bg-[rgba(0,0,0,0.3)] border border-[rgba(255,255,255,0.1)]"
+                          >
+                            <span 
+                              className="text-[18px] font-bold text-white tabular-nums"
+                              style={{ fontFamily: 'var(--font-heading)' }}
+                            >
+                              {String(item.value).padStart(2, '0')}
+                            </span>
+                            <span 
+                              className="text-[9px] text-white/60 uppercase tracking-wider"
+                              style={{ fontFamily: 'var(--font-body)' }}
+                            >
+                              {item.label}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {isRsvpExpired && (
+                    <p className="text-[13px] text-red-400 font-medium text-center w-full mb-[8px]" style={{ fontFamily: 'var(--font-body)' }}>
+                      ⚠️ RSVP deadline has passed (January 24, 2026, 11:59 PM IST)
+                    </p>
+                  )}
+                  
+                  {/* RSVP Status Display */}
+                  {(() => {
+                    const StatusBadge = ({ status, message }: { status: "confirmed" | "declined"; message: string }) => (
+                      <div className={`flex items-center justify-center gap-[8px] p-[12px] rounded-[12px] mt-[8px] ${
+                        status === "confirmed" 
+                          ? "bg-green-500/10 border border-green-500/20" 
+                          : "bg-red-500/10 border border-red-500/20"
+                      }`}>
+                        {status === "confirmed" ? (
+                          <Check className="w-4 h-4 text-green-400" />
+                        ) : (
+                          <X className="w-4 h-4 text-red-400" />
+                        )}
+                        <p className={`text-[14px] font-medium ${status === "confirmed" ? "text-green-400" : "text-red-400"}`} style={{ fontFamily: 'var(--font-body)' }}>
+                          {message}
+                        </p>
+                      </div>
+                    );
+
+                    if (isRsvpExpired) {
+                      return (
+                        <>
+                          <p className="text-[13px] text-white/70 text-center w-full mt-[8px]" style={{ fontFamily: 'var(--font-body)' }}>
+                            RSVP deadline has passed. Please contact the organizers if you need assistance.
+                          </p>
+                          {rsvpStatus === "confirmed" && <StatusBadge status="confirmed" message="✅ RSVP Confirmed! See you at the event!" />}
+                          {rsvpStatus === "declined" && <StatusBadge status="declined" message="You have declined participation." />}
+                        </>
+                      );
+                    }
+
+                    if (!onRSVP) return null;
+                    if (rsvpStatus === "confirmed" || rsvpStatus === "declined") {
+                      return (
+                        <div className="flex flex-col gap-[12px] w-full mt-[8px]">
+                          {rsvpStatus === "confirmed" && <StatusBadge status="confirmed" message="✅ RSVP Confirmed! See you at the event!" />}
+                          {rsvpStatus === "declined" && <StatusBadge status="declined" message="You have declined participation." />}
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className="flex flex-col gap-[12px] w-full mt-[8px]">
+                        <p className="text-[14px] text-white/80 text-center w-full" style={{ fontFamily: 'var(--font-body)' }}>
+                          Please confirm your participation:
+                        </p>
+                        <div className="flex gap-[12px] w-full justify-center">
+                          <Button onClick={() => onRSVP("confirmed")} variant="primary">
+                            <Check className="w-4 h-4" />
+                            Confirm Participation
+                          </Button>
+                          <Button onClick={() => onRSVP("declined")} variant="danger">
+                            <X className="w-4 h-4" />
+                            Decline
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </>
+              ) : (
+                <>
+                  <p className="text-[14px] text-white/80 text-center w-full" style={{ fontFamily: 'var(--font-body)' }}>
+                    The submission deadline has passed. No new submissions are being accepted.
+                  </p>
+                  <p className="text-[15px] text-white font-medium text-center w-full" style={{ fontFamily: 'var(--font-body)' }}>
+                    Results will be out soon :)
+                  </p>
+                </>
+              )
+            ) : (
+              <>
+                <p className="text-[14px] text-white/80 text-center w-full" style={{ fontFamily: 'var(--font-body)' }}>
+                  The submission deadline has passed. No new submissions are being accepted.
+                </p>
+                <p className="text-[15px] text-white font-medium text-center w-full" style={{ fontFamily: 'var(--font-body)' }}>
+                  Results will be out soon :)
+                </p>
+              </>
+            )
+          ) : (
+            <>
+              <p className="text-[14px] text-white/80 text-center w-full" style={{ fontFamily: 'var(--font-body)' }}>
+                The submission deadline has passed. No new submissions are being accepted.
               </p>
-              <p className="text-[12px] text-white/70 text-center w-full" style={{ fontFamily: 'var(--font-body)' }}>
-                Just kidding! Results are still being evaluated. <span className="text-[#ff4d00] font-bold">Check back later</span> for real updates! 😄
-              </p>
-            </div>
-          ) : showButton ? (
-            <button
-              onClick={() => setShowRickroll(true)}
-              className="mt-[8px] px-[24px] py-[12px] bg-gradient-to-r from-[#ff4d00] to-[#ff8800] hover:from-[#ff6600] hover:to-[#ff9900] text-white font-semibold rounded-[12px] transition-all duration-200 shadow-[0_0_15px_rgba(255,77,0,0.4)] hover:shadow-[0_0_20px_rgba(255,77,0,0.6)]"
-              style={{ fontFamily: 'var(--font-body)' }}
-            >
-              Check Result
-            </button>
-          ) : null}
+            </>
+          )}
         </div>
       ) : (
         <div className="flex flex-col items-center w-full">
