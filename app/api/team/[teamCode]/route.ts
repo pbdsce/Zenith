@@ -98,6 +98,7 @@ export async function GET(
         anyOtherLink: team.anyOtherLink || null,
         isEvaluated: team.isEvaluated,
         isShortlisted: team.isShortlisted,
+        evaluations: team.evaluations || [], // Include evaluations array
         memberRSVPs: formattedRSVPs,
         createdAt: team.createdAt instanceof Date ? team.createdAt.toISOString() : team.createdAt,
         submittedAt: team.submittedAt instanceof Date ? team.submittedAt.toISOString() : team.submittedAt || null,

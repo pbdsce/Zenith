@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from '@/hooks/use-auth';
 import { API_ENDPOINTS } from "@/lib/api-config";
-import { UserCircle, Users, FileText, CheckCircle, Search, Download, Eye, Star, Upload } from "lucide-react";
+import { UserCircle, Users, FileText, CheckCircle, Search, Download, Eye, Star, Upload, ChevronDown, ChevronUp, Check, X, Clock } from "lucide-react";
 import { FormSection } from "./form-section";
 import { FormInput } from "./form-input";
 import { Button } from "./button";
@@ -88,6 +88,26 @@ export function AdminContainer() {
   const [submissionsTotalPages, setSubmissionsTotalPages] = useState(1);
   const [submissionsSearch, setSubmissionsSearch] = useState("");
   const [isSubmissionsLoading, setIsSubmissionsLoading] = useState(false);
+  interface SelectedTeam extends Team {
+    memberRSVPs?: Array<{
+      uid: string;
+      name: string;
+      rsvpStatus: "confirmed" | "declined";
+      rsvpedAt: Date | string;
+    }>;
+    teamMembers?: Array<{
+      uid: string;
+      name: string;
+      email?: string;
+      role: string;
+    }>;
+  }
+  const [selectedTeams, setSelectedTeams] = useState<SelectedTeam[]>([]);
+  const [selectedTeamsPage, setSelectedTeamsPage] = useState(1);
+  const [selectedTeamsTotalPages, setSelectedTeamsTotalPages] = useState(1);
+  const [selectedTeamsSearch, setSelectedTeamsSearch] = useState("");
+  const [isSelectedTeamsLoading, setIsSelectedTeamsLoading] = useState(false);
+  const [expandedTeams, setExpandedTeams] = useState<Set<string>>(new Set());
 
   // View Modal State
   const [selectedTeam, setSelectedTeam] = useState<TeamDetails | null>(null);
@@ -300,6 +320,90 @@ export function AdminContainer() {
       return () => clearTimeout(timeoutId);
     }
   }, [submissionsPage, submissionsSearch, activeTab, getToken]);
+  const fetchSelectedTeams = async () => {
+    setIsSelectedTeamsLoading(true);
+    try {
+      const token = await getToken();
+      if (!token) return;
+      const queryParams = new URLSearchParams({
+        page: selectedTeamsPage.toString(),
+        limit: '50',
+        search: selectedTeamsSearch,
+        evaluationTier: 'accepted,strongly_accepted'
+      });
+      const response = await fetch(`${API_ENDPOINTS.adminTeams}?${queryParams}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        const teamsList = data.data.teams || [];
+        const teamsWithDetails = await Promise.all(
+          teamsList.map(async (t: any) => {
+            try {
+              const detailResponse = await fetch(API_ENDPOINTS.adminTeamDetails(t.teamCode), {
+                headers: { 'Authorization': `Bearer ${token}` }
+              });
+              if (detailResponse.ok) {
+                const detailData = await detailResponse.json();
+                if (detailData.success && detailData.data) {
+                  return {
+                    teamCode: t.teamCode,
+                    teamName: t.teamName,
+                    problemStatement: t.appliedFor?.title || "N/A",
+                    memberCount: t.memberCount,
+                    status: t.teamStatus,
+                    memberRSVPs: detailData.data.memberRSVPs || [],
+                    teamMembers: detailData.data.teamMembers || [],
+                  };
+                }
+              }
+            } catch (error) {
+              console.error(`Error fetching details for team ${t.teamCode}:`, error);
+            }
+            return {
+              teamCode: t.teamCode,
+              teamName: t.teamName,
+              problemStatement: t.appliedFor?.title || "N/A",
+              memberCount: t.memberCount,
+              status: t.teamStatus,
+              memberRSVPs: [],
+              teamMembers: [],
+            } as SelectedTeam;
+          })
+        );
+        
+        setSelectedTeams(teamsWithDetails);
+        setSelectedTeamsTotalPages(data.data.pagination.totalPages);
+      } else {
+        setAlert({ type: "error", message: "Failed to fetch selected teams" });
+      }
+    } catch (error) {
+      setAlert({ type: "error", message: "Error fetching selected teams" });
+    } finally {
+      setIsSelectedTeamsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'selected-teams') {
+      const timeoutId = setTimeout(() => {
+        fetchSelectedTeams();
+      }, 300);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [selectedTeamsPage, selectedTeamsSearch, activeTab, getToken]);
+
+  const toggleTeamExpansion = (teamCode: string) => {
+    setExpandedTeams(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(teamCode)) {
+        newSet.delete(teamCode);
+      } else {
+        newSet.add(teamCode);
+      }
+      return newSet;
+    });
+  };
 
   const handleExport = async (type: 'users' | 'teams' | 'submissions') => {
     try {
@@ -355,6 +459,7 @@ export function AdminContainer() {
         },
         body: JSON.stringify({
           teamStatus: 'shortlisted',
+          isShortlisted: true,
         }),
       });
 
@@ -366,6 +471,9 @@ export function AdminContainer() {
               : team
           )
         );
+        if (activeTab === 'selected-teams') {
+          fetchSelectedTeams();
+        }
 
         setAlert({
           type: "success",
@@ -562,10 +670,11 @@ export function AdminContainer() {
       </FormSection>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-5 h-auto">
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-6 h-auto">
           <TabsTrigger value="users">Manage Users</TabsTrigger>
           <TabsTrigger value="teams">Manage Teams</TabsTrigger>
           <TabsTrigger value="submissions">Submissions</TabsTrigger>
+          <TabsTrigger value="selected-teams">Selected Teams</TabsTrigger>
           <TabsTrigger value="evaluators">Evaluators</TabsTrigger>
           <TabsTrigger value="problems">Problem Statements</TabsTrigger>
         </TabsList>
@@ -789,6 +898,150 @@ export function AdminContainer() {
                   </Card>
                 ))}
                 {renderPagination(teamsPage, teamsTotalPages, setTeamsPage)}
+              </div>
+            )}
+          </FormSection>
+        </TabsContent>
+        <TabsContent value="selected-teams" className="mt-6">
+          <FormSection title="Selected Teams">
+            <div className="flex flex-col gap-[12px] mb-6">
+              <div className="flex flex-col sm:flex-row gap-[12px]">
+                <div className="flex-1">
+                  <FormInput
+                    label=""
+                    placeholder="Search selected teams..."
+                    value={selectedTeamsSearch}
+                    onChange={(e) => {
+                      setSelectedTeamsSearch(e.target.value);
+                      setSelectedTeamsPage(1);
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+            {isSelectedTeamsLoading ? (
+              <div className="flex justify-center py-[40px]">
+                <Spinner size="lg" />
+              </div>
+            ) : selectedTeams.length === 0 ? (
+              <div className="text-white text-center py-[40px] opacity-70">
+                No selected teams found.
+              </div>
+            ) : (
+              <div className="flex flex-col gap-[16px]">
+                {selectedTeams.map((team) => {
+                  const isExpanded = expandedTeams.has(team.teamCode);
+                  const memberRSVPsMap = new Map(
+                    (team.memberRSVPs || []).map((rsvp: any) => [rsvp.uid, rsvp])
+                  );
+        
+                  return (
+                    <Card key={team.teamCode}>
+                      <div className="flex flex-col gap-4">
+                        <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
+                          <div className="flex-1">
+                            <h3 className="font-['Inter',sans-serif] text-[16px] text-white mb-[4px]">
+                              {team.teamName}
+                            </h3>
+                            <p className="font-['Inter',sans-serif] text-[13px] text-white opacity-90 mb-[8px]">
+                              Problem: {team.problemStatement} • Members: {team.memberCount} • Status: {team.status}
+                            </p>
+                            <div className="flex items-center gap-2 mt-2">
+                              <span className="text-[12px] text-white opacity-70">
+                                RSVP Status:
+                              </span>
+                              <span className="text-[12px] font-semibold text-white">
+                                {team.memberRSVPs?.length || 0} / {team.memberCount} responded
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex gap-[8px] w-full sm:w-auto justify-end">
+                            <Button
+                              variant="secondary"
+                              onClick={() => toggleTeamExpansion(team.teamCode)}
+                            >
+                              {isExpanded ? (
+                                <>
+                                  <ChevronUp className="w-4 h-4" />
+                                  Hide Members
+                                </>
+                              ) : (
+                                <>
+                                  <ChevronDown className="w-4 h-4" />
+                                  Show Members
+                                </>
+                              )}
+                            </Button>
+                            <Button variant="secondary" onClick={() => handleViewTeam(team.teamCode)}>
+                              <Eye className="w-4 h-4" />
+                              View Details
+                            </Button>
+                          </div>
+                        </div>
+
+                        {/* Expanded Members List */}
+                        {isExpanded && team.teamMembers && team.teamMembers.length > 0 && (
+                          <div className="mt-4 pt-4 border-t border-[rgba(255,255,255,0.1)]">
+                            <h4 className="text-[14px] text-white font-semibold mb-3" style={{ fontFamily: 'var(--font-body)' }}>
+                              Team Members
+                            </h4>
+                            <div className="flex flex-col gap-3">
+                              {team.teamMembers.map((member) => {
+                                const rsvp = memberRSVPsMap.get(member.uid);
+                                const rsvpStatus = rsvp?.rsvpStatus || null;
+                                
+                                return (
+                                  <div
+                                    key={member.uid}
+                                    className="flex items-center justify-between p-3 bg-[rgba(138,138,138,0.05)] rounded-[12px] border border-[rgba(255,255,255,0.1)]"
+                                  >
+                                    <div className="flex items-center gap-3 flex-1">
+                                      <div className="w-10 h-10 rounded-full bg-[rgba(255,255,255,0.1)] flex items-center justify-center shrink-0">
+                                        <UserCircle className="w-6 h-6 text-white opacity-90" />
+                                      </div>
+                                      <div className="flex-1 min-w-0">
+                                        <h5 className="font-['Inter',sans-serif] text-[14px] text-white">
+                                          {member.name}
+                                          {member.role === 'Team Lead' && (
+                                            <span className="ml-2 text-[12px] text-[#ff4d00]">(Lead)</span>
+                                          )}
+                                        </h5>
+                                        {member.email && (
+                                          <p className="font-['Inter',sans-serif] text-[12px] text-white opacity-70 break-all">
+                                            {member.email}
+                                          </p>
+                                        )}
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      {rsvpStatus === 'confirmed' ? (
+                                        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-green-500/10 border border-green-500/20">
+                                          <Check className="w-3.5 h-3.5 text-green-400" />
+                                          <span className="text-[12px] text-green-400 font-medium">Confirmed</span>
+                                        </div>
+                                      ) : rsvpStatus === 'declined' ? (
+                                        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-500/10 border border-red-500/20">
+                                          <X className="w-3.5 h-3.5 text-red-400" />
+                                          <span className="text-[12px] text-red-400 font-medium">Declined</span>
+                                        </div>
+                                      ) : (
+                                        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-yellow-500/10 border border-yellow-500/20">
+                                          <Clock className="w-3.5 h-3.5 text-yellow-400" />
+                                          <span className="text-[12px] text-yellow-400 font-medium">Pending</span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </Card>
+                  );
+                })}
+                {renderPagination(selectedTeamsPage, selectedTeamsTotalPages, setSelectedTeamsPage)}
               </div>
             )}
           </FormSection>

@@ -50,6 +50,7 @@ export async function GET(request: NextRequest) {
     const isEvaluated = searchParams.get('isEvaluated');
     const appliedFor = searchParams.get('appliedFor');
     const search = searchParams.get('search');
+    const evaluationTier = searchParams.get('evaluationTier'); // Filter by evaluation tier
     const sortBy = searchParams.get('sortBy') || 'createdAt';
     const sortOrder = searchParams.get('sortOrder') === 'asc' ? 1 : -1;
 
@@ -62,9 +63,15 @@ export async function GET(request: NextRequest) {
     if (isShortlisted === 'false') query.isShortlisted = false;
     if (isEvaluated === 'true') query.isEvaluated = true;
     if (isEvaluated === 'false') query.isEvaluated = false;
-    if (isEvaluated === 'true') query.isEvaluated = true;
-    if (isEvaluated === 'false') query.isEvaluated = false;
     if (appliedFor) query.appliedFor = appliedFor;
+    if (evaluationTier) {
+      const tiers = evaluationTier.split(',').map(t => t.trim());
+      if (tiers.length === 1) {
+        query['evaluations.tier'] = tiers[0];
+      } else {
+        query['evaluations.tier'] = { $in: tiers };
+      }
+    }
 
     if (searchParams.get('isSubmitted') === 'true') {
       query.submittedAt = { $exists: true, $ne: null };
