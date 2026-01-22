@@ -130,12 +130,18 @@ export async function GET(request: NextRequest) {
     ]);
 
     // Get stats
-    const [submitted, shortlisted, rsvped, evaluated] = await Promise.all([
+    const [submitted, shortlisted, evaluated, rsvpResult] = await Promise.all([
       Team.countDocuments({ submittedAt: { $exists: true, $ne: null } }),
       Team.countDocuments({ isShortlisted: true }),
-      Team.countDocuments({ teamStatus: 'rsvped' }),
       Team.countDocuments({ isEvaluated: true }),
+      Team.aggregate([
+        { $unwind: { path: '$memberRSVPs', preserveNullAndEmptyArrays: false } },
+        { $match: { 'memberRSVPs.rsvpStatus': 'confirmed' } },
+        { $count: 'total' }
+      ])
     ]);
+
+    const rsvped = rsvpResult[0]?.total || 0;
 
     const formattedTeams = teams.map(team => {
       const lead = teamLeads.find(u => u.uid === team.teamLead);

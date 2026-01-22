@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from '@/hooks/use-auth';
 import { API_ENDPOINTS } from "@/lib/api-config";
-import { UserCircle, Users, FileText, CheckCircle, Search, Download, Eye, Star, Upload, ChevronDown, ChevronUp, Check, X, Clock } from "lucide-react";
+import { UserCircle, Users, FileText, CheckCircle, Search, Download, Eye, Star, Upload, ChevronDown, ChevronUp, Check, X, Clock, CalendarCheck } from "lucide-react";
 import { FormSection } from "./form-section";
 import { FormInput } from "./form-input";
 import { Button } from "./button";
@@ -30,6 +30,7 @@ interface AdminStats {
   totalTeams: number;
   totalSubmissions: number;
   totalEvaluated: number;
+  rsvped: number;
 }
 
 interface Team {
@@ -61,6 +62,7 @@ export function AdminContainer() {
     totalTeams: 0,
     totalSubmissions: 0,
     totalEvaluated: 0,
+    rsvped: 0,
   });
 
   const [alert, setAlert] = useState<{
@@ -170,6 +172,7 @@ export function AdminContainer() {
             totalTeams: teamsData.data?.stats?.totalTeams || 0,
             totalSubmissions: teamsData.data?.stats?.submitted || 0,
             totalEvaluated: teamsData.data?.stats?.evaluated || 0,
+            rsvped: teamsData.data?.stats?.rsvped || 0,
           });
         }
 
@@ -637,7 +640,7 @@ export function AdminContainer() {
       )}
 
       <FormSection title="Platform Statistics">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-[16px]">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-[16px]">
           <Card>
             <div className="flex flex-col items-center gap-[8px] text-center">
               <UserCircle className="w-8 h-8 text-[#ff4d00]" />
@@ -664,6 +667,13 @@ export function AdminContainer() {
               <CheckCircle className="w-8 h-8 text-[#ff4d00]" />
               <span className="font-['Inter',sans-serif] text-[24px] text-white">{stats.totalEvaluated}</span>
               <span className="font-['Inter',sans-serif] text-[13px] text-white opacity-90">Evaluated</span>
+            </div>
+          </Card>
+          <Card>
+            <div className="flex flex-col items-center gap-[8px] text-center">
+              <CalendarCheck className="w-8 h-8 text-[#ff4d00]" />
+              <span className="font-['Inter',sans-serif] text-[24px] text-white">{stats.rsvped}</span>
+              <span className="font-['Inter',sans-serif] text-[13px] text-white opacity-90">RSVP Count</span>
             </div>
           </Card>
         </div>
