@@ -15,6 +15,8 @@ import {
   Check,
   Search,
   ArrowRight,
+  MapPin,
+  ExternalLink,
 } from "lucide-react";
 import { FormSection } from "./form-section";
 import { Button } from "./button";
@@ -111,6 +113,7 @@ export function DashboardContainer() {
   const [memberToRemove, setMemberToRemove] = useState<{ id: string; name: string } | null>(null);
   const [transferOwnershipDialogOpen, setTransferOwnershipDialogOpen] = useState(false);
   const [showWelcomeBanner, setShowWelcomeBanner] = useState(false);
+  const [showVenueBanner, setShowVenueBanner] = useState(false);
 
   const handleRespondToInvite = async (requestId: string, action: 'accept' | 'decline') => {
     try {
@@ -155,6 +158,9 @@ export function DashboardContainer() {
     const welcomeBannerDismissed = localStorage.getItem('zenith_welcome_banner_dismissed');
     if (!welcomeBannerDismissed) {
       setShowWelcomeBanner(true);
+    }
+    if (user && user.role === 'user') {
+      setShowVenueBanner(true);
     }
 
     if (!isAuthenticated || !user) {
@@ -830,6 +836,86 @@ export function DashboardContainer() {
               >
                 Join Discord
               </a>
+            </div>
+          </div>
+        </div>
+      )}
+      {showVenueBanner && user && user.role === 'user' && (
+        <div className="relative backdrop-blur-[2.5px] backdrop-filter bg-[rgba(255,77,0,0.15)] rounded-[15px] p-[20px] border border-[#ff4d00]">
+          <div className="flex flex-col gap-[16px]">
+            <div className="flex items-center justify-center">
+              <h3 className="text-[26px] text-white font-semibold" style={{ fontFamily: 'var(--font-heading)' }}>
+                 Venue Announcement 🎉
+              </h3>
+            </div>
+            
+            {/* Main Content: Text on Left, Images on Right */}
+            <div className="flex flex-col md:flex-row gap-[16px] items-start">
+              {/* Left Side - Text Content */}
+              <div className="flex-1 flex flex-col space-y-[16px] text-white" style={{ fontFamily: 'var(--font-body)' }}>
+                <p className="text-[28px] leading-[44px]">
+                  <span className="font-semibold text-[#ff4d00]">IndiQube South Summit</span>
+                </p>
+                
+                <div className="space-y-[16px] text-[14px] opacity-90 leading-[20px]">
+                  <p className="font-semibold text-[16px] text-white mb-2">How to reach?</p>
+                  
+                  <div className="flex items-start gap-[8px]">
+                    <MapPin className="w-4 h-4 text-[#ff4d00] flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-semibold mb-1">Metro:</p>
+                      <p>Get down at <span className="text-[#ff4d00] font-semibold">South End Circle</span> and it's a 3 min walk from there.</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-start gap-[8px]">
+                    <MapPin className="w-4 h-4 text-[#ff4d00] flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-semibold mb-1">Train:</p>
+                      <p>6 kilometers from <span className="text-[#ff4d00] font-semibold">KSR Railway Station</span>.</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-start gap-[8px]">
+                    <MapPin className="w-4 h-4 text-[#ff4d00] flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-semibold mb-1">Bus:</p>
+                      <p>6 kilometers from <span className="text-[#ff4d00] font-semibold">Majestic Bus Stand</span>.</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="pt-[4px]">
+                  <a
+                    href="https://maps.app.goo.gl/FFzoKB9xHtp5PUEe8"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 bg-[#ff4d00] hover:bg-[#ff6600] text-white font-medium px-6 py-3 rounded-xl transition-all duration-200 shadow-[0_0_15px_rgba(255,77,0,0.4)] hover:shadow-[0_0_20px_rgba(255,77,0,0.6)]"
+                    style={{ fontFamily: 'var(--font-body)' }}
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    Open in Google Maps
+                  </a>
+                </div>
+              </div>
+              
+              <div className="flex-shrink-0 w-full md:w-[300px] space-y-[12px]">
+                <div className="w-full rounded-xl overflow-hidden border border-white/10 shadow-lg">
+                  <img
+                    src="/images/ext.png"
+                    alt="IndiQube South Summit - Exterior"
+                    className="w-full h-auto object-cover"
+                    loading="lazy"
+                  />
+                </div>
+                <div className="w-full rounded-xl overflow-hidden border border-white/10 shadow-lg">
+                  <img
+                    src="/images/int.png"
+                    alt="IndiQube South Summit - Interior"
+                    className="w-full h-auto object-cover"
+                    loading="lazy"
+                  />
+                </div>
+              </div>
             </div>
           </div>
         </div>
