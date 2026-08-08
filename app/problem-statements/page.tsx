@@ -45,7 +45,7 @@ export default function ProblemStatementsPage() {
     useEffect(() => {
         const fetchProblemStatements = async () => {
             try {
-                const response = await fetch('/api/problem-statements');
+                const response = await fetch('/zenith/api/problem-statements');
                 const data = await response.json();
 
                 if (data.success) {

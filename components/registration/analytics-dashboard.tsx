@@ -50,7 +50,7 @@ export function AnalyticsDashboard() {
                 const token = await getToken();
                 if (!token) return;
 
-                const response = await fetch('/api/analytics', {
+                const response = await fetch('/zenith/api/analytics', {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
 

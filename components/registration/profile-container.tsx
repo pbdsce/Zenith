@@ -60,7 +60,7 @@ export function ProfileContainer() {
         setIsLoading(true);
         const token = await getToken();
 
-        const response = await fetch('/api/user/profile', {
+        const response = await fetch('/zenith/api/user/profile', {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -242,7 +242,7 @@ export function ProfileContainer() {
       };
 
       // Call Next.js API route
-      const response = await fetch('/api/user/profile', {
+      const response = await fetch('/zenith/api/user/profile', {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
