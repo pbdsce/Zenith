@@ -121,7 +121,7 @@ export function TeamContainer() {
     // Fetch problem statements
     const fetchProblemStatements = async () => {
       try {
-        const response = await fetch('/api/problem-statements');
+        const response = await fetch('/zenith/api/problem-statements');
         if (response.ok) {
           const data = await response.json();
           if (data.success && data.data && data.data.problemStatements) {

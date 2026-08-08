@@ -157,7 +157,7 @@ export default function AdminRegisterPage() {
     setAlert(null);
 
     try {
-      const response = await fetch('/api/admin/register', {
+      const response = await fetch('/zenith/api/admin/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

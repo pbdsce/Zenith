@@ -177,7 +177,7 @@ export function DashboardContainer() {
 
         // Fetch deadline status
         try {
-          const deadlineResponse = await fetch('/api/config/deadline');
+          const deadlineResponse = await fetch('/zenith/api/config/deadline');
           const deadlineData = await deadlineResponse.json();
           if (deadlineData.success && deadlineData.data) {
             setIsDeadlineExpired(deadlineData.data.isExpired);
@@ -624,7 +624,7 @@ export function DashboardContainer() {
         return;
       }
 
-      const response = await fetch('/api/team/transfer-ownership', {
+      const response = await fetch('/zenith/api/team/transfer-ownership', {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
