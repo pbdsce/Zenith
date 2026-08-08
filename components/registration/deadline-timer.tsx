@@ -28,7 +28,7 @@ export function DeadlineTimer({ teamStatus, hasSubmitted = false }: DeadlineTime
   useEffect(() => {
     const fetchDeadline = async () => {
       try {
-        const response = await fetch('/zenith/api/config/deadline');
+        const response = await fetch('/api/config/deadline');
         const data = await response.json();
         
         if (data.success && data.data) {
